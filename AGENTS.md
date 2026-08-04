@@ -47,7 +47,7 @@ Required for the app + `db:seed-auth`. Use the standard local Supabase keys (get
 ### Post-`db reset` / fresh-init caveat: DB grants (REQUIRED)
 The local `supabase/postgres` image applies restricted default privileges: tables created by the `postgres` role during migrations grant only `TRUNCATE/REFERENCES/TRIGGER` (no DML) to `anon/authenticated/service_role`. As a result `npm run db:seed-auth` fails with `permission denied for table users`, and the app cannot read/write any data. After every `supabase db reset` (or the very first `supabase start`), re-apply the standard grants, then seed:
 ```
-docker exec supabase_db_SweetFlow-pos psql -U postgres -d postgres -c "GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role; GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role; GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, service_role;"
+bash scripts/dev-grant-api-roles.sh
 npm run db:seed-auth
 ```
 Do not edit migrations/`seed.sql` for this — it is a local-image quirk (hosted Supabase grants these by default). Demo login: `owner@CafeFlow.local` / `demo1234` (see `docs/DEMO_USERS.md`).
