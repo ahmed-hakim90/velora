@@ -319,7 +319,7 @@ export function BranchSettingsTab({
                     }}
                     className="gap-4"
                   >
-                    <TabsList className="grid h-auto w-full grid-cols-2 gap-1 group-data-horizontal/tabs:h-auto sm:grid-cols-3">
+                    <TabsList className="grid h-auto w-full grid-cols-2 gap-1 group-data-horizontal/tabs:h-auto sm:grid-cols-4">
                       <TabsTrigger
                         value="details"
                         className="h-9 px-2 text-xs sm:px-3 sm:text-sm"

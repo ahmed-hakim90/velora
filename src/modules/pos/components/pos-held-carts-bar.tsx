@@ -165,8 +165,8 @@ export function PosHeldCartsBar() {
       </Button>
 
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-        <DialogContent className="max-h-[94dvh] max-w-lg overflow-hidden rounded-2xl p-0 max-sm:max-w-[calc(100%-0.5rem)] sm:max-w-lg">
-          <DialogHeader className="border-b border-border/70 px-3 py-3 text-start">
+        <DialogContent className="flex max-h-[min(94dvh,100%)] max-w-lg flex-col gap-0 overflow-hidden rounded-2xl p-0 max-sm:max-w-[calc(100%-0.5rem)] sm:max-w-lg">
+          <DialogHeader className="shrink-0 border-b border-border/70 px-3 py-3 text-start">
             <div className="flex items-center gap-2.5">
               <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-orange-500/15 text-orange-800 dark:text-orange-200">
                 <Clock3 className="size-4" />
@@ -180,7 +180,7 @@ export function PosHeldCartsBar() {
             </div>
           </DialogHeader>
 
-          <ul className="max-h-[min(76dvh,620px)] space-y-1.5 overflow-y-auto px-2.5 py-2.5 sm:px-3">
+          <ul className="min-h-0 flex-1 space-y-1.5 overflow-y-auto overscroll-y-contain px-2.5 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:px-3 sm:pb-2.5">
             {heldCarts.map((held) => {
               const itemCount = held.cart.length;
               const subtotal = getCartSubtotal(held.cart);

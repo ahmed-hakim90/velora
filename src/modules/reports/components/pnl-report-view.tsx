@@ -24,6 +24,7 @@ import type { ReportContext } from "@/modules/reports/core/report-context";
 import type { Store } from "@/lib/types";
 import type { PnlLine } from "@/modules/reports/services/executive-analytics.service";
 import type { ProfitReportDetail } from "@/modules/reports/services/profit-report.service";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface PnlReportViewProps {
   filters: ReportFilters;
@@ -47,12 +48,26 @@ export function PnlReportView({
   profit,
   canExcel,
 }: PnlReportViewProps) {
+  const { t } = useTranslation();
   const [pending, startTransition] = useTransition();
+
+  const lineLabel = (key: string) => {
+    const labels: Record<string, string> = {
+      revenue: "Revenue",
+      cogs: "COGS",
+      grossProfit: "Gross profit",
+      expenses: "Expenses",
+      waste: "Waste",
+      refunds: "Refunds",
+      estimatedNet: "Estimated net profit",
+    };
+    return t(labels[key] ?? key);
+  };
 
   return (
     <ReportPage
-      title="قائمة الدخل المبسّطة"
-      description="إيراد، تكلفة، ربح إجمالي، مصروفات، هالك، مرتجعات، وصافي تقديري"
+      title="Simplified income statement"
+      description="Revenue, cost, gross profit, expenses, waste, refunds, and estimated net profit"
       actions={
         <ExportButtonGroup
           canPrint={false}
@@ -71,9 +86,9 @@ export function PnlReportView({
                   ) as Record<string, string>
                 );
                 downloadBase64Excel(result.base64, result.filename);
-                toast.success("تم تصدير Excel");
+                toast.success(t("Excel exported"));
               } catch {
-                toast.error("فشل التصدير");
+                toast.error(t("Export failed"));
               }
             });
           }}
@@ -85,17 +100,17 @@ export function PnlReportView({
         columns={3}
         items={[
           {
-            label: "الإيراد",
+            label: t("Revenue"),
             value: formatCurrency(profit.revenue, currency),
             icon: <ShoppingBag className="size-5" />,
           },
           {
-            label: "إجمالي الربح",
+            label: t("Gross profit"),
             value: formatCurrency(profit.grossProfit, currency),
             icon: <CircleDollarSign className="size-5" />,
           },
           {
-            label: "صافي تقديري",
+            label: t("Estimated net profit"),
             value: formatCurrency(estimatedNet, currency),
             icon: <Wallet className="size-5" />,
           },
@@ -103,33 +118,33 @@ export function PnlReportView({
       />
 
       <div className="grid gap-[var(--mds-space-4)] lg:grid-cols-3">
-        <OperationalCard title="مصروفات" className="lg:col-span-1">
+        <OperationalCard title={t("Expenses")} className="lg:col-span-1">
           <p className="text-lg font-semibold tabular-nums">
             {formatCurrency(profit.totalExpenses, currency)}
           </p>
           <p className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
-            <Receipt className="size-3.5" /> من تقرير الأرباح
+            <Receipt className="size-3.5" /> {t("From profit report")}
           </p>
         </OperationalCard>
-        <OperationalCard title="الهالك">
+        <OperationalCard title={t("Waste")}>
           <p className="text-lg font-semibold tabular-nums">
             {formatCurrency(profit.wasteCost, currency)}
           </p>
           <p className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
-            <Trash2 className="size-3.5" /> تكلفة تقديرية
+            <Trash2 className="size-3.5" /> {t("Estimated cost")}
           </p>
         </OperationalCard>
-        <OperationalCard title="المرتجعات">
+        <OperationalCard title={t("Refunds")}>
           <p className="text-lg font-semibold tabular-nums">
             {formatCurrency(profit.refunds, currency)}
           </p>
           <p className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
-            <Undo2 className="size-3.5" /> ملغى / مسترد
+            <Undo2 className="size-3.5" /> {t("Cancelled / refunded")}
           </p>
         </OperationalCard>
       </div>
 
-      <OperationalCard title="قائمة الدخل">
+      <OperationalCard title={t("Income statement")}>
         <ul className="divide-y divide-border">
           {lines.map((line) => (
             <li
@@ -140,7 +155,7 @@ export function PnlReportView({
                 line.emphasis === "total" && "font-semibold text-base pt-4"
               )}
             >
-              <span>{line.labelAr}</span>
+              <span>{lineLabel(line.key)}</span>
               <span
                 className={cn(
                   "tabular-nums",

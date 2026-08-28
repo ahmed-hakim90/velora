@@ -134,19 +134,20 @@ export function PosCollectFlowDialog({ open, onOpenChange }: PosCollectFlowDialo
     setReference("");
   }
 
-  const [wasOpen, setWasOpen] = useState(open);
-  if (open !== wasOpen) {
-    setWasOpen(open);
-    if (open) {
-      setQuery("");
-      setListError(null);
-      const preselect =
-        cartCustomer && cartCustomer.account_balance > 0
-          ? toCollectCustomer(cartCustomer)
-          : null;
-      resetForm(preselect);
-    }
-  }
+  useEffect(() => {
+    if (!open) return;
+
+    setQuery("");
+    setListError(null);
+    const preselect =
+      cartCustomer && cartCustomer.account_balance > 0
+        ? toCollectCustomer(cartCustomer)
+        : null;
+    setSelected(preselect);
+    setAmount(preselect ? String(roundMoney(preselect.account_balance)) : "");
+    setMethod("cash");
+    setReference("");
+  }, [cartCustomer, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -238,8 +239,8 @@ export function PosCollectFlowDialog({ open, onOpenChange }: PosCollectFlowDialo
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[94dvh] max-w-lg overflow-hidden rounded-2xl p-0 max-sm:max-w-[calc(100%-0.5rem)] sm:max-w-lg">
-        <DialogHeader className="border-b border-border/70 px-3 py-2.5 pe-10 text-start sm:py-3">
+      <DialogContent className="flex max-h-[min(94dvh,100%)] max-w-lg flex-col gap-0 overflow-hidden rounded-2xl p-0 max-sm:max-w-[calc(100%-0.5rem)] sm:max-w-lg">
+        <DialogHeader className="shrink-0 border-b border-border/70 px-3 py-2.5 pe-10 text-start sm:py-3">
           <div className="flex items-center gap-2.5">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Banknote className="size-4" /></div>
             <div className="min-w-0"><DialogTitle className="text-base">{selected ? t("Collect from customer") : t("Collect balances")}</DialogTitle>
@@ -250,7 +251,7 @@ export function PosCollectFlowDialog({ open, onOpenChange }: PosCollectFlowDialo
           </DialogDescription></div></div>
         </DialogHeader>
 
-        <div className="max-h-[min(76dvh,620px)] space-y-2.5 overflow-y-auto px-3 py-3">
+        <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-y-contain px-3 py-3">
           {!selected ? (
             <>
               <div className="relative">
@@ -411,7 +412,7 @@ export function PosCollectFlowDialog({ open, onOpenChange }: PosCollectFlowDialo
         </div>
 
         {selected ? (
-          <DialogFooter className="mx-0 mb-0 border-t border-border/70 px-3 py-2.5">
+          <DialogFooter className="mx-0 mb-0 shrink-0 border-t border-border/70 px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:pb-2.5">
             <Button
               type="button"
               variant="outline"

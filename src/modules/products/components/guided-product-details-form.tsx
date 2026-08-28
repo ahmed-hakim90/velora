@@ -818,6 +818,18 @@ export function GuidedProductDetailsForm({
                   {isSupermarket ? t("Online sales") : t("Online menu")}
                 </label>
               )}
+              {(values.product_type === "finished" ||
+                values.product_type === "finished_product") && (
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={values.show_on_storefront}
+                    onCheckedChange={(v) =>
+                      form.setValue("show_on_storefront", v === true)
+                    }
+                  />
+                  عرض في واجهة المتجر
+                </label>
+              )}
               {showInventoryTracking ? (
                 <>
                   <label className="flex items-center gap-2 text-sm">

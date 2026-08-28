@@ -161,29 +161,25 @@ export function PaymentPanel({
     };
   }, [open]);
 
-  // Reset split UI whenever the panel is reopened (adjust state during render).
-  const [splitResetForOpen, setSplitResetForOpen] = useState(open);
-  if (open !== splitResetForOpen) {
-    setSplitResetForOpen(open);
-    if (open) {
+  useEffect(() => {
+    if (!open) {
       setSplitMode(false);
       setSplits([]);
     }
-  }
+  }, [open]);
 
-  // Keep the first split line in sync when the payable total changes (discount/loyalty).
-  const syncedSplits =
-    open && splitMode && splits.length === 1
-      ? (() => {
-          const next = roundMoney(total);
-          const first = splits[0]!;
-          if (Math.abs(first.amount - next) < 0.005) return splits;
-          return [{ method: first.method, amount: next }] as typeof splits;
-        })()
-      : splits;
-  if (syncedSplits !== splits) {
-    setSplits(syncedSplits);
-  }
+  useEffect(() => {
+    if (!open || !splitMode) return;
+    setSplits((current) => {
+      if (current.length !== 1) return current;
+      const next = roundMoney(total);
+      const first = current[0]!;
+      if (Math.abs(first.amount - next) < 0.005) return current;
+      return [{ method: first.method, amount: next }];
+    });
+  }, [open, splitMode, total]);
+
+  const syncedSplits = splits;
 
   const splitTotal = roundMoney(syncedSplits.reduce((sum, payment) => sum + payment.amount, 0));
   const remaining = roundMoney(Math.max(0, total - splitTotal));

@@ -1,11 +1,18 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { headers } from "next/headers";
 
-export type OnlinePublicRateAction = "menu" | "order_create" | "pos_pin_login";
+export type OnlinePublicRateAction =
+  | "menu"
+  | "order_create"
+  | "storefront_read"
+  | "storefront_order_create"
+  | "pos_pin_login";
 
 const LIMITS: Record<OnlinePublicRateAction, { max: number; windowSeconds: number }> = {
   menu: { max: 60, windowSeconds: 60 },
   order_create: { max: 8, windowSeconds: 60 },
+  storefront_read: { max: 90, windowSeconds: 60 },
+  storefront_order_create: { max: 8, windowSeconds: 60 },
   /** Public PIN login — tight IP+store bucket. */
   pos_pin_login: { max: 10, windowSeconds: 60 },
 };
@@ -58,7 +65,7 @@ export async function assertOnlinePublicRateLimit(input: {
   // Menu reads: fail open on infra/transient errors so a DNS/network blip
   // does not 500 the public menu. Abuse limit still applies when RPC works.
   // Order create + PIN login: fail closed.
-  if (input.action === "menu") {
+  if (input.action === "menu" || input.action === "storefront_read") {
     console.warn(
       "[online-public-rate-limit] menu check skipped (infra error):",
       message

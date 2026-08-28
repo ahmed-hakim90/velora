@@ -6,6 +6,24 @@ export const languageOptions: { value: AppLanguage; label: string }[] = [
 ];
 
 export const arTranslations: Record<string, string> = {
+  "Simplified income statement": "قائمة دخل مبسطة",
+  "Revenue, cost, gross profit, expenses, waste, refunds, and estimated net profit":
+    "الإيراد والتكلفة والربح والمصروفات والهالك والمرتجعات وصافي الربح المتوقع.",
+  "From profit report": "من تقرير الأرباح",
+  "Estimated cost": "تكلفة تقديرية",
+  "Cancelled / refunded": "ملغى / مسترد",
+  Metric: "المؤشر",
+  "Current period": "الفترة الحالية",
+  "Previous period": "الفترة السابقة",
+  "Change %": "التغير %",
+  "Period comparison": "مقارنة الفترات",
+  "Compare the current period with a previous period of the same length":
+    "قارن الفترة الحالية بفترة سابقة بنفس المدة.",
+  "Previous period (same length)": "الفترة السابقة (نفس المدة)",
+  "Revenue (current)": "الإيراد الحالي",
+  "Orders (current)": "الطلبات الحالية",
+  "Metric comparison": "مقارنة المؤشرات",
+  "Average margin %": "متوسط الهامش %",
   "Expenses report": "تقرير المصروفات",
   "Expenses by cost center and category": "المصروفات حسب مركز التكلفة والتصنيف.",
   "Margin ranking": "ترتيب الهوامش",
@@ -785,6 +803,7 @@ export const arTranslations: Record<string, string> = {
   "Last 90 days": "90 يوم",
   "Or select...": "أو اختار...",
   "Online Orders": "طلبات الأونلاين",
+  "Storefront Orders": "طلبات المتجر",
   "Order received": "تم استلام الطلب",
   Orders: "طلبات البيع",
   "Sales Invoices": "فواتير البيع",

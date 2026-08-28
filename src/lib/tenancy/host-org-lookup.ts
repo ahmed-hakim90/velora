@@ -33,7 +33,7 @@ function adminRestClient() {
  * Service-role only; safe for proxy / server — never expose to client bundles.
  */
 export async function lookupOrgByHostname(
-  rawHost: string
+  rawHost: string,
 ): Promise<HostOrgBinding | null> {
   const host = normalizeHostname(rawHost);
   if (!host || isReservedHostname(host)) return null;
@@ -50,7 +50,8 @@ export async function lookupOrgByHostname(
   if (error || !data) return null;
 
   const row = data as OrgDomainRow;
-  const domainStatus = (row.custom_domain_status ?? "none") as CustomDomainStatus;
+  const domainStatus = (row.custom_domain_status ??
+    "none") as CustomDomainStatus;
 
   return {
     orgId: row.id,
@@ -61,10 +62,44 @@ export async function lookupOrgByHostname(
 }
 
 export async function lookupActiveOrgByHostname(
-  rawHost: string
+  rawHost: string,
 ): Promise<HostOrgBinding | null> {
   const binding = await lookupOrgByHostname(rawHost);
   if (!binding) return null;
   if (binding.domainStatus !== "active") return null;
   return binding;
+}
+
+/** Resolve an explicitly enabled storefront landing page for an active custom-domain org. */
+export async function lookupCustomDomainStorefrontSlug(
+  orgId: string,
+): Promise<string | null> {
+  const admin = adminRestClient();
+  if (!admin) return null;
+  const { data, error } = await admin
+    .from("stores")
+    .select("settings")
+    .eq("org_id", orgId)
+    .eq("is_active", true)
+    .limit(50);
+  if (error) return null;
+  for (const row of data ?? []) {
+    const settings =
+      row.settings &&
+      typeof row.settings === "object" &&
+      !Array.isArray(row.settings)
+        ? (row.settings as Record<string, unknown>)
+        : {};
+    const slug =
+      typeof settings.storefront_slug === "string"
+        ? settings.storefront_slug.trim()
+        : "";
+    if (
+      settings.storefront_enabled === true &&
+      settings.storefront_domain_enabled === true &&
+      slug
+    )
+      return slug;
+  }
+  return null;
 }

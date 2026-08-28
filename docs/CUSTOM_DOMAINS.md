@@ -1,6 +1,6 @@
 # Custom domains (white-label)
 
-Each **organization** may bind one hostname (e.g. `pos.client.com`) that serves admin, POS, and `/menu` with that tenant’s identity.
+Each **organization** may bind one hostname (e.g. `shop.client.com`) that serves the tenant identity. An enabled storefront can explicitly claim the domain landing page; opening `/` then goes directly to that store. Admin, POS, `/menu`, and explicit `/store/[slug]` routes remain available according to their own access rules.
 
 ## DNS (customer)
 
@@ -8,6 +8,7 @@ Each **organization** may bind one hostname (e.g. `pos.client.com`) that serves 
    (or A/ALIAS per Vercel domain docs for apex domains).
 2. In `/platform` → org detail → Custom domain: enter hostname → **Save** → **Verify**.
 3. Add the same origin to **Supabase Auth → Redirect URLs**.
+   Include `https://<domain>/store-auth/callback` for storefront social login.
 4. Add the hostname in **Vercel → Project → Domains** (SSL automatic).
 
 ## Status values
@@ -39,7 +40,9 @@ Each **organization** may bind one hostname (e.g. `pos.client.com`) that serves 
 1. Set domain on a test org → verify → open `https://<domain>/login`.
 2. Login as that org’s owner → dashboard shows only that org.
 3. Open `https://<domain>/menu` → catalog for that org’s default store.
-4. Suspend org → custom domain shows suspended message.
+4. Enable “الدومين يفتح المتجر” for one storefront → `/` opens that store directly.
+5. Test guest checkout and each enabled OAuth provider on the custom origin.
+6. Suspend org → custom domain shows suspended message.
 
 ## Reference scale (supermarket)
 

@@ -13,7 +13,12 @@ export const APP_THEME_COLOR_DARK = "#22d3ee";
 export const ROLES = ["owner", "manager", "cashier", "inventory"] as const;
 export type UserRole = (typeof ROLES)[number];
 
-export const ORDER_STATUSES = ["open", "completed", "voided", "refunded"] as const;
+export const ORDER_STATUSES = [
+  "open",
+  "completed",
+  "voided",
+  "refunded",
+] as const;
 export const SALES_DOCUMENT_STATUSES = [
   "draft",
   "issued",
@@ -60,7 +65,13 @@ export const ONLINE_ORDER_STATUSES = [
   "cancelled",
   "invoiced",
 ] as const;
-export const PAYMENT_METHODS = ["cash", "card", "wallet", "other", "credit"] as const;
+export const PAYMENT_METHODS = [
+  "cash",
+  "card",
+  "wallet",
+  "other",
+  "credit",
+] as const;
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   owner: "مالك",
@@ -77,7 +88,11 @@ export function userRoleSupportsPin(role: string): role is PinRole {
   return (PIN_ROLES as readonly string[]).includes(role);
 }
 export const SESSION_STATUSES = ["open", "closed"] as const;
-export const SESSION_LIFECYCLE_STATES = ["open", "warning", "expired_locked"] as const;
+export const SESSION_LIFECYCLE_STATES = [
+  "open",
+  "warning",
+  "expired_locked",
+] as const;
 export type SessionLifecycleState = (typeof SESSION_LIFECYCLE_STATES)[number];
 export const MOVEMENT_TYPES = [
   "sale",
@@ -104,10 +119,19 @@ export const COST_CENTER_TYPES = [
 ] as const;
 export type CostCenterType = (typeof COST_CENTER_TYPES)[number];
 
-export const EXPENSE_PAYMENT_METHODS = ["cash", "card", "wallet", "other"] as const;
+export const EXPENSE_PAYMENT_METHODS = [
+  "cash",
+  "card",
+  "wallet",
+  "other",
+] as const;
 export type ExpensePaymentMethod = (typeof EXPENSE_PAYMENT_METHODS)[number];
 
-export const EXPENSE_SOURCES = ["session_cash", "external", "purchase"] as const;
+export const EXPENSE_SOURCES = [
+  "session_cash",
+  "external",
+  "purchase",
+] as const;
 export type ExpenseSource = (typeof EXPENSE_SOURCES)[number];
 
 export const EXPENSE_STATUSES = ["pending", "approved"] as const;
@@ -195,7 +219,10 @@ export const BUSINESS_ACTIVITY_TYPES = [
 export type BusinessActivityType = (typeof BUSINESS_ACTIVITY_TYPES)[number];
 
 /** Shared Arabic labels — onboarding + Settings → Activity. */
-export const BUSINESS_ACTIVITY_TYPE_LABELS: Record<BusinessActivityType, string> = {
+export const BUSINESS_ACTIVITY_TYPE_LABELS: Record<
+  BusinessActivityType,
+  string
+> = {
   cafe: "كافيه / تيك أواي",
   ice_cream: "آيس كريم",
   juice_bar: "عصائر",
@@ -223,14 +250,19 @@ export type ProductSalesUnitType = (typeof PRODUCT_SALES_UNIT_TYPES)[number];
 export const VARIANT_KINDS = ["standard", "weight_portion"] as const;
 export type VariantKind = (typeof VARIANT_KINDS)[number];
 
-export const VARIANT_PRICE_MODES = ["calculate_from_unit_price", "fixed_price"] as const;
+export const VARIANT_PRICE_MODES = [
+  "calculate_from_unit_price",
+  "fixed_price",
+] as const;
 export type VariantPriceMode = (typeof VARIANT_PRICE_MODES)[number];
 
 export const WEIGHT_SALE_INPUT_MODES = ["by_weight", "by_amount"] as const;
 export type WeightSaleInputMode = (typeof WEIGHT_SALE_INPUT_MODES)[number];
 
 /** Minimum permission to access a nav route (owner bypasses). */
-export const PATH_PERMISSIONS: Partial<Record<string, PermissionKey | PermissionKey[]>> = {
+export const PATH_PERMISSIONS: Partial<
+  Record<string, PermissionKey | PermissionKey[]>
+> = {
   "/": "order_view",
   "/operations": ["pos_access", "order_view", "session_view"],
   "/pos": "pos_access",
@@ -242,6 +274,11 @@ export const PATH_PERMISSIONS: Partial<Record<string, PermissionKey | Permission
   "/sales-orders": "checkout_create",
   "/credit-notes": "checkout_create",
   "/online-orders": "order_view",
+  "/storefront": "product_manage",
+  "/storefront/products": "product_manage",
+  "/storefront/settings": "settings_manage",
+  "/storefront/orders": "order_view",
+  "/storefront-orders": "order_view",
   "/devices": "settings_manage",
   "/inventory/warehouses": "settings_manage",
   "/catalog": ["product_manage", "barcode_label_print", "inventory_view"],
@@ -356,28 +393,37 @@ export const INVENTORY_TRACKING_MODES = [
 export type InventoryTrackingMode = (typeof INVENTORY_TRACKING_MODES)[number];
 
 export const INVENTORY_ROTATION_METHODS = ["FIFO", "FEFO", "MANUAL"] as const;
-export type InventoryRotationMethod = (typeof INVENTORY_ROTATION_METHODS)[number];
+export type InventoryRotationMethod =
+  (typeof INVENTORY_ROTATION_METHODS)[number];
 
-export const EXPIRY_POLICIES = ["block_sale", "warn_only", "manager_override"] as const;
+export const EXPIRY_POLICIES = [
+  "block_sale",
+  "warn_only",
+  "manager_override",
+] as const;
 export type ExpiryPolicy = (typeof EXPIRY_POLICIES)[number];
 export const SHELF_LIFE_UNITS = ["days", "months", "years"] as const;
 export type ShelfLifeUnit = (typeof SHELF_LIFE_UNITS)[number];
 
-export function canViewCosts(role: UserRole, permissions?: Set<PermissionKey>): boolean {
+export function canViewCosts(
+  role: UserRole,
+  permissions?: Set<PermissionKey>,
+): boolean {
   return canViewProfitReports(role, permissions);
 }
 
 export function canViewProfitReports(
   role: UserRole,
-  permissions?: Set<PermissionKey>
+  permissions?: Set<PermissionKey>,
 ): boolean {
-  if (permissions?.has("profit_reports_view") || permissions?.has("costs_view")) return true;
+  if (permissions?.has("profit_reports_view") || permissions?.has("costs_view"))
+    return true;
   return role === "owner" || role === "manager";
 }
 
 export function canViewFinancialReports(
   role: UserRole,
-  permissions?: Set<PermissionKey>
+  permissions?: Set<PermissionKey>,
 ): boolean {
   if (
     permissions?.has("financial_reports_view") ||
@@ -391,7 +437,7 @@ export function canViewFinancialReports(
 
 export function canPrintReports(
   role: UserRole,
-  permissions?: Set<PermissionKey>
+  permissions?: Set<PermissionKey>,
 ): boolean {
   if (permissions?.has("reports_print")) return true;
   return role === "owner" || role === "manager";
@@ -400,7 +446,7 @@ export function canPrintReports(
 /** A4 commercial documents (invoices, quotes, POs) — cashiers must print after a sale. */
 export function canPrintCommercialDocuments(
   role: UserRole,
-  permissions?: Set<PermissionKey>
+  permissions?: Set<PermissionKey>,
 ): boolean {
   if (canPrintReports(role, permissions)) return true;
   if (
@@ -416,7 +462,7 @@ export function canPrintCommercialDocuments(
 /** Label Studio + `/print/labels` — independent of `reports_print`. */
 export function canPrintBarcodeLabels(
   role: UserRole,
-  permissions?: Set<PermissionKey>
+  permissions?: Set<PermissionKey>,
 ): boolean {
   if (permissions?.has("barcode_label_print")) return true;
   return role === "owner" || role === "manager" || role === "inventory";
@@ -425,7 +471,7 @@ export function canPrintBarcodeLabels(
 /** Count sheets / count results — inventory operators print these, not only managers. */
 export function canPrintStockCount(
   role: UserRole,
-  permissions?: Set<PermissionKey>
+  permissions?: Set<PermissionKey>,
 ): boolean {
   if (canPrintReports(role, permissions)) return true;
   if (permissions?.has("stock_count_manage")) return true;
@@ -434,7 +480,7 @@ export function canPrintStockCount(
 
 export function canExportExcel(
   role: UserRole,
-  permissions?: Set<PermissionKey>
+  permissions?: Set<PermissionKey>,
 ): boolean {
   if (permissions?.has("reports_export_excel")) return true;
   return role === "owner" || role === "manager";
@@ -442,7 +488,7 @@ export function canExportExcel(
 
 export function canExportPdf(
   role: UserRole,
-  permissions?: Set<PermissionKey>
+  permissions?: Set<PermissionKey>,
 ): boolean {
   if (permissions?.has("reports_export_pdf")) return true;
   return role === "owner" || role === "manager";
@@ -458,7 +504,11 @@ export const NAV_GROUPS = [
     label: "Operations",
     icon: "Clock",
     items: [
-      { label: "Operations Overview", href: "/operations", icon: "LayoutDashboard" },
+      {
+        label: "Operations Overview",
+        href: "/operations",
+        icon: "LayoutDashboard",
+      },
       { label: "POS", href: "/pos", icon: "ShoppingCart" },
       { label: "Kitchen Display", href: "/kitchen", icon: "ClipboardList" },
       { label: "Orders", href: "/orders", icon: "Receipt" },
@@ -467,10 +517,40 @@ export const NAV_GROUPS = [
     ],
   },
   {
+    label: "Storefront",
+    icon: "ShoppingCart",
+    items: [
+      {
+        label: "Storefront Overview",
+        href: "/storefront",
+        icon: "LayoutDashboard",
+      },
+      {
+        label: "Storefront Products",
+        href: "/storefront/products",
+        icon: "Package",
+      },
+      {
+        label: "Storefront Orders",
+        href: "/storefront/orders",
+        icon: "Receipt",
+      },
+      {
+        label: "Storefront Settings",
+        href: "/storefront/settings",
+        icon: "Settings",
+      },
+    ],
+  },
+  {
     label: "Sales Documents",
     icon: "FileSpreadsheet",
     items: [
-      { label: "Sales Documents Overview", href: "/sales-documents", icon: "LayoutDashboard" },
+      {
+        label: "Sales Documents Overview",
+        href: "/sales-documents",
+        icon: "LayoutDashboard",
+      },
       { label: "Quotations", href: "/quotations", icon: "FileSpreadsheet" },
       { label: "Sales Orders", href: "/sales-orders", icon: "ClipboardList" },
       { label: "Sales Invoices", href: "/sales-invoices", icon: "Receipt" },
@@ -481,8 +561,16 @@ export const NAV_GROUPS = [
     label: "Customers",
     icon: "Users",
     items: [
-      { label: "Customers Overview", href: "/customers", icon: "LayoutDashboard" },
-      { label: "Customer Directory", href: "/customers/directory", icon: "Users" },
+      {
+        label: "Customers Overview",
+        href: "/customers",
+        icon: "LayoutDashboard",
+      },
+      {
+        label: "Customer Directory",
+        href: "/customers/directory",
+        icon: "Users",
+      },
       { label: "Loyalty", href: "/customers/loyalty", icon: "Heart" },
       { label: "Promotions", href: "/promotions", icon: "Tag" },
     ],
@@ -502,9 +590,21 @@ export const NAV_GROUPS = [
     items: [
       { label: "Stock", href: "/inventory", icon: "Warehouse" },
       { label: "Warehouses", href: "/inventory/warehouses", icon: "Warehouse" },
-      { label: "Stock Movements", href: "/inventory/movements", icon: "ClipboardList" },
-      { label: "Transfers", href: "/inventory/transfers", icon: "ArrowLeftRight" },
-      { label: "Stock Count", href: "/inventory/stock-count", icon: "ClipboardList" },
+      {
+        label: "Stock Movements",
+        href: "/inventory/movements",
+        icon: "ClipboardList",
+      },
+      {
+        label: "Transfers",
+        href: "/inventory/transfers",
+        icon: "ArrowLeftRight",
+      },
+      {
+        label: "Stock Count",
+        href: "/inventory/stock-count",
+        icon: "ClipboardList",
+      },
       { label: "Waste", href: "/inventory/waste", icon: "Trash2" },
     ],
   },
@@ -512,28 +612,72 @@ export const NAV_GROUPS = [
     label: "Purchasing",
     icon: "Truck",
     items: [
-      { label: "Purchasing Overview", href: "/purchasing", icon: "LayoutDashboard" },
+      {
+        label: "Purchasing Overview",
+        href: "/purchasing",
+        icon: "LayoutDashboard",
+      },
       { label: "Suppliers", href: "/inventory/suppliers", icon: "Building2" },
-      { label: "Purchase Requests", href: "/inventory/purchase-requests", icon: "ClipboardList" },
-      { label: "Purchase Orders", href: "/inventory/purchase-orders", icon: "FileSpreadsheet" },
+      {
+        label: "Purchase Requests",
+        href: "/inventory/purchase-requests",
+        icon: "ClipboardList",
+      },
+      {
+        label: "Purchase Orders",
+        href: "/inventory/purchase-orders",
+        icon: "FileSpreadsheet",
+      },
       { label: "Purchases", href: "/inventory/purchases", icon: "Truck" },
-      { label: "Purchase Returns", href: "/inventory/purchase-returns", icon: "ScrollText" },
+      {
+        label: "Purchase Returns",
+        href: "/inventory/purchase-returns",
+        icon: "ScrollText",
+      },
     ],
   },
   {
     label: "Accounting",
     icon: "Calculator",
     items: [
-      { label: "Accounting Overview", href: "/accounting", icon: "LayoutDashboard" },
-      { label: "Chart of Accounts", href: "/accounting/accounts", icon: "Landmark" },
-      { label: "Journal Entries", href: "/accounting/journals", icon: "ScrollText" },
-      { label: "Trial Balance", href: "/accounting/trial-balance", icon: "BarChart3" },
+      {
+        label: "Accounting Overview",
+        href: "/accounting",
+        icon: "LayoutDashboard",
+      },
+      {
+        label: "Chart of Accounts",
+        href: "/accounting/accounts",
+        icon: "Landmark",
+      },
+      {
+        label: "Journal Entries",
+        href: "/accounting/journals",
+        icon: "ScrollText",
+      },
+      {
+        label: "Trial Balance",
+        href: "/accounting/trial-balance",
+        icon: "BarChart3",
+      },
       { label: "Account Ledger", href: "/accounting/ledger", icon: "BookOpen" },
-      { label: "Income Statement", href: "/accounting/income-statement", icon: "FileSpreadsheet" },
-      { label: "Balance Sheet", href: "/accounting/balance-sheet", icon: "CircleDollarSign" },
+      {
+        label: "Income Statement",
+        href: "/accounting/income-statement",
+        icon: "FileSpreadsheet",
+      },
+      {
+        label: "Balance Sheet",
+        href: "/accounting/balance-sheet",
+        icon: "CircleDollarSign",
+      },
       { label: "Treasuries", href: "/treasury", icon: "Landmark" },
       { label: "Manage Expenses", href: "/expenses", icon: "Wallet" },
-      { label: "Monthly Closing", href: "/monthly-closing", icon: "CalendarCheck" },
+      {
+        label: "Monthly Closing",
+        href: "/monthly-closing",
+        icon: "CalendarCheck",
+      },
     ],
   },
   {
@@ -543,11 +687,27 @@ export const NAV_GROUPS = [
       { label: "Reports Overview", href: "/reports", icon: "BarChart3" },
       { label: "Sales Report", href: "/reports/sales", icon: "TrendingUp" },
       { label: "Sessions Report", href: "/reports/sessions", icon: "Clock" },
-      { label: "Daily Close Report", href: "/reports/daily-close", icon: "CalendarCheck" },
-      { label: "Profit Report", href: "/reports/profit", icon: "CircleDollarSign" },
-      { label: "Inventory Report", href: "/reports/inventory", icon: "Warehouse" },
+      {
+        label: "Daily Close Report",
+        href: "/reports/daily-close",
+        icon: "CalendarCheck",
+      },
+      {
+        label: "Profit Report",
+        href: "/reports/profit",
+        icon: "CircleDollarSign",
+      },
+      {
+        label: "Inventory Report",
+        href: "/reports/inventory",
+        icon: "Warehouse",
+      },
       { label: "Aging Report", href: "/reports/aging", icon: "Calendar" },
-      { label: "Party Statement", href: "/reports/statement", icon: "BookOpen" },
+      {
+        label: "Party Statement",
+        href: "/reports/statement",
+        icon: "BookOpen",
+      },
       { label: "Tax Report", href: "/reports/tax", icon: "FileSpreadsheet" },
     ],
   },
@@ -555,7 +715,11 @@ export const NAV_GROUPS = [
     label: "Administration",
     icon: "Settings",
     items: [
-      { label: "Administration Overview", href: "/admin", icon: "LayoutDashboard" },
+      {
+        label: "Administration Overview",
+        href: "/admin",
+        icon: "LayoutDashboard",
+      },
       { label: "Users", href: "/users", icon: "Shield" },
       { label: "Devices", href: "/devices", icon: "MonitorSmartphone" },
       { label: "Settings", href: "/settings", icon: "Settings" },
@@ -619,10 +783,12 @@ export const POS_OPERATIONAL_FEATURE_FLAGS = [
   "tax",
 ] as const satisfies readonly FeatureFlag[];
 
-export type PosOperationalFeatureFlag = (typeof POS_OPERATIONAL_FEATURE_FLAGS)[number];
+export type PosOperationalFeatureFlag =
+  (typeof POS_OPERATIONAL_FEATURE_FLAGS)[number];
 
 export const ADVANCED_FEATURE_FLAGS = FEATURE_FLAGS.filter(
-  (flag) => !(POS_OPERATIONAL_FEATURE_FLAGS as readonly string[]).includes(flag)
+  (flag) =>
+    !(POS_OPERATIONAL_FEATURE_FLAGS as readonly string[]).includes(flag),
 );
 
 export const DEFAULT_FEATURE_FLAGS: Record<FeatureFlag, boolean> = {
@@ -676,7 +842,8 @@ export const DEFAULT_BUSINESS_ACTIVITY_SETTINGS = {
   expiry_alert_days: [7, 14, 30] as number[],
 };
 
-export type BusinessActivitySettings = typeof DEFAULT_BUSINESS_ACTIVITY_SETTINGS;
+export type BusinessActivitySettings =
+  typeof DEFAULT_BUSINESS_ACTIVITY_SETTINGS;
 
 export const PRODUCT_TEMPLATE_IDS = [
   "retail_product",
@@ -708,12 +875,15 @@ export type ProductTemplate = {
   wholesale_enabled: boolean;
 };
 
-export type ProductTemplateSettings = Record<ProductTemplateId, ProductTemplate>;
+export type ProductTemplateSettings = Record<
+  ProductTemplateId,
+  ProductTemplate
+>;
 
 function productTemplate(
   id: ProductTemplateId,
   label: string,
-  overrides: Partial<Omit<ProductTemplate, "id" | "label">> = {}
+  overrides: Partial<Omit<ProductTemplate, "id" | "label">> = {},
 ): ProductTemplate {
   return {
     id,
@@ -738,10 +908,16 @@ function productTemplate(
 }
 
 function productTemplateSet(
-  overrides: Partial<Record<ProductTemplateId, Partial<Omit<ProductTemplate, "id" | "label">>>> = {}
+  overrides: Partial<
+    Record<ProductTemplateId, Partial<Omit<ProductTemplate, "id" | "label">>>
+  > = {},
 ): ProductTemplateSettings {
   return {
-    retail_product: productTemplate("retail_product", "Retail Product", overrides.retail_product),
+    retail_product: productTemplate(
+      "retail_product",
+      "Retail Product",
+      overrides.retail_product,
+    ),
     supermarket_weight_product: productTemplate(
       "supermarket_weight_product",
       "Supermarket Weight Product",
@@ -758,44 +934,56 @@ function productTemplateSet(
         allow_fractional_quantity: true,
         allow_price_input: true,
         ...overrides.supermarket_weight_product,
-      }
+      },
     ),
-    restaurant_ingredient: productTemplate("restaurant_ingredient", "Restaurant Ingredient", {
-      product_type: "raw_material",
-      sales_unit_type: "weight",
-      unit: "kg",
-      base_unit: "kg",
-      sale_unit: "kg",
-      inventory_tracking_mode: "batch_and_expiry",
-      inventory_rotation_method: "FEFO",
-      expiry_policy: "block_sale",
-      expiry_tracking_enabled: true,
-      shelf_life_value: 7,
-      allow_fractional_quantity: true,
-      ...overrides.restaurant_ingredient,
-    }),
-    ice_cream_ingredient: productTemplate("ice_cream_ingredient", "Ice Cream Ingredient", {
-      product_type: "raw_material",
-      sales_unit_type: "weight",
-      unit: "kg",
-      base_unit: "kg",
-      sale_unit: "kg",
-      inventory_tracking_mode: "batch_and_expiry",
-      inventory_rotation_method: "FEFO",
-      expiry_policy: "block_sale",
-      expiry_tracking_enabled: true,
-      shelf_life_value: 30,
-      allow_fractional_quantity: true,
-      ...overrides.ice_cream_ingredient,
-    }),
-    packaging_material: productTemplate("packaging_material", "Packaging Material", {
-      product_type: "packaging_material",
-      sales_unit_type: "pack",
-      unit: "pack",
-      base_unit: "pack",
-      sale_unit: "pack",
-      ...overrides.packaging_material,
-    }),
+    restaurant_ingredient: productTemplate(
+      "restaurant_ingredient",
+      "Restaurant Ingredient",
+      {
+        product_type: "raw_material",
+        sales_unit_type: "weight",
+        unit: "kg",
+        base_unit: "kg",
+        sale_unit: "kg",
+        inventory_tracking_mode: "batch_and_expiry",
+        inventory_rotation_method: "FEFO",
+        expiry_policy: "block_sale",
+        expiry_tracking_enabled: true,
+        shelf_life_value: 7,
+        allow_fractional_quantity: true,
+        ...overrides.restaurant_ingredient,
+      },
+    ),
+    ice_cream_ingredient: productTemplate(
+      "ice_cream_ingredient",
+      "Ice Cream Ingredient",
+      {
+        product_type: "raw_material",
+        sales_unit_type: "weight",
+        unit: "kg",
+        base_unit: "kg",
+        sale_unit: "kg",
+        inventory_tracking_mode: "batch_and_expiry",
+        inventory_rotation_method: "FEFO",
+        expiry_policy: "block_sale",
+        expiry_tracking_enabled: true,
+        shelf_life_value: 30,
+        allow_fractional_quantity: true,
+        ...overrides.ice_cream_ingredient,
+      },
+    ),
+    packaging_material: productTemplate(
+      "packaging_material",
+      "Packaging Material",
+      {
+        product_type: "packaging_material",
+        sales_unit_type: "pack",
+        unit: "pack",
+        base_unit: "pack",
+        sale_unit: "pack",
+        ...overrides.packaging_material,
+      },
+    ),
     service: productTemplate("service", "Service", {
       product_type: "service",
       inventory_tracking_mode: "none",
@@ -811,7 +999,10 @@ function productTemplateSet(
  * Managed feature flags (recipes, credit_sales, barcode, …) live exclusively in
  * `buildBusinessActivityFeatureFlags` — do not add feature toggles here.
  */
-export const ACTIVITY_PRESETS: Record<BusinessActivityType, Partial<BusinessActivitySettings>> = {
+export const ACTIVITY_PRESETS: Record<
+  BusinessActivityType,
+  Partial<BusinessActivitySettings>
+> = {
   cafe: {
     activity_type: "cafe",
     enabled_sales_modes: ["retail"],

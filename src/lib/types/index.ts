@@ -150,6 +150,8 @@ export interface Product {
   is_popular: boolean;
   /** Public online menu visibility (§8.2). Defaults false for raw; true for finished on create. */
   show_on_online_menu?: boolean;
+  /** Public storefront visibility, intentionally independent from the QR menu. */
+  show_on_storefront?: boolean;
   track_inventory: boolean;
   product_type: ProductType;
   inventory_product_type?: ProductType;

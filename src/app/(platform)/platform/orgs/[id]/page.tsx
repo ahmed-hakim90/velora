@@ -12,6 +12,7 @@ import {
 import { getPlatformWebhookConfig } from "@/modules/platform/services/platform-webhooks.service";
 import { getOrgCustomDomain } from "@/modules/platform/services/platform-custom-domain.service";
 import { getOrgMenuThemeAccess } from "@/modules/platform/services/platform-menu-themes.service";
+import { getOrgStorefrontThemeEntitlements, getStorefrontThemeCatalog } from "@/modules/platform/services/platform-storefront-themes.service";
 import { PlatformOrgDetail } from "@/modules/platform/components/platform-org-detail";
 
 interface PlatformOrgPageProps {
@@ -26,7 +27,7 @@ export default async function PlatformOrgPage({ params }: PlatformOrgPageProps) 
   const organization = await getOrganizationForPlatform(id);
   if (!organization) notFound();
 
-  const [health, config, plan, usage, webhook, customDomain, menuThemes] =
+  const [health, config, plan, usage, webhook, customDomain, menuThemes, storefrontCatalog, storefrontEntitlements] =
     await Promise.all([
       getOrganizationHealth(organization.id),
       getPlatformOrgConfig(organization.id),
@@ -35,6 +36,8 @@ export default async function PlatformOrgPage({ params }: PlatformOrgPageProps) 
       getPlatformWebhookConfig(organization.id),
       getOrgCustomDomain(organization.id),
       getOrgMenuThemeAccess(organization.id),
+      getStorefrontThemeCatalog(),
+      getOrgStorefrontThemeEntitlements(organization.id),
     ]);
 
   return (
@@ -48,6 +51,8 @@ export default async function PlatformOrgPage({ params }: PlatformOrgPageProps) 
       customDomain={customDomain}
       menuThemeRows={menuThemes.rows}
       menuThemeEntitlements={menuThemes.entitlements}
+      storefrontThemeCatalog={storefrontCatalog}
+      storefrontThemeEntitlements={storefrontEntitlements}
     />
   );
 }

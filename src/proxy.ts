@@ -7,7 +7,10 @@ import {
   isReservedHostname,
   normalizeHostname,
 } from "@/lib/tenancy/custom-domain";
-import { lookupOrgByHostname } from "@/lib/tenancy/host-org-lookup";
+import {
+  lookupCustomDomainStorefrontSlug,
+  lookupOrgByHostname,
+} from "@/lib/tenancy/host-org-lookup";
 import { isSlugPosPath } from "@/lib/tenancy/pos-store-slug";
 
 const HOST_ORG_COOKIE_MAX_AGE = 60 * 60 * 12;
@@ -18,7 +21,9 @@ const PUBLIC_PATHS = [
   "/reset-password",
   "/onboarding",
   "/auth",
+  "/store-auth",
   "/menu",
+  "/store",
   "/track",
   "/domain-unavailable",
   // Hub that points operators at /{slug}/pos
@@ -28,7 +33,7 @@ const PUBLIC_PATHS = [
 function isPublicPath(pathname: string) {
   if (isSlugPosPath(pathname)) return true;
   return PUBLIC_PATHS.some(
-    (path) => pathname === path || pathname.startsWith(`${path}/`)
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
   );
 }
 
@@ -53,7 +58,9 @@ export async function proxy(request: NextRequest) {
 
   // Custom domain: platform control plane stays on the canonical app host.
   if (onCustomHost && pathname.startsWith("/platform")) {
-    return NextResponse.redirect(new URL("/domain-unavailable?reason=platform", request.url));
+    return NextResponse.redirect(
+      new URL("/domain-unavailable?reason=platform", request.url),
+    );
   }
 
   let hostBinding: Awaited<ReturnType<typeof lookupOrgByHostname>> = null;
@@ -63,15 +70,26 @@ export async function proxy(request: NextRequest) {
     if (!hostBinding || hostBinding.domainStatus !== "active") {
       if (!pathname.startsWith("/domain-unavailable")) {
         return NextResponse.redirect(
-          new URL("/domain-unavailable?reason=unverified", request.url)
+          new URL("/domain-unavailable?reason=unverified", request.url),
         );
       }
     } else if (hostBinding.orgStatus === "suspended") {
       if (!pathname.startsWith("/domain-unavailable")) {
         return NextResponse.redirect(
-          new URL("/domain-unavailable?reason=suspended", request.url)
+          new URL("/domain-unavailable?reason=suspended", request.url),
         );
       }
+    }
+  }
+
+  if (hostBinding && pathname === "/") {
+    const storefrontSlug = await lookupCustomDomainStorefrontSlug(
+      hostBinding.orgId,
+    );
+    if (storefrontSlug) {
+      return NextResponse.rewrite(
+        new URL(`/store/${encodeURIComponent(storefrontSlug)}`, request.url),
+      );
     }
   }
 
@@ -112,7 +130,7 @@ export async function proxy(request: NextRequest) {
         orgId: hostBinding.orgId,
         host: hostBinding.host,
       },
-      HOST_ORG_COOKIE_MAX_AGE
+      HOST_ORG_COOKIE_MAX_AGE,
     );
     response.cookies.set(HOST_ORG_COOKIE, cookieValue, {
       httpOnly: true,

@@ -118,6 +118,7 @@ function filterNavByRoleLegacy(role: UserRole) {
     "/reports/expenses",
     "/labels",
     "/products",
+    "/storefront",
     "/inventory",
     "/inventory/purchases",
     "/inventory/purchase-requests",

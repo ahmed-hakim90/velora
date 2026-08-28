@@ -52,6 +52,13 @@ export const PLATFORM_NAV_GROUPS: PlatformNavGroup[] = [
         icon: Palette,
         match: "prefix",
       },
+      {
+        href: "/platform/storefront-themes",
+        label: "ثيمات المتاجر",
+        description: "أسعار وتوفر واجهات المتاجر",
+        icon: Palette,
+        match: "prefix",
+      },
     ],
   },
   {

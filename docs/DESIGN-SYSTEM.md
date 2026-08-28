@@ -126,6 +126,7 @@ Centralize semantic colors, spacing (prefer 4/8/12/16/20/24/32/40/48/64), typogr
 - Date, status, warehouse, and view filters must use shared controls and persist in the URL so navigation and return actions preserve context.
 - Summary metrics and charts must reflect the active filters. Empty search results are distinct from a genuinely empty dataset.
 - Row actions use a matching semantic icon and restrained semantic color; primary creation remains in the page header.
+- Compact module-navigation cards use two equal columns on phones when labels remain readable; reduce mobile type and spacing without shrinking touch targets, then expand to four columns on wide screens.
 
 <!-- CODEX-PRODUCT-FOUNDATION:START -->
 # Design System — velora

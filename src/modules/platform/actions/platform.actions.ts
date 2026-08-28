@@ -77,6 +77,7 @@ function revalidatePlatformOrg(orgId?: string) {
   revalidatePath("/platform/ops");
   revalidatePath("/platform/usage");
   revalidatePath("/platform/menu-themes");
+  revalidatePath("/platform/storefront-themes");
   revalidatePath("/platform/invites");
   revalidatePath("/platform/audit");
   if (orgId) revalidatePath(`/platform/orgs/${orgId}`);
@@ -619,6 +620,55 @@ export async function updateMenuThemeCatalogAction(
       ok: false,
       error: error instanceof Error ? error.message : "فشل تحديث كتالوج الثيمات",
     };
+  }
+}
+
+export async function updateStorefrontThemeCatalogAction(input: {
+  priceEgp: number;
+  globallyAvailable: boolean;
+  notes: string;
+}): Promise<PlatformActionResult<import("@/modules/storefront/core/theme-commerce").StorefrontThemeCatalog>> {
+  try {
+    const admin = await requirePlatformAdmin();
+    const { getStorefrontThemeCatalog, setStorefrontThemeCatalog } = await import(
+      "@/modules/platform/services/platform-storefront-themes.service"
+    );
+    const current = await getStorefrontThemeCatalog();
+    const data = await setStorefrontThemeCatalog(admin, {
+      ...current,
+      nelaab: {
+        ...current.nelaab,
+        priceEgp: input.priceEgp,
+        globallyAvailable: true,
+        notes: input.notes,
+      },
+    });
+    revalidatePath("/platform/storefront-themes");
+    return { ok: true, data };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "فشل تحديث كتالوج ثيمات المتاجر" };
+  }
+}
+
+export async function setOrgStorefrontThemeEntitlementsAction(input: {
+  orgId: string;
+  enabledThemes: string[];
+  notes?: string;
+}): Promise<PlatformActionResult<import("@/modules/storefront/core/theme-commerce").StorefrontThemeEntitlements>> {
+  try {
+    const admin = await requirePlatformAdmin();
+    const { setOrgStorefrontThemeEntitlements } = await import(
+      "@/modules/platform/services/platform-storefront-themes.service"
+    );
+    const data = await setOrgStorefrontThemeEntitlements(admin, input.orgId, {
+      enabledThemes: input.enabledThemes.filter((slug): slug is "nelaab" => slug === "nelaab"),
+      notes: input.notes ?? "",
+    });
+    revalidatePlatformOrg(input.orgId);
+    revalidatePath("/settings");
+    return { ok: true, data };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "فشل تحديث ثيمات المتجر للشركة" };
   }
 }
 

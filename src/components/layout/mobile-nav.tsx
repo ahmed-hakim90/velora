@@ -65,10 +65,31 @@ const iconMap = {
 };
 
 /** Primary tabs (excluding More). More always fills the 5th slot. */
-const CASHIER_PRIORITY = ["/pos", "/sales-invoices", "/orders", "/sessions", "/online-orders", "/settings"];
-const MANAGER_PRIORITY = ["/", "/pos", "/orders", "/sessions", "/reports", "/expenses"];
+const CASHIER_PRIORITY = [
+  "/pos",
+  "/sales-invoices",
+  "/orders",
+  "/sessions",
+  "/online-orders",
+  "/storefront/orders",
+  "/settings",
+];
+const MANAGER_PRIORITY = [
+  "/",
+  "/pos",
+  "/orders",
+  "/sessions",
+  "/reports",
+  "/expenses",
+];
 const OWNER_PRIORITY = ["/", "/pos", "/products", "/inventory", "/settings"];
-const INVENTORY_PRIORITY = ["/", "/products", "/inventory", "/inventory/purchases", "/settings"];
+const INVENTORY_PRIORITY = [
+  "/",
+  "/products",
+  "/inventory",
+  "/inventory/purchases",
+  "/settings",
+];
 const DEFAULT_PRIORITY = ["/", "/pos", "/products", "/inventory", "/settings"];
 
 const TAB_SLOT_COUNT = 4;
@@ -105,7 +126,7 @@ export function MobileNav({
     userRole,
     new Set(permissions),
     featureFlags,
-    { enableWholesaleSales, allowCashierWholesale, enableKitchenDisplay }
+    { enableWholesaleSales, allowCashierWholesale, enableKitchenDisplay },
   ).flatMap((group) => group.items);
   const allowedItems = new Set<string>(allItems.map((item) => item.href));
   const allHrefs = allItems.map((item) => item.href);
@@ -117,7 +138,7 @@ export function MobileNav({
     .slice(0, TAB_SLOT_COUNT);
 
   const onPrimaryTab = mobileItems.some((item) =>
-    isNavHrefActive(pathname, item.href, allHrefs)
+    isNavHrefActive(pathname, item.href, allHrefs),
   );
   const moreActive = mobileNavSheetOpen || !onPrimaryTab;
 
@@ -129,7 +150,8 @@ export function MobileNav({
       <ul className="mx-auto flex max-w-lg items-stretch justify-around px-1 pb-[env(safe-area-inset-bottom)] pt-0.5">
         {mobileItems.map((item, index) => {
           const active = isNavHrefActive(pathname, item.href, allHrefs);
-          const Icon = iconMap[item.icon as keyof typeof iconMap] ?? LayoutDashboard;
+          const Icon =
+            iconMap[item.icon as keyof typeof iconMap] ?? LayoutDashboard;
           return (
             <li key={`${item.href}-${index}`} className="min-w-0 flex-1">
               <Link
@@ -139,7 +161,7 @@ export function MobileNav({
                   "flex min-h-12 min-w-0 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-[var(--mds-radius-md)] px-1 py-1 text-[10px] transition-colors",
                   active
                     ? "font-semibold text-primary"
-                    : "font-medium text-muted-foreground active:text-foreground"
+                    : "font-medium text-muted-foreground active:text-foreground",
                 )}
               >
                 <span
@@ -147,12 +169,17 @@ export function MobileNav({
                     "flex size-7 items-center justify-center rounded-full transition-all",
                     active
                       ? "bg-[var(--mds-color-harbor-50)] text-[var(--mds-color-action-primary)] ring-1 ring-[var(--mds-color-action-primary)]/20 dark:bg-primary/15"
-                      : ""
+                      : "",
                   )}
                 >
-                  <Icon className="size-[19px]" strokeWidth={active ? 2.25 : 2} />
+                  <Icon
+                    className="size-[19px]"
+                    strokeWidth={active ? 2.25 : 2}
+                  />
                 </span>
-                <span className="max-w-full truncate leading-none">{t(item.label)}</span>
+                <span className="max-w-full truncate leading-none">
+                  {t(item.label)}
+                </span>
               </Link>
             </li>
           );
@@ -169,7 +196,7 @@ export function MobileNav({
               "flex min-h-12 w-full min-w-0 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-[var(--mds-radius-md)] px-1 py-1 text-[10px] transition-colors",
               moreActive
                 ? "font-semibold text-primary"
-                : "font-medium text-muted-foreground active:text-foreground"
+                : "font-medium text-muted-foreground active:text-foreground",
             )}
           >
             <span
@@ -177,10 +204,13 @@ export function MobileNav({
                 "flex size-7 items-center justify-center rounded-full transition-all",
                 moreActive
                   ? "bg-[var(--mds-color-harbor-50)] text-[var(--mds-color-action-primary)] ring-1 ring-[var(--mds-color-action-primary)]/20 dark:bg-primary/15"
-                  : ""
+                  : "",
               )}
             >
-              <Ellipsis className="size-[19px]" strokeWidth={moreActive ? 2.25 : 2} />
+              <Ellipsis
+                className="size-[19px]"
+                strokeWidth={moreActive ? 2.25 : 2}
+              />
             </span>
             <span className="leading-none">{t("More")}</span>
           </button>

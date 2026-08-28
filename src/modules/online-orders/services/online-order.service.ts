@@ -26,6 +26,7 @@ import {
   evaluateCartPromotions,
   loadActivePromotionRulesViaAdmin,
 } from "@/modules/promotions/services/promotion.service";
+import { buildStorefrontRuntimeSettings } from "@/modules/storefront/core/runtime-settings";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -37,6 +38,8 @@ export type OnlineOrderLineInput = {
 
 export type PublicOnlineOrderInput = {
   slug: string;
+  /** Keeps menu and storefront discovery/settings fully isolated. */
+  channel?: "menu" | "storefront";
   /** Required when the branch menu is unlisted. */
   token?: string | null;
   customerName: string;
@@ -47,6 +50,8 @@ export type PublicOnlineOrderInput = {
   deliveryAddress?: string | null;
   couponCode?: string | null;
   lines: OnlineOrderLineInput[];
+  /** Storefront checkout reserves tracked stock in the same order transaction. */
+  reserveStock?: boolean;
 };
 
 export type StaffOnlineOrderInput = {
@@ -97,11 +102,12 @@ function normalizeLineInputs(lines: OnlineOrderLineInput[]) {
   return result;
 }
 
-async function priceLinesForPublicOrder(
+export async function pricePublicCommerceLines(
   storeOrgId: string,
   storeId: string,
   lines: OnlineOrderLineInput[],
-  couponCode?: string | null
+  couponCode?: string | null,
+  channel: "menu" | "storefront" = "menu",
 ) {
   const admin = createAdminClient();
   const normalized = normalizeLineInputs(lines);
@@ -113,13 +119,13 @@ async function priceLinesForPublicOrder(
       admin
         .from("products")
         .select(
-          "id, org_id, name, category_id, base_price, sale_price, is_active, product_type, inventory_product_type, show_on_online_menu"
+          "id, org_id, name, sku, image_url, category_id, base_price, sale_price, is_active, product_type, inventory_product_type, show_on_online_menu, show_on_storefront"
         )
         .eq("org_id", storeOrgId)
         .eq("is_active", true)
         .eq("product_type", "finished")
         .eq("inventory_product_type", "finished_product")
-        .eq("show_on_online_menu", true)
+        .eq(channel === "storefront" ? "show_on_storefront" : "show_on_online_menu", true)
         .in("id", productIds),
       variantIds.length > 0
         ? admin
@@ -134,7 +140,7 @@ async function priceLinesForPublicOrder(
 
   const productMap = new Map(
     (products ?? [])
-      .filter((product) => product.org_id === storeOrgId && product.show_on_online_menu === true)
+      .filter((product) => product.org_id === storeOrgId && (channel === "storefront" ? product.show_on_storefront === true : product.show_on_online_menu === true))
       .map((product) => [product.id, product])
   );
   const variantMap = new Map(
@@ -159,6 +165,31 @@ async function priceLinesForPublicOrder(
   if (activeVariantsError) throw new Error(activeVariantsError.message);
   const productsWithVariants = new Set((allActiveVariants ?? []).map((variant) => variant.product_id));
 
+  const storefrontPriceMap = new Map<string, number>();
+  const storefrontContentMap = new Map<string, { title?: string; description?: string; specifications?: unknown }>();
+  if (channel === "storefront" && scopedProductIds.length > 0) {
+    const now = Date.now();
+    // Extension tables are introduced by the storefront migration.
+    const [{ data: priceRows, error: priceError }, { data: contentRows, error: contentError }] = await Promise.all([
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (admin as any).from("storefront_product_prices")
+        .select("product_id, variant_id, store_id, price, starts_at, ends_at")
+        .in("product_id", scopedProductIds).eq("is_active", true)
+        .or(`store_id.is.null,store_id.eq.${storeId}`),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (admin as any).from("storefront_product_content")
+        .select("product_id, title, description, specifications").in("product_id", scopedProductIds),
+    ]);
+    if (priceError) throw new Error(priceError.message);
+    if (contentError) throw new Error(contentError.message);
+    const activeRows = (priceRows ?? []).filter((row: { starts_at: string | null; ends_at: string | null }) =>
+      (!row.starts_at || Date.parse(row.starts_at) <= now) && (!row.ends_at || Date.parse(row.ends_at) > now));
+    for (const row of activeRows.sort((a: { store_id: string | null }, b: { store_id: string | null }) => Number(Boolean(a.store_id)) - Number(Boolean(b.store_id)))) {
+      storefrontPriceMap.set(`${row.product_id}:${row.variant_id ?? ""}`, Number(row.price));
+    }
+    for (const row of contentRows ?? []) storefrontContentMap.set(row.product_id, row);
+  }
+
   const priced = normalized.map((line) => {
     const product = productMap.get(line.productId);
     if (
@@ -167,7 +198,7 @@ async function priceLinesForPublicOrder(
       product.org_id !== storeOrgId ||
       product.product_type !== "finished" ||
       product.inventory_product_type !== "finished_product" ||
-      product.show_on_online_menu !== true
+      (channel === "storefront" ? product.show_on_storefront !== true : product.show_on_online_menu !== true)
     ) {
       throw new Error("بعض الأصناف غير متاحة");
     }
@@ -175,7 +206,7 @@ async function priceLinesForPublicOrder(
       throw new Error(`اختر خياراً لـ ${product.name}`);
     }
 
-    const basePrice = Number(product.sale_price ?? product.base_price);
+    const basePrice = storefrontPriceMap.get(`${product.id}:`) ?? Number(product.sale_price ?? product.base_price);
     let unitPrice = basePrice;
     let variantName: string | null = null;
     if (line.variantId) {
@@ -184,14 +215,20 @@ async function priceLinesForPublicOrder(
         throw new Error("بعض الخيارات المحددة غير متاحة");
       }
       variantName = variant.name;
-      unitPrice = variant.price == null ? basePrice + Number(variant.price_delta) : Number(variant.price);
+      unitPrice = storefrontPriceMap.get(`${product.id}:${variant.id}`)
+        ?? (variant.price == null ? basePrice + Number(variant.price_delta) : Number(variant.price));
     }
+
+    const storefrontContent = storefrontContentMap.get(product.id);
+    const snapshotName = storefrontContent?.title?.trim() || product.name;
 
     return {
       product_id: product.id,
       category_id: (product.category_id as string | null) ?? null,
       variant_id: line.variantId ?? null,
-      product_name: product.name,
+      product_name: snapshotName,
+      sku: product.sku,
+      image_url: product.image_url,
       variant_name: variantName,
       quantity: line.quantity,
       unit_price: roundMoney(unitPrice),
@@ -199,6 +236,10 @@ async function priceLinesForPublicOrder(
       list_unit_price: roundMoney(unitPrice),
       discount_amount: 0,
       promotion_rule_id: null as string | null,
+      attributes_snapshot: channel === "storefront" ? {
+        description: storefrontContent?.description ?? "",
+        specifications: storefrontContent?.specifications ?? [],
+      } : {},
     };
   });
 
@@ -351,12 +392,13 @@ async function findOnlineOrderCustomerId(input: {
 }
 
 export async function submitPublicOnlineOrder(input: PublicOnlineOrderInput) {
+  const channel = input.channel ?? "menu";
   const slug = normalizeOnlineMenuSlug(input.slug);
   const menuToken = input.token?.trim() ?? "";
   const customerName = input.customerName.trim();
   const customerPhone = input.customerPhone?.trim() ?? "";
   const notes = input.notes?.trim() ?? "";
-  if (!slug) throw new Error("رابط المنيو غير صالح");
+  if (!slug) throw new Error(channel === "storefront" ? "رابط المتجر غير صالح" : "رابط المنيو غير صالح");
   if (customerName.length < 2) throw new Error("الاسم مطلوب");
   if (customerPhone && customerPhone.length < 5) {
     throw new Error("رقم الهاتف قصير أو غير صالح — صحّحه أو اتركه فارغًا");
@@ -365,50 +407,62 @@ export async function submitPublicOnlineOrder(input: PublicOnlineOrderInput) {
     throw new Error("تفاصيل الطلب طويلة جدًا");
   }
 
-  await assertOnlinePublicRateLimit({ action: "order_create", slug });
+  await assertOnlinePublicRateLimit({
+    action: channel === "storefront" ? "storefront_order_create" : "order_create",
+    slug,
+  });
 
   const admin = createAdminClient();
   const { data: store, error: storeError } = await admin
     .from("stores")
     .select("id, org_id, name, timezone, is_active, settings")
     .eq("is_active", true)
-    .filter("settings->>online_menu_slug", "eq", slug)
+    .filter(channel === "storefront" ? "settings->>storefront_slug" : "settings->>online_menu_slug", "eq", slug)
     .maybeSingle();
   if (storeError) throw new Error(storeError.message);
-  if (!store) throw new Error("المنيو غير متاح");
+  if (!store) throw new Error(channel === "storefront" ? "المتجر غير متاح" : "المنيو غير متاح");
 
   const settings = asRecord(store.settings);
-  if (settings.online_menu_enabled !== true) {
+  const enabled = channel === "storefront" ? settings.storefront_enabled === true : settings.online_menu_enabled === true;
+  if (!enabled) {
     throw new Error("الطلب الأونلاين غير متاح حاليًا");
   }
-  if (settings.online_menu_unlisted === true) {
+  const isUnlisted = channel === "storefront" ? settings.storefront_unlisted === true : settings.online_menu_unlisted === true;
+  if (isUnlisted) {
     const expectedToken =
-      typeof settings.online_menu_token === "string" ? settings.online_menu_token.trim() : "";
+      channel === "storefront"
+        ? (typeof settings.storefront_token === "string" ? settings.storefront_token.trim() : "")
+        : (typeof settings.online_menu_token === "string" ? settings.online_menu_token.trim() : "");
     if (!expectedToken || menuToken !== expectedToken) {
-      throw new Error("المنيو غير متاح");
+      throw new Error(channel === "storefront" ? "المتجر غير متاح" : "المنيو غير متاح");
     }
   }
 
+  const runtimeSettings = channel === "storefront"
+    ? buildStorefrontRuntimeSettings(settings)
+    : settings;
+
   const availability = evaluateOnlineOrderingAvailability({
-    settings,
+    settings: runtimeSettings,
     storeTimezone: store.timezone,
   });
   if (!availability.canOrder) {
     throw new Error(availability.messageAr);
   }
 
-  const fulfillmentConfig = parseOnlineFulfillment(settings);
+  const fulfillmentConfig = parseOnlineFulfillment(runtimeSettings);
   const fulfillment = resolveOnlineFulfillmentFee(fulfillmentConfig, {
     fulfillmentType: input.fulfillmentType,
     zoneId: input.zoneId,
     deliveryAddress: input.deliveryAddress,
   });
 
-  const priced = await priceLinesForPublicOrder(
+  const priced = await pricePublicCommerceLines(
     store.org_id,
     store.id,
     input.lines,
-    input.couponCode
+    input.couponCode,
+    channel,
   );
   const total = roundMoney(priced.subtotal - priced.promo_discount + fulfillment.deliveryFee);
 
@@ -441,6 +495,7 @@ export async function submitPublicOnlineOrder(input: PublicOnlineOrderInput) {
       delivery_area: fulfillment.deliveryArea,
       delivery_address: fulfillment.deliveryAddress,
       delivery_fee: fulfillment.deliveryFee,
+      reserve_stock: input.reserveStock === true,
       },
       p_items: priced.items.map((item) => ({
         product_id: item.product_id,

@@ -191,7 +191,7 @@ export function AccountLedgerPage({
             onValueChange={setSelectedStore}
             allowAll
           />
-          <div className="flex items-end">
+          <div className="flex self-start items-end pt-6">
             <Button type="button" className="w-full" disabled={pending || !selectedAccount} onClick={applyFilters}>
               عرض
             </Button>

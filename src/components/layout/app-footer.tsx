@@ -7,12 +7,14 @@ import { PoweredByHakimo } from "@/components/layout/powered-by-hakimo";
 export function AppFooter() {
   const pathname = usePathname();
   const isOnlineMenu = pathname === "/menu" || pathname.startsWith("/menu/");
+  const isStorefront = pathname === "/store" || pathname.startsWith("/store/");
   // Shell/POS/print lock to the viewport — a root footer would force page scroll.
   const isAppChrome =
     pathname === "/pos" ||
     pathname.startsWith("/pos/") ||
     pathname.startsWith("/print") ||
     (!isOnlineMenu &&
+      !isStorefront &&
       !pathname.startsWith("/login") &&
       !pathname.startsWith("/forgot-password") &&
       !pathname.startsWith("/reset-password") &&
@@ -25,7 +27,7 @@ export function AppFooter() {
 
   // The ordering surface already reserves the fixed cart bar + safe area.
   // Adding a root spacer here would double the mobile bottom inset.
-  if (isOnlineMenu) {
+  if (isOnlineMenu || isStorefront) {
     return null;
   }
 

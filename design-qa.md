@@ -72,3 +72,46 @@
 - P3: the exact date text format remains locale-driven instead of forcing the English abbreviated-month style shown in the example.
 
 final result: passed
+
+---
+
+# Accounting mobile navigation design QA
+
+- Source visual truth: `/var/folders/3m/vwzv8hc14j3gdlkm8wtvscg80000gn/T/codex-clipboard-5dbb0eca-f7d3-4037-8141-8d2253f1b203.png` (566 × 970 px, supplied mobile screenshot).
+- Implementation screenshot: `/Users/hakimo/Developer/velora/.codex-artifacts/accounting-subnav-mobile.jpg` (390 × 844 px, CSS viewport 390 × 844, DPR 1).
+- Normalized side-by-side comparison: `/Users/hakimo/Developer/velora/.codex-artifacts/accounting-subnav-comparison.png` (780 × 844 px); the source was proportionally reduced and padded to 390 × 844, while the implementation remained at its native capture size.
+- State: trial-balance route, dark theme, Arabic accounting navigation, page scrolled to the top.
+
+## Findings
+
+- No actionable P0/P1/P2 issue remains. The eight accounting destinations now render as four equal two-card rows on a phone instead of eight full-width rows.
+- Mobile labels, hints, icons, padding, and gaps are smaller while remaining legible and preserving the existing selected, hover, focus, border, and color behavior.
+- Long labels fit without clipping at 390 px, and the compact navigation leaves the KPI cards and filters visible much earlier in the page.
+
+## Required fidelity surfaces
+
+- Fonts and typography: the existing product font, weights, and Arabic shaping are preserved; labels step down to the existing `text-xs` role on phones and return to `text-sm` from the small breakpoint.
+- Spacing and layout rhythm: two equal tracks, 8 px grid gaps, compact mobile padding, and the existing radii produce a denser but consistent rhythm.
+- Colors and visual tokens: existing card, border, muted, primary, and elevation tokens are unchanged.
+- Image quality and asset fidelity: the existing Lucide accounting icons are retained and rendered sharply; no image asset is required.
+- Copy and content: all destination labels and hints are unchanged and remain readable in RTL order.
+
+## Interaction and responsive checks
+
+- Live browser verification passed at 390 × 844 with all eight links visible in two columns and no horizontal clipping.
+- Active-page indication remains visible on “ميزان المراجعة”.
+- The trial-balance store selector and “عرض” action now share the intended compact mobile row alignment.
+- Targeted ESLint and TypeScript checks pass.
+- Focused-region comparison was not needed because every navigation card and its text are clearly readable in the full normalized comparison.
+
+## Comparison history
+
+- Initial P2: accounting navigation used one oversized card per mobile row, creating excessive scrolling and delaying the report data.
+- Fix: changed the shared navigation grid to two phone columns and reduced only its mobile icon, typography, padding, and gap sizes.
+- Post-fix evidence: the browser capture shows four balanced rows with the KPI section and period filter visible in the same viewport.
+
+## Follow-up polish
+
+- No remaining P3 item identified for this scoped change.
+
+final result: passed

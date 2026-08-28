@@ -144,7 +144,7 @@ export function TrialBalancePage({
             onValueChange={setSelectedStore}
             allowAll
           />
-          <div className="flex items-end">
+          <div className="flex self-start items-end pt-6">
             <Button type="button" className="w-full" disabled={pending} onClick={applyFilters}>
               عرض
             </Button>

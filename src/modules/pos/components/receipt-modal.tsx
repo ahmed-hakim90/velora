@@ -54,18 +54,18 @@ export function ReceiptModal({ open, onOpenChange, receipt }: ReceiptModalProps)
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[94dvh] max-w-md overflow-hidden rounded-2xl p-0 max-sm:max-w-[calc(100%-0.5rem)]">
-          <DialogHeader className="border-b border-border/70 px-4 py-3">
+        <DialogContent className="flex max-h-[min(94dvh,100%)] max-w-md flex-col gap-0 overflow-hidden rounded-2xl p-0 max-sm:max-w-[calc(100%-0.5rem)]">
+          <DialogHeader className="shrink-0 border-b border-border/70 px-4 py-3">
             <DialogTitle className="flex items-center justify-between gap-2 pe-8">
               <span>{t("Receipt")} {receipt.orderNumber}</span>
             </DialogTitle>
           </DialogHeader>
 
-          <div className="max-h-[calc(94dvh-120px)] overflow-y-auto px-3 py-2.5">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 py-2.5">
             <ReceiptBrandingPreview receipt={receipt} />
           </div>
 
-          <div className="grid grid-cols-3 gap-1.5 border-t border-border/70 p-2.5">
+          <div className={`grid shrink-0 ${receipt.orderId ? "grid-cols-3" : "grid-cols-2"} gap-1.5 border-t border-border/70 p-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:pb-2.5`}>
             <Button type="button" className="h-11 rounded-lg px-2 text-xs" onClick={handleUsbPrint}>
               <Printer className="size-4" />
               {t("USB print")}
@@ -94,7 +94,7 @@ export function ReceiptModal({ open, onOpenChange, receipt }: ReceiptModalProps)
             <Button
               type="button"
               variant="ghost"
-              className="col-span-3 h-11 rounded-lg text-xs sm:hidden"
+              className="col-span-full h-11 rounded-lg text-xs sm:hidden"
               onClick={handleBrowserPrint}
             >
               {t("Browser print")}

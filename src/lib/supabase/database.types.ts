@@ -2970,6 +2970,7 @@ export type Database = {
           is_active: boolean
           is_popular: boolean
           show_on_online_menu: boolean
+          show_on_storefront: boolean
           last_unit_cost: number
           name: string
           org_id: string
@@ -3008,6 +3009,7 @@ export type Database = {
           is_active?: boolean
           is_popular?: boolean
           show_on_online_menu?: boolean
+          show_on_storefront?: boolean
           last_unit_cost?: number
           name: string
           org_id: string
@@ -3046,6 +3048,7 @@ export type Database = {
           is_active?: boolean
           is_popular?: boolean
           show_on_online_menu?: boolean
+          show_on_storefront?: boolean
           last_unit_cost?: number
           name?: string
           org_id?: string

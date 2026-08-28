@@ -97,8 +97,8 @@ export function PosModifierPicker(props: {
 
   return (
     <Dialog open={props.open} onOpenChange={(o) => !o && props.onClose()}>
-      <DialogContent className="max-h-[min(92dvh,100%)] max-w-md overflow-hidden p-0 max-sm:max-w-[calc(100%-0.75rem)] sm:max-w-md">
-        <DialogHeader className="border-b border-border/60 px-3 py-2.5 text-start sm:px-4 sm:py-3">
+      <DialogContent className="flex max-h-[min(92dvh,100%)] max-w-md flex-col gap-0 overflow-hidden p-0 max-sm:max-w-[calc(100%-0.5rem)] sm:max-w-md">
+        <DialogHeader className="shrink-0 border-b border-border/60 px-3 py-2.5 text-start sm:px-4 sm:py-3">
           <DialogTitle className="truncate pe-7 text-base sm:text-lg">
             {t("Modifiers")} — {props.productName}
           </DialogTitle>
@@ -106,7 +106,7 @@ export function PosModifierPicker(props: {
         {loading ? (
           <LoadingStateBlock
             label={t("Loading…")}
-            className="mx-4 my-4 border-0 shadow-none"
+            className="m-3 min-h-0 flex-1 border-0 shadow-none"
           />
         ) : loadError ? (
           <ErrorStateBlock
@@ -114,10 +114,10 @@ export function PosModifierPicker(props: {
             description={loadError}
             retryLabel={t("Try again")}
             onRetry={() => setLoadAttempt((current) => current + 1)}
-            className="m-3 border-0 px-3 py-5 shadow-none"
+            className="m-3 min-h-0 flex-1 border-0 px-3 py-5 shadow-none"
           />
         ) : (
-          <div className="max-h-[min(62dvh,26rem)] space-y-3 overflow-y-auto overscroll-y-contain px-2.5 py-2.5 sm:px-3">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-y-contain px-2.5 py-2.5 sm:px-3">
             {groups.map((group) => (
               <div key={group.id} className="space-y-1.5">
                 <p className="px-0.5 text-xs font-semibold">
@@ -163,11 +163,11 @@ export function PosModifierPicker(props: {
           </div>
         )}
         {selectionError ? (
-          <p className="border-t border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive" role="alert">
+          <p className="shrink-0 border-t border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive" role="alert">
             {selectionError}
           </p>
         ) : null}
-        <DialogFooter className="mx-0 mb-0 grid grid-cols-2 gap-1.5 border-t border-border/60 px-2.5 py-2 sm:px-3 sm:py-2.5">
+        <DialogFooter className="mx-0 mb-0 grid shrink-0 grid-cols-2 gap-1.5 border-t border-border/60 px-2.5 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-3 sm:py-2.5 sm:pb-2.5">
           <Button
             type="button"
             variant="outline"

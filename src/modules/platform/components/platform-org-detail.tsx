@@ -44,6 +44,8 @@ import type {
   MenuThemeAccessRow,
   MenuThemeEntitlements,
 } from "@/modules/online-menu/lib/menu-theme-commerce";
+import type { StorefrontThemeCatalog, StorefrontThemeEntitlements } from "@/modules/storefront/core/theme-commerce";
+import { PlatformOrgStorefrontThemesPanel } from "@/modules/platform/components/platform-org-storefront-themes-panel";
 
 function limitLabel(value: number | null): string {
   return value == null ? "∞" : String(value);
@@ -59,6 +61,8 @@ interface PlatformOrgDetailProps {
   customDomain: OrgCustomDomain;
   menuThemeRows: MenuThemeAccessRow[];
   menuThemeEntitlements: MenuThemeEntitlements;
+  storefrontThemeCatalog: StorefrontThemeCatalog;
+  storefrontThemeEntitlements: StorefrontThemeEntitlements;
 }
 
 function formatApproxBytes(bytes: number): string {
@@ -77,6 +81,8 @@ export function PlatformOrgDetail({
   customDomain,
   menuThemeRows,
   menuThemeEntitlements,
+  storefrontThemeCatalog,
+  storefrontThemeEntitlements,
 }: PlatformOrgDetailProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -253,6 +259,12 @@ export function PlatformOrgDetail({
         orgId={organization.id}
         initialRows={menuThemeRows}
         initialEntitlements={menuThemeEntitlements}
+      />
+
+      <PlatformOrgStorefrontThemesPanel
+        orgId={organization.id}
+        catalog={storefrontThemeCatalog}
+        initialEntitlements={storefrontThemeEntitlements}
       />
 
       <OperationalCard title="دورة حياة البيانات">

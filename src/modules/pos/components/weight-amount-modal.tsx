@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useEffect, useMemo, useState } from "react";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,16 +56,14 @@ export function WeightAmountModal({
   const [amount, setAmount] = useState("");
   const scaleConfig = parseScaleSettings(scaleEnabled, scaleSettings);
 
-  const resetKey = open && product ? `${product.id}:${product.supports_amount_sale === true}` : "";
-  const [prevResetKey, setPrevResetKey] = useState(resetKey);
-  if (resetKey !== prevResetKey) {
-    setPrevResetKey(resetKey);
-    if (open && product) {
-      setMode(product.supports_amount_sale === true ? "by_amount" : "by_weight");
-      setWeight("");
-      setAmount("");
-    }
-  }
+  const productId = product?.id;
+  useEffect(() => {
+    if (!open || !productId) return;
+
+    setMode(allowAmount ? "by_amount" : "by_weight");
+    setWeight("");
+    setAmount("");
+  }, [allowAmount, open, productId]);
 
   const unitPrice =
     (product?.base_price ?? 0) > 0
@@ -100,11 +98,11 @@ export function WeightAmountModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[min(94dvh,100%)] overflow-y-auto rounded-2xl p-2.5 max-sm:max-w-[calc(100%-0.5rem)] sm:max-w-md sm:p-4">
-        <DialogHeader className="pe-7">
+      <DialogContent className="flex max-h-[min(94dvh,100%)] flex-col gap-0 overflow-hidden rounded-2xl p-0 max-sm:max-w-[calc(100%-0.5rem)] sm:max-w-md">
+        <DialogHeader className="shrink-0 border-b border-border/60 px-3 py-2.5 pe-10 text-start sm:px-4 sm:py-3">
           <DialogTitle className="truncate text-base sm:text-lg">{product?.name ?? t("Sell by weight")}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-2 sm:space-y-2.5">
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-y-contain px-3 py-2.5 sm:space-y-2.5 sm:px-4 sm:py-3">
           <div className="inline-flex w-full rounded-xl border p-1">
             <Button
               size="sm"
@@ -212,8 +210,10 @@ export function WeightAmountModal({
               {formatCurrency(total)}
             </p>
           </div>
+        </div>
+        <DialogFooter className="mx-0 mb-0 shrink-0 border-t border-border/60 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:py-2.5 sm:pb-2.5">
           <Button
-            className="h-12 w-full rounded-xl text-sm font-semibold"
+            className="h-11 w-full rounded-xl text-sm font-semibold"
             disabled={!validQuantity || !validUnitPrice}
             onClick={() =>
               onConfirm({
@@ -226,7 +226,7 @@ export function WeightAmountModal({
           >
             {t("Add to cart")}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

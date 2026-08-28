@@ -92,6 +92,7 @@ function normalizeProductInput(input: ProductInput): ProductInput {
     inventory_tracking_mode:
       input.track_inventory === false ? "none" : input.inventory_tracking_mode ?? "standard",
     show_on_online_menu: input.show_on_online_menu ?? isFinishedOnlineCandidate,
+    show_on_storefront: input.show_on_storefront ?? isFinishedOnlineCandidate,
     ...capabilityFields,
   };
 }

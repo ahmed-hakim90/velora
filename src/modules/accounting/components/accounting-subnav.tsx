@@ -83,7 +83,7 @@ export function AccountingSubnav() {
       <GlPostingFailureBanner />
       <nav
         aria-label="تنقل الحسابات"
-        className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4"
+        className="grid grid-cols-2 gap-2 xl:grid-cols-4"
       >
         {LINKS.map((link) => {
           const Icon = link.icon;
@@ -94,7 +94,7 @@ export function AccountingSubnav() {
               href={link.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex items-start gap-3 rounded-[var(--mds-radius-lg)] border px-3 py-3 transition-colors",
+                "flex min-w-0 items-center gap-2 rounded-[var(--mds-radius-lg)] border px-2 py-2.5 transition-colors sm:items-start sm:gap-3 sm:px-3 sm:py-3",
                 active
                   ? "border-primary/40 bg-primary/5 shadow-[var(--mds-elevation-1)]"
                   : "border-border/70 bg-card hover:border-primary/25 hover:bg-muted/40"
@@ -102,7 +102,7 @@ export function AccountingSubnav() {
             >
               <span
                 className={cn(
-                  "mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-[var(--mds-radius-md)]",
+                  "flex size-8 shrink-0 items-center justify-center rounded-[var(--mds-radius-md)] sm:mt-0.5 sm:size-9",
                   active
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-foreground"
@@ -111,8 +111,8 @@ export function AccountingSubnav() {
                 <Icon className="size-4" />
               </span>
               <span className="min-w-0">
-                <span className="block text-sm font-semibold">{link.label}</span>
-                <span className="block text-xs text-muted-foreground">
+                <span className="block text-xs font-semibold leading-5 sm:text-sm">{link.label}</span>
+                <span className="block truncate text-xs leading-4 text-muted-foreground">
                   {link.hint}
                 </span>
               </span>
