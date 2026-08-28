@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { EmptyStateBlock } from "@/components/Velora/state-blocks";
 import { formatCurrency } from "@/lib/format";
 import type { Order } from "@/lib/types";
+import { LocalizedText } from "@/components/Velora/localized-text";
 
 interface RecentOrdersFeedProps {
   orders: Order[];
@@ -12,17 +13,17 @@ export function RecentOrdersFeed({ orders }: RecentOrdersFeedProps) {
   return (
     <div className="rounded-[var(--mds-radius-lg)] border border-border bg-card p-[var(--mds-space-5)] text-card-foreground shadow-[var(--mds-elevation-1)]">
       <div className="mb-[var(--mds-space-4)] flex items-center justify-between">
-        <h3 className="font-heading text-sm font-semibold">آخر الطلبات</h3>
+        <h3 className="font-heading text-sm font-semibold"><LocalizedText text="Recent orders" /></h3>
         <Link
           href="/orders"
           className="text-xs font-medium text-primary hover:underline"
         >
-          عرض الكل
+          <LocalizedText text="View all" />
         </Link>
       </div>
       {orders.length === 0 ? (
         <EmptyStateBlock
-          title="مفيش طلبات النهاردة لسة"
+          title="No orders today"
           className="p-[var(--mds-space-4)]"
         />
       ) : (

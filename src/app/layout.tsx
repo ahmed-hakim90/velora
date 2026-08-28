@@ -35,6 +35,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: "cover",
+  interactiveWidget: "resizes-content",
 };
 
 export const metadata: Metadata = {
@@ -113,7 +114,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <AppProviders>
-          <div className="flex min-h-dvh flex-col">
+          <div className="app-viewport-root flex flex-col">
             <div className="flex min-h-0 flex-1 flex-col">{children}</div>
             <AppFooter />
           </div>

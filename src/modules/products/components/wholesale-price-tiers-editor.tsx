@@ -11,6 +11,7 @@ import { formatCurrency } from "@/lib/format";
 import { sanitizeDecimalInput } from "@/lib/digits";
 import { formatUnit } from "@/lib/units";
 import { CompactAction } from "@/components/Velora/compact-actions";
+import { useTranslation } from "@/lib/i18n/use-translation";
 import {
   deletePriceTiersAction,
   listPriceTiersAction,
@@ -25,7 +26,7 @@ interface WholesalePriceTiersEditorProps {
 }
 
 function tierName(qty: number) {
-  return qty <= 1 ? "جملة" : `جملة من ${qty}`;
+  return qty <= 1 ? "Wholesale" : `Wholesale from ${qty}`;
 }
 
 function sortTiers(rows: ProductPriceTier[]) {
@@ -37,6 +38,7 @@ export function WholesalePriceTiersEditor({
   currency,
   initialTiers,
 }: WholesalePriceTiersEditorProps) {
+  const { t } = useTranslation();
   const unit = (product.sale_unit ?? product.unit ?? "piece") as MeasurementUnit;
   const seeded = initialTiers !== undefined;
   const [tiers, setTiers] = useState<ProductPriceTier[]>(() =>
@@ -75,7 +77,7 @@ export function WholesalePriceTiersEditor({
       })
       .catch((error) => {
         if (!cancelled) {
-          toast.error(error instanceof Error ? error.message : "تعذر تحميل شرائح الجملة");
+          toast.error(error instanceof Error ? error.message : t("Could not load wholesale tiers"));
         }
       })
       .finally(() => {
@@ -91,11 +93,11 @@ export function WholesalePriceTiersEditor({
     const qty = parseFloat(sanitizeDecimalInput(minQuantity)) || 0;
     const unitPrice = parseFloat(sanitizeDecimalInput(price)) || 0;
     if (qty <= 0) {
-      toast.error("أقل كمية لازم تكون أكبر من صفر");
+      toast.error(t("Minimum quantity must be greater than zero"));
       return;
     }
     if (unitPrice <= 0) {
-      toast.error("سعر القطعة مطلوب");
+      toast.error(t("Unit price is required"));
       return;
     }
 
@@ -149,7 +151,7 @@ export function WholesalePriceTiersEditor({
         });
       } catch (e) {
         if (snapshotRef.current) setTiers(snapshotRef.current);
-        toast.error(e instanceof Error ? e.message : "تعذر حفظ الشريحة");
+        toast.error(e instanceof Error ? e.message : t("Could not save price tier"));
       }
     })();
   }
@@ -159,7 +161,7 @@ export function WholesalePriceTiersEditor({
     const qty = next.min_quantity ?? tier.min_quantity;
     const unitPrice = next.price ?? tier.price;
     if (qty <= 0 || unitPrice <= 0) {
-      toast.error("كمية أو سعر غير صالح");
+      toast.error(t("Invalid quantity or price"));
       return;
     }
 
@@ -190,7 +192,7 @@ export function WholesalePriceTiersEditor({
         setTiers((prev) => sortTiers(prev.map((t) => (t.id === tier.id ? row : t))));
       } catch (e) {
         if (snapshotRef.current) setTiers(snapshotRef.current);
-        toast.error(e instanceof Error ? e.message : "تعذر تعديل الشريحة");
+        toast.error(e instanceof Error ? e.message : t("Could not update price tier"));
       }
     })();
   }
@@ -209,7 +211,7 @@ export function WholesalePriceTiersEditor({
         await deletePriceTiersAction(id);
       } catch (e) {
         if (snapshotRef.current) setTiers(snapshotRef.current);
-        toast.error(e instanceof Error ? e.message : "تعذر حذف الشريحة");
+        toast.error(e instanceof Error ? e.message : t("Could not delete price tier"));
       }
     })();
   }
@@ -217,16 +219,15 @@ export function WholesalePriceTiersEditor({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h3 className="font-semibold">شرائح سعر الجملة</h3>
+        <h3 className="font-semibold">{t("Wholesale price tiers")}</h3>
         <p className="text-sm text-muted-foreground">
-          حدّد من كام قطعة يبدأ السعر، وسعر القطعة في الشريحة دي. فاتورة الجملة هتطبق أقرب شريحة مناسبة
-          للكمية.
+          {t("Set the starting quantity and unit price. Wholesale invoices use the closest matching tier.")}
         </p>
       </div>
 
       <div className="grid gap-2 rounded-lg border p-3 sm:grid-cols-[1fr_1fr_auto]">
         <div className="space-y-1.5">
-          <Label>من كمية ({formatUnit(unit)})</Label>
+          <Label>{t("From quantity")} ({formatUnit(unit)})</Label>
           <Input
             inputMode="decimal"
             value={minQuantity}
@@ -235,7 +236,7 @@ export function WholesalePriceTiersEditor({
           />
         </div>
         <div className="space-y-1.5">
-          <Label>سعر القطعة</Label>
+          <Label>{t("Unit price")}</Label>
           <Input
             inputMode="decimal"
             value={price}
@@ -245,7 +246,7 @@ export function WholesalePriceTiersEditor({
         </div>
         <div className="flex items-end">
           <CompactAction
-            label="إضافة شريحة"
+            label={t("Add tier")}
             icon={Plus}
             variant="default"
             disabled={loading}
@@ -255,10 +256,10 @@ export function WholesalePriceTiersEditor({
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">جاري تحميل الشرائح المحفوظة…</p>
+        <p className="text-sm text-muted-foreground">{t("Loading saved tiers…")}</p>
       ) : tiers.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          لسه مفيش شرائح. ضيف شريحة واحدة على الأقل (مثلاً من 1 قطعة) عشان فاتورة الجملة تاخد السعر صح.
+          {t("No tiers yet. Add at least one tier so wholesale invoices use the correct price.")}
         </p>
       ) : (
         <>
@@ -269,13 +270,13 @@ export function WholesalePriceTiersEditor({
                 className="space-y-2 rounded-xl border border-border/70 bg-card p-3"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="min-w-0 font-medium">{tier.name}</p>
+                  <p className="min-w-0 font-medium">{tier.min_quantity <= 1 ? t("Wholesale") : `${t("Wholesale from")} ${tier.min_quantity}`}</p>
                   <Button
                     type="button"
                     size="icon"
                     variant="ghost"
                     className="size-9 shrink-0"
-                    aria-label={`حذف شريحة ${tier.name}`}
+                    aria-label={`${t("Delete tier")} ${tier.name}`}
                     onClick={() => handleDelete(tier.id)}
                   >
                     <Trash2 className="size-4" />
@@ -283,7 +284,7 @@ export function WholesalePriceTiersEditor({
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">من كمية</p>
+                    <p className="text-xs text-muted-foreground">{t("From quantity")}</p>
                     <Input
                       className="w-full"
                       inputMode="decimal"
@@ -300,7 +301,7 @@ export function WholesalePriceTiersEditor({
                     />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">سعر القطعة</p>
+                    <p className="text-xs text-muted-foreground">{t("Unit price")}</p>
                     <Input
                       className="w-full"
                       inputMode="decimal"
@@ -327,16 +328,16 @@ export function WholesalePriceTiersEditor({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/40 text-start">
-                  <th className="px-3 py-2 font-medium">الشريحة</th>
-                  <th className="px-3 py-2 font-medium">من كمية</th>
-                  <th className="px-3 py-2 font-medium">سعر القطعة</th>
+                  <th className="px-3 py-2 font-medium">{t("Tier")}</th>
+                  <th className="px-3 py-2 font-medium">{t("From quantity")}</th>
+                  <th className="px-3 py-2 font-medium">{t("Unit price")}</th>
                   <th className="px-3 py-2 w-12" />
                 </tr>
               </thead>
               <tbody>
                 {tiers.map((tier) => (
                   <tr key={tier.id} className="border-b last:border-0">
-                    <td className="px-3 py-2">{tier.name}</td>
+                    <td className="px-3 py-2">{tier.min_quantity <= 1 ? t("Wholesale") : `${t("Wholesale from")} ${tier.min_quantity}`}</td>
                     <td className="px-3 py-2">
                       <Input
                         className="w-24"

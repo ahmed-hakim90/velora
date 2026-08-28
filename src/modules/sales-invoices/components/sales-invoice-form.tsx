@@ -9,7 +9,7 @@ import {
   useTransition,
   type FormEvent,
 } from "react";
-import { Plus, Trash2, Save, Send, FileText, Receipt, PackageCheck, Wrench, Loader2, X, MessageCircle, Settings } from "lucide-react";
+import { Plus, Trash2, Save, Send, FileText, Receipt, PackageCheck, Wrench, X, MessageCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,11 @@ import { OperatorShortcutHint } from "@/components/Velora/operator-shortcut-hint
 import { EmptyStateBlock } from "@/components/Velora/state-blocks";
 import { MobileEntityCard } from "@/components/Velora/mobile-entity-card";
 import { OperationalCard } from "@/components/Velora/operational-card";
+import {
+  DocumentHeaderGrid,
+  DocumentLineComposer,
+  DocumentLinesSection,
+} from "@/components/Velora/commercial-document-form";
 import { ResponsiveListLayout } from "@/components/Velora/responsive-list-layout";
 import {
   Dialog,
@@ -58,6 +63,7 @@ import { lineTotalAfterDiscount } from "@/lib/line-discount";
 import { sanitizeDecimalInput } from "@/lib/digits";
 import { PAYMENT_METHODS } from "@/lib/constants";
 import { selectLabelById } from "@/lib/select-label";
+import { useTranslation } from "@/lib/i18n/use-translation";
 import type {
   Customer,
   Order,
@@ -110,11 +116,11 @@ import type {
 } from "@/modules/sales-invoices/services/sales-invoice.service";
 
 const paymentLabels: Record<PaymentMethod, string> = {
-  cash: "نقدي",
-  card: "بطاقة",
-  wallet: "محفظة",
-  other: "أخرى",
-  credit: "آجل",
+  cash: "Cash",
+  card: "Card",
+  wallet: "Wallet",
+  other: "Other",
+  credit: "Credit",
 };
 
 interface SalesInvoiceFormProps {
@@ -220,12 +226,13 @@ function SalesInvoiceFormEditor({
   currency,
   enabledPaymentMethods,
   canCorrectCosts = false,
-  canManagePrintEngine = false,
   documentKind = "sales_invoice",
   onChanged,
   onClose,
 }: SalesInvoiceFormProps) {
   const router = useRouter();
+  const { t, language } = useTranslation();
+  const locale = language === "ar" ? "ar-EG" : "en-EG";
   const [invoice, setInvoice] = useState(initial);
   const [productQuery, setProductQuery] = useState("");
   const [productId, setProductId] = useState("");
@@ -269,7 +276,9 @@ function SalesInvoiceFormEditor({
     ) => void
   >(() => {});
   const { push: pushUndo, undo: undoLast, clear: clearUndo } = useUndoStack();
-  invoiceRef.current = invoice;
+  useEffect(() => {
+    invoiceRef.current = invoice;
+  }, [invoice]);
 
   useEffect(() => {
     // Don't clobber optimistic temp lines with a stale parent snapshot mid-sync.
@@ -289,22 +298,22 @@ function SalesInvoiceFormEditor({
   const isSalesOrder = kind === "sales_order";
   const isCreditNote = kind === "credit_note";
   const kindLabels: Record<string, string> = {
-    quotation: "عرض سعر",
-    sales_order: "أمر بيع",
-    sales_invoice: "فاتورة بيع",
-    credit_note: "إشعار دائن",
+    quotation: "Quotation",
+    sales_order: "Sales order",
+    sales_invoice: "Sales invoice",
+    credit_note: "Credit note",
   };
   const statusLabels: Record<string, string> = {
-    draft: "مسودة",
-    issued: "صادرة",
-    delivered: "مُسلَّمة",
-    sent: "مُرسل",
-    accepted: "مقبول",
-    rejected: "مرفوض",
-    expired: "منتهي",
-    confirmed: "مؤكد",
-    cancelled: "ملغي",
-    invoiced: "مفوتر",
+    draft: "Draft",
+    issued: "Issued",
+    delivered: "Delivered",
+    sent: "Sent",
+    accepted: "Accepted",
+    rejected: "Rejected",
+    expired: "Expired",
+    confirmed: "Confirmed",
+    cancelled: "Cancelled",
+    invoiced: "Invoiced",
   };
 
   const editable = isDraft && !lifecyclePending;
@@ -360,6 +369,7 @@ function SalesInvoiceFormEditor({
   ]);
 
   function publishLocal(next: SalesInvoiceWithDetails) {
+    invoiceRef.current = next;
     setInvoice(next);
     onChanged(next, { refresh: false });
   }
@@ -368,7 +378,7 @@ function SalesInvoiceFormEditor({
     const current = invoiceRef.current;
     if (!isLocalDraftId(current.id)) return current;
     if (!current.warehouse_id) {
-      toast.error("اختار المخزن");
+      toast.error(t("Choose a warehouse"));
       return null;
     }
     if (persistPromiseRef.current) return persistPromiseRef.current;
@@ -410,7 +420,7 @@ function SalesInvoiceFormEditor({
     } finally {
       persistPromiseRef.current = null;
     }
-  }, [customers, warehouses, documentKind, onChanged]);
+  }, [customers, warehouses, documentKind, onChanged, t]);
 
   const openImportSalesSources = async () => {
     if (!isDraft || !isSalesInvoice) return;
@@ -452,7 +462,7 @@ function SalesInvoiceFormEditor({
 
     runBackground({
       key: backgroundMutationKey("sales", "deliver", orderId),
-      label: "جاري تسليم الفاتورة…",
+      label: t("Delivering invoice…"),
       execute: async () => {
         const result = await deliverSalesInvoiceAction({
           orderId,
@@ -463,8 +473,8 @@ function SalesInvoiceFormEditor({
         return result.data;
       },
       successMessage: hasDeposit
-        ? "تم التسليم مع تسجيل الدفعة والباقي آجل"
-        : "تم التسليم وخصم المخزون",
+        ? t("Delivered. Payment recorded and the remainder is on credit.")
+        : t("Delivered and inventory deducted"),
       onSuccess: (data) => {
         onChanged(data, { refresh: true });
       },
@@ -605,18 +615,18 @@ function SalesInvoiceFormEditor({
   function addLine(overrideProductId?: string) {
     const resolvedId = overrideProductId || productId;
     if (!resolvedId) {
-      toast.error("اختار صنف أو امسح باركود");
+      toast.error(t("Choose an item or scan a barcode"));
       return;
     }
     const product = productMap.get(resolvedId);
     if (!product) {
-      toast.error("الصنف غير موجود");
+      toast.error(t("Item not found"));
       return;
     }
     const priceRaw = sanitizeDecimalInput(unitPrice);
     const typedPrice = priceRaw ? parseFloat(priceRaw) : undefined;
     if (typedPrice != null && (!Number.isFinite(typedPrice) || typedPrice < 0)) {
-      toast.error("سعر غير صالح");
+      toast.error(t("Invalid price"));
       return;
     }
 
@@ -639,8 +649,8 @@ function SalesInvoiceFormEditor({
       if (!resolved) {
         toast.error(
           amountValue <= 0
-            ? "المبلغ لازم يكون أكبر من صفر"
-            : "سعر الوحدة لازم يكون أكبر من صفر عشان نحدد الكمية"
+            ? t("Amount must be greater than zero")
+            : t("Unit price must be greater than zero to calculate quantity")
         );
         return;
       }
@@ -651,7 +661,7 @@ function SalesInvoiceFormEditor({
     } else {
       quantity = parseFloat(sanitizeDecimalInput(qty)) || 0;
       if (quantity <= 0) {
-        toast.error("الكمية لازم تكون أكبر من صفر");
+        toast.error(t("Quantity must be greater than zero"));
         return;
       }
     }
@@ -772,7 +782,8 @@ function SalesInvoiceFormEditor({
         });
         return;
       }
-      setInvoice((prev) => {
+      {
+        const prev = invoiceRef.current;
         const serverLine = result.data.line;
         const withoutDupes = prev.lines.filter(
           (line) =>
@@ -794,9 +805,8 @@ function SalesInvoiceFormEditor({
           total: result.data.total,
         };
         taxRateRef.current = inferTaxRate(next) || taxRateRef.current;
-        onChanged(next, { refresh: false });
-        return next;
-      });
+        publishLocal(next);
+      }
     })();
   }
 
@@ -861,7 +871,8 @@ function SalesInvoiceFormEditor({
         toast.error(result.error);
         return;
       }
-      setInvoice((prev) => {
+      {
+        const prev = invoiceRef.current;
         const lines = prev.lines.map((line) =>
           line.id === lineId ? result.data.line : line
         );
@@ -873,9 +884,8 @@ function SalesInvoiceFormEditor({
           tax: result.data.tax,
           total: result.data.total,
         };
-        onChanged(next, { refresh: false });
-        return next;
-      });
+        publishLocal(next);
+      }
     })();
   }
 
@@ -908,7 +918,8 @@ function SalesInvoiceFormEditor({
               toast.error(result.error);
               return;
             }
-            setInvoice((prev) => {
+            {
+              const prev = invoiceRef.current;
               const next = {
                 ...prev,
                 lines: [
@@ -926,9 +937,8 @@ function SalesInvoiceFormEditor({
                 tax: result.data.tax,
                 total: result.data.total,
               };
-              onChanged(next, { refresh: false });
-              return next;
-            });
+              publishLocal(next);
+            }
           })();
         },
       });
@@ -949,7 +959,8 @@ function SalesInvoiceFormEditor({
         toast.error(result.error);
         return;
       }
-      setInvoice((prev) => {
+      {
+        const prev = invoiceRef.current;
         const next = {
           ...prev,
           lines: prev.lines.filter((line) => line.id !== lineId),
@@ -958,20 +969,21 @@ function SalesInvoiceFormEditor({
           tax: result.data.tax,
           total: result.data.total,
         };
-        onChanged(next, { refresh: false });
-        return next;
-      });
+        publishLocal(next);
+      }
     })();
   }
 
-  removeLineRef.current = removeLine;
-  updateLineRef.current = updateLine;
+  useEffect(() => {
+    removeLineRef.current = removeLine;
+    updateLineRef.current = updateLine;
+  });
 
   useOperatorShortcuts({
     enabled: isDraft && !lifecyclePending,
     onSave: () => {
       if (!isDraft || lifecyclePending) return;
-      toast.success("تم الحفظ المؤقت — تابع لاحقًا من القائمة");
+      toast.success(t("Draft saved. Continue later from the list."));
       onChanged(invoice, { refresh: true });
       onClose();
     },
@@ -981,7 +993,7 @@ function SalesInvoiceFormEditor({
       if (last) removeLine(last.id);
     },
     onUndo: () => {
-      if (!undoLast()) toast.message("مفيش خطوة للتراجع");
+      if (!undoLast()) toast.message(t("Nothing to undo"));
     },
   });
 
@@ -1009,28 +1021,28 @@ function SalesInvoiceFormEditor({
       selectProduct(searchMatches[highlightIndex] ?? searchMatches[0]);
       return;
     }
-    toast.error("مفيش صنف مطابق");
+    toast.error(t("No matching item"));
   }
 
   return (
     <>
     <OperationalCard
       accent="var(--mds-color-action-primary)"
-      className="pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-[calc(5.5rem+env(safe-area-inset-bottom))]"
+      className="pb-16 lg:pb-12"
     >
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         <div>
           <h2 className="text-lg font-semibold">{invoice.order_number}</h2>
           <p className="text-sm text-muted-foreground">
-            {kindLabels[kind] ?? "مستند مبيعات"} ·{" "}
-            {statusLabels[invoice.document_status ?? "draft"] ?? invoice.document_status}
+            {t(kindLabels[kind] ?? "Sales document")} ·{" "}
+            {t(statusLabels[invoice.document_status ?? "draft"] ?? invoice.document_status ?? "Draft")}
           </p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <DocumentHeaderGrid>
           <div className="space-y-1.5">
             <Label htmlFor={`invoice-date-${invoice.id}`}>
-              {isQuotation ? "تاريخ العرض" : "تاريخ المستند"}
+              {t(isQuotation ? "Quotation date" : "Document date")}
             </Label>
             <Input
               id={`invoice-date-${invoice.id}`}
@@ -1049,7 +1061,7 @@ function SalesInvoiceFormEditor({
           </div>
           {isQuotation ? (
             <div className="space-y-1.5">
-              <Label htmlFor={`invoice-valid-${invoice.id}`}>صالح حتى</Label>
+              <Label htmlFor={`invoice-valid-${invoice.id}`}>{t("Valid until")}</Label>
               <Input
                 id={`invoice-valid-${invoice.id}`}
                 type="date"
@@ -1064,7 +1076,7 @@ function SalesInvoiceFormEditor({
             </div>
           ) : null}
           <div className="space-y-1.5">
-            <Label htmlFor={`invoice-customer-${invoice.id}`}>العميل</Label>
+            <Label htmlFor={`invoice-customer-${invoice.id}`}>{t("Customer")}</Label>
             <Select
               value={invoice.customer_id ?? "__none__"}
               disabled={!editable}
@@ -1073,17 +1085,17 @@ function SalesInvoiceFormEditor({
               }
             >
               <SelectTrigger id={`invoice-customer-${invoice.id}`}>
-                <SelectValue placeholder="بدون عميل">
+                <SelectValue placeholder={t("No customer")}>
                   {(value) =>
                     value === "__none__"
-                      ? "بدون عميل"
+                      ? t("No customer")
                       : selectLabelById(customers, value, (c) => c.name)
                   }
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__" label="بدون عميل">
-                  بدون عميل
+                <SelectItem value="__none__" label={t("No customer")}>
+                  {t("No customer")}
                 </SelectItem>
                 {customers.map((c) => (
                   <SelectItem key={c.id} value={c.id} label={c.name}>
@@ -1094,7 +1106,7 @@ function SalesInvoiceFormEditor({
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor={`invoice-warehouse-${invoice.id}`}>المخزن</Label>
+            <Label htmlFor={`invoice-warehouse-${invoice.id}`}>{t("Warehouse")}</Label>
             <Select
               value={invoice.warehouse_id ?? ""}
               disabled={!editable}
@@ -1103,7 +1115,7 @@ function SalesInvoiceFormEditor({
               }}
             >
               <SelectTrigger id={`invoice-warehouse-${invoice.id}`}>
-                <SelectValue placeholder="المخزن">
+                <SelectValue placeholder={t("Warehouse")}>
                   {(value) => selectLabelById(warehouses, value, (w) => w.name)}
                 </SelectValue>
               </SelectTrigger>
@@ -1117,7 +1129,7 @@ function SalesInvoiceFormEditor({
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor={`invoice-discount-${invoice.id}`}>خصم</Label>
+            <Label htmlFor={`invoice-discount-${invoice.id}`}>{t("Discount")}</Label>
             <Input
               id={`invoice-discount-${invoice.id}`}
               type="text"
@@ -1131,16 +1143,17 @@ function SalesInvoiceFormEditor({
               }}
             />
           </div>
-        </div>
+        </DocumentHeaderGrid>
 
-        <div className="space-y-1.5">
-          <Label htmlFor={`invoice-notes-${invoice.id}`}>ملاحظات المستند</Label>
+        <div className="space-y-1">
+          <Label htmlFor={`invoice-notes-${invoice.id}`}>{t("Document notes")}</Label>
           <Textarea
             id={`invoice-notes-${invoice.id}`}
             disabled={!editable}
             defaultValue={invoice.document_notes ?? ""}
             key={`notes-${invoice.id}-${invoice.document_notes ?? ""}`}
-            rows={2}
+            rows={1}
+            className="min-h-10 resize-y"
             onBlur={(e) => {
               const next = e.target.value;
               if (next !== (invoice.document_notes ?? "")) {
@@ -1151,10 +1164,11 @@ function SalesInvoiceFormEditor({
         </div>
 
         {isDraft ? (
-          <form
-            onSubmit={handleProductSubmit}
-            className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_6rem_7rem_5.5rem_auto] sm:items-end"
-          >
+          <DocumentLineComposer hint="Select a product, enter quantity and price, then press Enter.">
+            <form
+              onSubmit={handleProductSubmit}
+              className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(14rem,1fr)_6rem_7rem_5.5rem_auto] sm:items-end"
+            >
             <div>
               <ProductSearchCombobox
                 products={productOptions}
@@ -1191,7 +1205,7 @@ function SalesInvoiceFormEditor({
                       }, 50);
                     }}
                   >
-                    بالكمية
+                    {t("By quantity")}
                   </Button>
                   <Button
                     type="button"
@@ -1206,31 +1220,31 @@ function SalesInvoiceFormEditor({
                       }, 50);
                     }}
                   >
-                    بالمبلغ
+                    {t("By amount")}
                   </Button>
                 </div>
               ) : null}
               {amountPreview ? (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  الكمية المحسوبة: {amountPreview.label}
+                  {t("Calculated quantity")}: {amountPreview.label}
                 </p>
               ) : null}
             </div>
             {allowAmountEntry && entryMode === "by_amount" ? (
               <div>
-                <Label htmlFor={`invoice-line-amount-${invoice.id}`} className="mb-1.5 text-xs text-muted-foreground">مبلغ</Label>
+                <Label htmlFor={`invoice-line-amount-${invoice.id}`} className="mb-1.5 text-xs text-muted-foreground">{t("Amount")}</Label>
                 <Input
                   id={`invoice-line-amount-${invoice.id}`}
                   ref={amountRef}
                   value={amount}
                   onChange={(e) => setAmount(sanitizeDecimalInput(e.target.value))}
-                  placeholder="مبلغ"
+                  placeholder={t("Amount")}
                   inputMode="decimal"
                 />
               </div>
             ) : (
               <div>
-                <Label htmlFor={`invoice-line-quantity-${invoice.id}`} className="mb-1.5 text-xs text-muted-foreground">كمية</Label>
+                <Label htmlFor={`invoice-line-quantity-${invoice.id}`} className="mb-1.5 text-xs text-muted-foreground">{t("Quantity")}</Label>
                 <Input
                   id={`invoice-line-quantity-${invoice.id}`}
                   ref={qtyRef}
@@ -1242,13 +1256,13 @@ function SalesInvoiceFormEditor({
                     const product = productId ? productMap.get(productId) : undefined;
                     if (product) applyTierPrice(product, nextQty);
                   }}
-                  placeholder="كمية"
+                  placeholder={t("Quantity")}
                   inputMode="decimal"
                 />
               </div>
             )}
             <div>
-              <Label htmlFor={`invoice-line-price-${invoice.id}`} className="mb-1.5 text-xs text-muted-foreground">سعر جملة</Label>
+              <Label htmlFor={`invoice-line-price-${invoice.id}`} className="mb-1.5 text-xs text-muted-foreground">{t("Sale price")}</Label>
               <Input
                 id={`invoice-line-price-${invoice.id}`}
                 value={unitPrice}
@@ -1256,12 +1270,12 @@ function SalesInvoiceFormEditor({
                   setUnitPrice(sanitizeDecimalInput(e.target.value));
                   setPriceManual(true);
                 }}
-                placeholder="فاضي = شريحة جملة"
+                placeholder={t("Automatic by quantity")}
                 inputMode="decimal"
               />
             </div>
             <div>
-              <Label htmlFor={`invoice-line-discount-${invoice.id}`} className="mb-1.5 text-xs text-muted-foreground">خصم البند</Label>
+              <Label htmlFor={`invoice-line-discount-${invoice.id}`} className="mb-1.5 text-xs text-muted-foreground">{t("Line discount")}</Label>
               <Input
                 id={`invoice-line-discount-${invoice.id}`}
                 value={lineDiscount}
@@ -1273,18 +1287,23 @@ function SalesInvoiceFormEditor({
             </div>
             <div className="flex items-end">
               <CompactAction
-                label="إضافة"
+                label="Add"
                 icon={Plus}
                 variant="default"
                 type="submit"
                 disabled={lifecyclePending}
               />
             </div>
-          </form>
+            </form>
+          </DocumentLineComposer>
         ) : null}
 
+        <DocumentLinesSection
+          count={invoice.lines.length}
+          total={invoice.lines.length > 0 ? formatCurrency(invoice.total, currency, locale) : null}
+        >
         {invoice.lines.length === 0 ? (
-          <EmptyStateBlock title="مفيش أصناف على الفاتورة" />
+          <EmptyStateBlock title="No items on this invoice" />
         ) : (
           <ResponsiveListLayout
             mobile={invoice.lines.map((line) => {
@@ -1295,7 +1314,7 @@ function SalesInvoiceFormEditor({
                   title={line.productName}
                   fields={[
                     {
-                      label: "الإجمالي",
+                      label: t("Total"),
                       value: (
                         <span className="tabular-nums">
                           {formatCurrency(line.line_total, currency)}
@@ -1307,7 +1326,7 @@ function SalesInvoiceFormEditor({
                     <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1.5">
-                          <Label htmlFor={`mobile-line-quantity-${line.id}`} className="text-xs text-muted-foreground">كمية</Label>
+                          <Label htmlFor={`mobile-line-quantity-${line.id}`} className="text-xs text-muted-foreground">{t("Quantity")}</Label>
                           {isDraft ? (
                             <Input
                               id={`mobile-line-quantity-${line.id}`}
@@ -1370,7 +1389,7 @@ function SalesInvoiceFormEditor({
                           )}
                         </div>
                         <div className="space-y-1.5">
-                          <Label htmlFor={`mobile-line-price-${line.id}`} className="text-xs text-muted-foreground">سعر</Label>
+                          <Label htmlFor={`mobile-line-price-${line.id}`} className="text-xs text-muted-foreground">{t("Price")}</Label>
                           {isDraft ? (
                             <Input
                               id={`mobile-line-price-${line.id}`}
@@ -1425,7 +1444,7 @@ function SalesInvoiceFormEditor({
                           )}
                         </div>
                         <div className="space-y-1.5">
-                          <Label htmlFor={`mobile-line-discount-${line.id}`} className="text-xs text-muted-foreground">خصم</Label>
+                          <Label htmlFor={`mobile-line-discount-${line.id}`} className="text-xs text-muted-foreground">{t("Discount")}</Label>
                           {isDraft ? (
                             <Input
                               id={`mobile-line-discount-${line.id}`}
@@ -1482,7 +1501,7 @@ function SalesInvoiceFormEditor({
                       {isDraft ? (
                         <CompactActions className="w-full justify-end">
                           <CompactAction
-                            label="حذف البند"
+                            label={t("Delete line")}
                             icon={Trash2}
                             variant="destructive"
                             disabled={lifecyclePending}
@@ -1500,11 +1519,11 @@ function SalesInvoiceFormEditor({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>الصنف</TableHead>
-                      <TableHead>كمية</TableHead>
-                      <TableHead>سعر</TableHead>
-                      <TableHead>خصم</TableHead>
-                      <TableHead>الإجمالي</TableHead>
+                      <TableHead>{t("Product")}</TableHead>
+                      <TableHead>{t("Quantity")}</TableHead>
+                      <TableHead>{t("Price")}</TableHead>
+                      <TableHead>{t("Discount")}</TableHead>
+                      <TableHead>{t("Total")}</TableHead>
                       {isDraft ? <TableHead className="w-12" /> : null}
                     </TableRow>
                   </TableHeader>
@@ -1682,7 +1701,7 @@ function SalesInvoiceFormEditor({
                               className="size-11"
                               disabled={lifecyclePending}
                               onClick={() => removeLine(line.id)}
-                              aria-label={`حذف ${line.productName} من الفاتورة`}
+                              aria-label={`${t("Remove")} ${line.productName} ${t("from invoice")}`}
                             >
                               <Trash2 className="size-4" />
                             </Button>
@@ -1698,23 +1717,24 @@ function SalesInvoiceFormEditor({
         )}
 
         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-          <span>الجزئي: {formatCurrency(invoice.subtotal, currency)}</span>
-          <span>الخصم: {formatCurrency(invoice.discount, currency)}</span>
-          <span>الضريبة: {formatCurrency(invoice.tax, currency)}</span>
+          <span>{t("Subtotal")}: {formatCurrency(invoice.subtotal, currency, locale)}</span>
+          <span>{t("Discount")}: {formatCurrency(invoice.discount, currency, locale)}</span>
+          <span>{t("Tax")}: {formatCurrency(invoice.tax, currency, locale)}</span>
         </div>
+        </DocumentLinesSection>
       </div>
     </OperationalCard>
 
-    <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-border/60 bg-background/95 px-3 py-2.5 backdrop-blur-xl md:bottom-0 md:pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pt-3 lg:ps-64">
+    <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-border/60 bg-background/95 px-3 py-2.5 backdrop-blur-xl lg:bottom-0 lg:pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:ps-64 lg:pt-3">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
         <div className="min-w-0 shrink">
-          <p className="text-xs text-muted-foreground sm:text-sm">{invoice.lines.length} بند</p>
+          <p className="text-xs text-muted-foreground sm:text-sm">{invoice.lines.length} {t("items")}</p>
           <p className="truncate text-lg font-semibold tabular-nums sm:text-2xl">
-            {formatCurrency(invoice.total, currency)}
+            {formatCurrency(invoice.total, currency, locale)}
           </p>
           {isDelivered ? (
             <p className="text-xs text-muted-foreground">
-              تكلفة مسجّلة: {formatCurrency(recordedCost, currency)}
+              {t("Recorded cost")}: {formatCurrency(recordedCost, currency, locale)}
             </p>
           ) : null}
           {isDraft ? <OperatorShortcutHint className="mt-0.5" /> : null}
@@ -1723,14 +1743,14 @@ function SalesInvoiceFormEditor({
           {isDraft ? (
             <>
               <CompactAction
-                label="حفظ مؤقت"
+                label={t("Save draft")}
                 icon={Save}
                 shortcut={OPERATOR_SHORTCUTS.save}
                 disabled={lifecyclePending}
                 onClick={() => {
                   void (async () => {
                     if (invoice.lines.some((line) => line.id.startsWith("temp-"))) {
-                      toast.error("استنى لحد ما الأصناف تتسجل");
+                      toast.error(t("Wait until items finish saving"));
                       return;
                     }
                     if (isLocalDraftId(invoice.id)) {
@@ -1741,7 +1761,7 @@ function SalesInvoiceFormEditor({
                       const persisted = await ensurePersistedDraft();
                       if (!persisted) return;
                     }
-                    toast.success("تم الحفظ المؤقت — تابع لاحقًا من القائمة");
+                    toast.success(t("Draft saved. Continue later from the list."));
                     onChanged(invoiceRef.current, { refresh: true });
                     onClose();
                   })();
@@ -1750,7 +1770,7 @@ function SalesInvoiceFormEditor({
               {isSalesInvoice ? (
                 <>
                 <CompactAction
-                  label="استدعاء عرض سعر"
+                  label={t("Import quotation")}
                   icon={FileText}
                   disabled={lifecyclePending}
                   onClick={() => {
@@ -1758,7 +1778,7 @@ function SalesInvoiceFormEditor({
                   }}
                 />
                 <CompactAction
-                  label="إصدار"
+                  label={t("Issue")}
                   icon={Send}
                   variant="default"
                   disabled={
@@ -1771,24 +1791,24 @@ function SalesInvoiceFormEditor({
                       const persisted = await ensurePersistedDraft();
                       if (!persisted) return;
                       if (persisted.lines.length === 0) {
-                        toast.error("ضيف أصناف قبل الإصدار");
+                        toast.error(t("Add items before issuing"));
                         return;
                       }
                       if (persisted.lines.some((line) => line.id.startsWith("temp-"))) {
-                        toast.error("استنى لحد ما الأصناف تتسجل");
+                        toast.error(t("Wait until items finish saving"));
                         return;
                       }
                       const orderId = persisted.id;
                       onClose();
                       runBackground({
                         key: backgroundMutationKey("sales", "issue", orderId),
-                        label: "جاري إصدار الفاتورة…",
+                        label: t("Issuing invoice…"),
                         execute: async () => {
                           const result = await issueSalesInvoiceAction(orderId);
                           if (!result.ok) throw new Error(result.error);
                           return result.data;
                         },
-                        successMessage: "تم إصدار الفاتورة",
+                        successMessage: t("Invoice issued"),
                         onSuccess: (data) => {
                           onChanged(data, { refresh: true });
                         },
@@ -1800,7 +1820,7 @@ function SalesInvoiceFormEditor({
               ) : null}
               {isQuotation ? (
                 <CompactAction
-                  label="إرسال العرض"
+                  label={t("Send quotation")}
                   icon={Send}
                   variant="default"
                   disabled={
@@ -1813,13 +1833,13 @@ function SalesInvoiceFormEditor({
                       const persisted = await ensurePersistedDraft();
                       if (!persisted) return;
                       if (persisted.lines.some((line) => line.id.startsWith("temp-"))) {
-                        toast.error("استنى لحد ما الأصناف تتسجل");
+                        toast.error(t("Wait until items finish saving"));
                         return;
                       }
                       const orderId = persisted.id;
                       runBackground({
                         key: backgroundMutationKey("sales", "send-quote", orderId),
-                        label: "جاري إرسال عرض السعر…",
+                        label: t("Sending quotation…"),
                         execute: async () => {
                           const result = await transitionSalesDocumentAction({
                             orderId,
@@ -1829,7 +1849,7 @@ function SalesInvoiceFormEditor({
                           if (!result.ok) throw new Error(result.error);
                           return result.data;
                         },
-                        successMessage: "تم تعليم العرض كمُرسل",
+                        successMessage: t("Quotation marked as sent"),
                         onSuccess: (data) => onChanged(data, { refresh: true }),
                       });
                     })();
@@ -1838,7 +1858,7 @@ function SalesInvoiceFormEditor({
               ) : null}
               {isSalesOrder ? (
                 <CompactAction
-                  label="تأكيد الأمر"
+                  label={t("Confirm order")}
                   icon={PackageCheck}
                   variant="default"
                   disabled={
@@ -1851,13 +1871,13 @@ function SalesInvoiceFormEditor({
                       const persisted = await ensurePersistedDraft();
                       if (!persisted) return;
                       if (persisted.lines.some((line) => line.id.startsWith("temp-"))) {
-                        toast.error("استنى لحد ما الأصناف تتسجل");
+                        toast.error(t("Wait until items finish saving"));
                         return;
                       }
                       const orderId = persisted.id;
                       runBackground({
                         key: backgroundMutationKey("sales", "confirm-so", orderId),
-                        label: "جاري تأكيد أمر البيع…",
+                        label: t("Confirming sales order…"),
                         execute: async () => {
                           const result = await transitionSalesDocumentAction({
                             orderId,
@@ -1867,7 +1887,7 @@ function SalesInvoiceFormEditor({
                           if (!result.ok) throw new Error(result.error);
                           return result.data;
                         },
-                        successMessage: "تم تأكيد أمر البيع",
+                        successMessage: t("Sales order confirmed"),
                         onSuccess: (data) => onChanged(data, { refresh: true }),
                       });
                     })();
@@ -1876,7 +1896,7 @@ function SalesInvoiceFormEditor({
               ) : null}
               {isCreditNote ? (
                 <CompactAction
-                  label="إصدار الإشعار"
+                  label={t("Issue credit note")}
                   icon={Send}
                   variant="default"
                   disabled={lifecyclePending || invoice.lines.length === 0}
@@ -1884,20 +1904,20 @@ function SalesInvoiceFormEditor({
                     const orderId = invoice.id;
                     runBackground({
                       key: backgroundMutationKey("sales", "issue-cn", orderId),
-                      label: "جاري إصدار الإشعار الدائن…",
+                      label: t("Issuing credit note…"),
                       execute: async () => {
                         const result = await issueSalesCreditNoteAction(orderId);
                         if (!result.ok) throw new Error(result.error);
                         return result.data;
                       },
-                      successMessage: "تم إصدار الإشعار — رجع المخزون والرصيد",
+                      successMessage: t("Credit note issued. Inventory and balance restored."),
                       onSuccess: (data) => onChanged(data, { refresh: true }),
                     });
                   }}
                 />
               ) : null}
               <CompactAction
-                label="حذف المسودة"
+                label={t("Delete draft")}
                 icon={Trash2}
                 variant="destructive"
                 disabled={lifecyclePending}
@@ -1906,7 +1926,7 @@ function SalesInvoiceFormEditor({
             </>
           ) : (
             <CompactAction
-              label="إغلاق"
+              label={t("Close")}
               icon={X}
               disabled={lifecyclePending}
               onClick={onClose}
@@ -1916,7 +1936,7 @@ function SalesInvoiceFormEditor({
           {isQuotation && invoice.document_status === "sent" ? (
             <>
             <CompactAction
-              label="تحويل لأمر بيع"
+              label={t("Convert to sales order")}
               icon={FileText}
               variant="default"
               disabled={lifecyclePending}
@@ -1924,7 +1944,7 @@ function SalesInvoiceFormEditor({
                 const orderId = invoice.id;
                 runBackground({
                   key: backgroundMutationKey("sales", "quote-to-so", orderId),
-                  label: "جاري إنشاء أمر البيع…",
+                  label: t("Creating sales order…"),
                   execute: async () => {
                     const result = await convertSalesDocumentAction({
                       sourceId: orderId,
@@ -1935,7 +1955,7 @@ function SalesInvoiceFormEditor({
                     if (!result.ok) throw new Error(result.error);
                     return result.data;
                   },
-                  successMessage: "اتفتح أمر بيع من العرض",
+                  successMessage: t("Sales order created from quotation"),
                   onSuccess: (data) => {
                     onChanged(invoice, { refresh: true });
                     router.push(`/sales-orders?open=${data.id}`);
@@ -1944,7 +1964,7 @@ function SalesInvoiceFormEditor({
               }}
             />
             <CompactAction
-              label="تحويل لفاتورة"
+              label={t("Convert to invoice")}
               icon={FileText}
               variant="default"
               disabled={lifecyclePending}
@@ -1952,7 +1972,7 @@ function SalesInvoiceFormEditor({
                 const orderId = invoice.id;
                 runBackground({
                   key: backgroundMutationKey("sales", "quote-to-si", orderId),
-                  label: "جاري إنشاء فاتورة المبيعات…",
+                  label: t("Creating sales invoice…"),
                   execute: async () => {
                     const result = await convertSalesDocumentAction({
                       sourceId: orderId,
@@ -1963,7 +1983,7 @@ function SalesInvoiceFormEditor({
                     if (!result.ok) throw new Error(result.error);
                     return result.data;
                   },
-                  successMessage: "اتفتحت فاتورة من عرض السعر",
+                  successMessage: t("Invoice created from quotation"),
                   onSuccess: (data) => {
                     onChanged(invoice, { refresh: true });
                     router.push(`/sales-invoices?open=${data.id}`);
@@ -1972,7 +1992,7 @@ function SalesInvoiceFormEditor({
               }}
             />
             <CompactAction
-              label="رفض العرض"
+              label={t("Reject quotation")}
               icon={X}
               variant="destructive"
               disabled={lifecyclePending}
@@ -1980,7 +2000,7 @@ function SalesInvoiceFormEditor({
                 const orderId = invoice.id;
                 runBackground({
                   key: backgroundMutationKey("sales", "reject-quote", orderId),
-                  label: "جاري رفض عرض السعر…",
+                  label: t("Rejecting quotation…"),
                   execute: async () => {
                     const result = await transitionSalesDocumentAction({
                       orderId,
@@ -1990,7 +2010,7 @@ function SalesInvoiceFormEditor({
                     if (!result.ok) throw new Error(result.error);
                     return result.data;
                   },
-                  successMessage: "اترفض عرض السعر",
+                  successMessage: t("Quotation rejected"),
                   onSuccess: (data) => onChanged(data, { refresh: true }),
                 });
               }}
@@ -2000,7 +2020,7 @@ function SalesInvoiceFormEditor({
 
           {isSalesOrder && invoice.document_status === "confirmed" ? (
             <CompactAction
-              label="تحويل لفاتورة"
+              label={t("Convert to invoice")}
               icon={FileText}
               variant="default"
               disabled={lifecyclePending}
@@ -2008,7 +2028,7 @@ function SalesInvoiceFormEditor({
                 const orderId = invoice.id;
                 runBackground({
                   key: backgroundMutationKey("sales", "so-to-si", orderId),
-                  label: "جاري إنشاء فاتورة المبيعات…",
+                  label: t("Creating sales invoice…"),
                   execute: async () => {
                     const result = await convertSalesDocumentAction({
                       sourceId: orderId,
@@ -2019,7 +2039,7 @@ function SalesInvoiceFormEditor({
                     if (!result.ok) throw new Error(result.error);
                     return result.data;
                   },
-                  successMessage: "اتفتحت فاتورة من أمر البيع",
+                  successMessage: t("Invoice created from sales order"),
                   onSuccess: (data) => {
                     onChanged(invoice, { refresh: true });
                     router.push(`/sales-invoices?open=${data.id}`);
@@ -2047,11 +2067,11 @@ function SalesInvoiceFormEditor({
                 }}
               >
                 <SelectTrigger className="h-11 w-[min(100%,11rem)] sm:h-9 sm:w-40">
-                  <SelectValue placeholder="الدفع">
+                  <SelectValue placeholder={t("Payment")}>
                     {(value) =>
                       value === "unpaid"
-                        ? "بدون تحصيل الآن"
-                        : paymentLabels[value as PaymentMethod] ?? "الدفع"
+                        ? t("No collection now")
+                        : t(paymentLabels[value as PaymentMethod] ?? "Payment")
                     }
                   </SelectValue>
                 </SelectTrigger>
@@ -2061,20 +2081,20 @@ function SalesInvoiceFormEditor({
                       {paymentLabels[m]}
                     </SelectItem>
                   ))}
-                  <SelectItem value="unpaid" label="بدون تحصيل الآن">
-                    بدون تحصيل الآن
+                  <SelectItem value="unpaid" label={t("No collection now")}>
+                    {t("No collection now")}
                   </SelectItem>
                 </SelectContent>
               </Select>
               <CompactAction
-                label="تسليم وخصم مخزون"
+                label={t("Deliver and deduct inventory")}
                 icon={PackageCheck}
                 variant="default"
                 disabled={lifecyclePending}
                 onClick={() => {
                   if (paymentMethod === "credit") {
                     if (!invoice.customer_id) {
-                      toast.error("اختر عميلًا قبل تسليم فاتورة آجل");
+                      toast.error(t("Choose a customer before delivering a credit invoice"));
                       return;
                     }
                     setCreditDeliverOpen(true);
@@ -2088,20 +2108,20 @@ function SalesInvoiceFormEditor({
 
           {isDelivered && isSalesInvoice ? (
             <CompactAction
-              label="إشعار دائن"
+              label={t("Credit note")}
               icon={FileText}
               disabled={lifecyclePending}
               onClick={() => {
                 const orderId = invoice.id;
                 runBackground({
                   key: backgroundMutationKey("sales", "create-cn", orderId),
-                  label: "جاري إنشاء الإشعار الدائن…",
+                  label: t("Creating credit note…"),
                   execute: async () => {
                     const result = await createCreditNoteFromInvoiceAction(orderId);
                     if (!result.ok) throw new Error(result.error);
                     return result.data;
                   },
-                  successMessage: "اتفتح إشعار دائن من الفاتورة",
+                  successMessage: t("Credit note created from invoice"),
                   onSuccess: (data) => {
                     router.push(`/credit-notes?open=${data.id}`);
                   },
@@ -2112,7 +2132,7 @@ function SalesInvoiceFormEditor({
 
           {isDelivered && canCorrectCosts ? (
             <CompactAction
-              label="تصحيح التكلفة"
+              label={t("Correct cost")}
               icon={Wrench}
               disabled={lifecyclePending || invoice.lines.length === 0}
               onClick={() => setConfirmCorrectCosts(true)}
@@ -2122,7 +2142,7 @@ function SalesInvoiceFormEditor({
           {invoice.lines.length > 0 ? (
             <>
               <CompactAction
-                label="طباعة A4"
+                label={t("Print A4")}
                 icon={FileText}
                 onClick={() =>
                   setPrintPreview({
@@ -2141,19 +2161,19 @@ function SalesInvoiceFormEditor({
               />
               {isQuotation || isSalesOrder ? (
                 <CompactAction
-                  label="طباعة بدون أسعار"
+                  label={t("Print without prices")}
                   icon={FileText}
                   onClick={() =>
                     setPrintPreview({
                       href: `/print/orders/${invoice.id}?embed=1&hidePrices=1`,
-                      title: `${kindLabels[kind ?? "sales_invoice"] ?? "مستند"} بدون أسعار`,
+                      title: `${t(kindLabels[kind ?? "sales_invoice"] ?? "Document")} ${t("without prices")}`,
                     })
                   }
                 />
               ) : null}
               {isSalesInvoice && (isIssued || isDelivered) ? (
                 <CompactAction
-                  label="إذن تسليم"
+                  label={t("Delivery note")}
                   icon={PackageCheck}
                   onClick={() =>
                     setPrintPreview({
@@ -2165,20 +2185,20 @@ function SalesInvoiceFormEditor({
               ) : null}
               {isSalesInvoice ? (
                 <CompactAction
-                  label="ريسيت"
+                  label={t("Receipt")}
                   icon={Receipt}
                   className="border-primary text-primary"
                   onClick={() =>
                     setPrintPreview({
                       href: `/print/receipts/${invoice.id}?embed=1`,
                       title:
-                        invoice.document_status === "draft" ? "ريسيت مؤقت" : "ريسيت مبيعات",
+                        invoice.document_status === "draft" ? t("Draft receipt") : t("Sales receipt"),
                     })
                   }
                 />
               ) : null}
               <CompactAction
-                label="واتساب"
+                label={t("WhatsApp")}
                 icon={MessageCircle}
                 disabled={!selectedCustomer?.phone}
                 onClick={() => {
@@ -2206,20 +2226,13 @@ function SalesInvoiceFormEditor({
                     })
                   );
                   if (!url) {
-                    toast.error("رقم هاتف العميل غير صالح لواتساب");
+                    toast.error(t("Customer phone number is not valid for WhatsApp"));
                     return;
                   }
                   window.open(url, "_blank", "noopener,noreferrer");
                 }}
               />
             </>
-          ) : null}
-          {canManagePrintEngine ? (
-            <CompactAction
-              label="تعديل القالب"
-              icon={Settings}
-              href="/settings?tab=print"
-            />
           ) : null}
         </CompactActions>
       </div>
@@ -2237,9 +2250,9 @@ function SalesInvoiceFormEditor({
       <ConfirmActionDialog
         open={confirmDeliver}
         onOpenChange={setConfirmDeliver}
-        title="تأكيد التسليم"
-        description="هيتخصم المخزون ويتقفل مسار الفاتورة. متأكد؟"
-        confirmLabel="تسليم"
+        title={t("Confirm delivery")}
+        description={t("Inventory will be deducted and the invoice will be closed.")}
+        confirmLabel={t("Deliver")}
         onConfirm={() => {
           setConfirmDeliver(false);
           runDeliver(
@@ -2263,14 +2276,14 @@ function SalesInvoiceFormEditor({
       <ConfirmActionDialog
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
-        title="حذف المسودة"
-        description="هتتمسح الفاتورة والأسطر نهائيًا."
-        confirmLabel="حذف"
+        title={t("Delete draft")}
+        description={t("The invoice and its lines will be deleted permanently.")}
+        confirmLabel={t("Delete")}
         destructive
         onConfirm={() => {
           setConfirmDelete(false);
           if (isLocalDraftId(invoice.id)) {
-            toast.success("اتمسحت المسودة");
+            toast.success(t("Draft deleted"));
             clearUndo();
             onChanged(null, { refresh: false });
             onClose();
@@ -2282,7 +2295,7 @@ function SalesInvoiceFormEditor({
               toast.error(result.error);
               return;
             }
-            toast.success("اتمسحت المسودة");
+            toast.success(t("Draft deleted"));
             clearUndo();
             onChanged(null, { refresh: true });
             onClose();
@@ -2293,9 +2306,9 @@ function SalesInvoiceFormEditor({
       <ConfirmActionDialog
         open={confirmCorrectCosts}
         onOpenChange={setConfirmCorrectCosts}
-        title="تصحيح تكلفة الفاتورة"
-        description={`هيتطبّق سعر الشراء الحالي للصنف على أسطر الفاتورة المُسلَّمة. المخزون والمدفوعات مش هيتغيّروا. التكلفة المسجّلة دلوقتي: ${formatCurrency(recordedCost, currency)}.`}
-        confirmLabel="تطبيق التكلفة"
+        title={t("Correct invoice cost")}
+        description={`${t("Current purchase costs will be applied. Inventory and payments will not change.")} ${t("Recorded cost")}: ${formatCurrency(recordedCost, currency)}.`}
+        confirmLabel={t("Apply cost")}
         onConfirm={() => {
           setConfirmCorrectCosts(false);
           startLifecycle(async () => {
@@ -2308,11 +2321,11 @@ function SalesInvoiceFormEditor({
             setInvoice(next);
             onChanged(next, { refresh: true });
             if (correction.changedLines === 0) {
-              toast.message("مفيش تغيير — التكلفة مطابقة لسعر الشراء الحالي");
+              toast.message(t("No change. Cost already matches current purchase prices."));
               return;
             }
             toast.success(
-              `اتصحّحت تكلفة ${correction.changedLines} سطر: ${formatCurrency(correction.previousTotal, currency)} → ${formatCurrency(correction.nextTotal, currency)}`
+              `${t("Cost corrected for")} ${correction.changedLines} ${t("lines")}: ${formatCurrency(correction.previousTotal, currency)} → ${formatCurrency(correction.nextTotal, currency)}`
             );
           });
         }}
@@ -2330,17 +2343,17 @@ function SalesInvoiceFormEditor({
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>استدعاء عرض سعر / أمر بيع</DialogTitle>
+            <DialogTitle>{t("Import quotation / sales order")}</DialogTitle>
             <DialogDescription>
-              اختار عرض مُرسل أو أمر مؤكد لنفس العميل والمخزن. بعد الاستيراد تقدر تعدّل الكمية والسعر على الفاتورة.
+              {t("Choose a sent quotation or confirmed order for the same customer and warehouse.")}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid max-h-[50vh] gap-2 overflow-y-auto">
+          <div className="grid max-h-[50dvh] gap-2 overflow-y-auto">
             {importLoading ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">جاري التحميل…</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">{t("Loading…")}</p>
             ) : importableSources.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">
-                مفيش عروض أسعار أو أوامر بيع متاحة
+                {t("No quotations or sales orders available")}
               </p>
             ) : (
               importableSources.map((source) => {
@@ -2364,7 +2377,7 @@ function SalesInvoiceFormEditor({
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {source.lineCount} بند · {formatCurrency(source.total, currency)}
+                      {source.lineCount} {t("lines")} · {formatCurrency(source.total, currency)}
                       {source.customerName ? ` · ${source.customerName}` : ""}
                     </p>
                   </button>
@@ -2374,7 +2387,7 @@ function SalesInvoiceFormEditor({
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setImportOpen(false)}>
-              إلغاء
+              {t("Cancel")}
             </Button>
             <Button
               type="button"
@@ -2395,11 +2408,11 @@ function SalesInvoiceFormEditor({
                   setInvoice(result.data);
                   onChanged(result.data, { refresh: true });
                   setImportOpen(false);
-                  toast.success("اتضافت البنود — عدّل الكمية أو السعر لو محتاج");
+                  toast.success(t("Lines imported. Adjust quantity or price if needed."));
                 });
               }}
             >
-              استيراد البنود
+              {t("Import lines")}
             </Button>
           </DialogFooter>
         </DialogContent>

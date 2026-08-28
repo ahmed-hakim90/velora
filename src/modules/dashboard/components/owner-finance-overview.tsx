@@ -38,7 +38,7 @@ export function OwnerFinanceOverview({
           </Link>
         </div>
 
-        <div className="grid gap-[var(--mds-space-6)] sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-[var(--mds-space-3)] sm:gap-[var(--mds-space-6)]">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               اليوم
@@ -66,7 +66,7 @@ export function OwnerFinanceOverview({
         </div>
       </OperationalCard>
 
-      <div className="grid gap-[var(--mds-space-4)] sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-[var(--mds-space-3)] sm:gap-[var(--mds-space-4)] lg:grid-cols-4">
         <KpiCard
           label="مستحق عملاء"
           value={formatCurrency(finance.customerOutstanding, currency)}

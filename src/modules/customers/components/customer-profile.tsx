@@ -95,7 +95,7 @@ export function CustomerProfileView({ profile, ledger }: CustomerProfileViewProp
 
       {profile.address || profile.tax_id ? (
         <OperationalCard title="بيانات الفاتورة">
-          <dl className="grid gap-2 text-sm sm:grid-cols-2">
+          <dl className="grid grid-cols-2 gap-2 text-sm">
             {profile.address ? (
               <div>
                 <dt className="text-xs text-muted-foreground">العنوان</dt>

@@ -58,7 +58,7 @@ export default async function OperationalLayout({
 
   if (user.role === "inventory" || !canUsePos) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-6">
+      <div className="flex min-h-dvh items-center justify-center p-6">
         <AccessDenied
           title="نقطة البيع غير متاحة"
           description="دورك لا يسمح باستخدام الكاشير. استخدم لوحة التحكم والموديولات المسموحة من المنيو."

@@ -59,7 +59,6 @@ import { getCommercialPrintContext } from "@/modules/print-engine/services/print
 import {
   DEFAULT_PRINT_ENGINE_SETTINGS,
 } from "@/modules/print-engine/lib/print-engine-settings";
-import type { ReportBranding } from "@/modules/reports/core/report-context";
 import { getReportScheduleAction } from "@/modules/reports/actions/report-schedule.actions";
 import { getCurrentUser } from "@/lib/auth/session";
 

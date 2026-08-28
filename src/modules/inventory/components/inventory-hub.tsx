@@ -25,6 +25,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OperationalCard } from "@/components/Velora/operational-card";
 import { PageHeader } from "@/components/Velora/page-header";
+import { FilterBar, PageShell } from "@/components/Velora/page-patterns";
 import { EmptyStateBlock } from "@/components/Velora/state-blocks";
 import { ReportChartSection } from "@/modules/reports/components/report-chart-section";
 import { ModuleAnalyticsQuickLinks } from "@/modules/reports/components/module-analytics-quick-links";
@@ -40,22 +41,24 @@ import type { ExpiryBatchAlert } from "../services/expiry.service";
 import type { ReorderSuggestion } from "../services/reorder.service";
 import type { Warehouse as WarehouseType, ProductType } from "@/lib/types";
 import { useMemo } from "react";
+import { LocalizedText } from "@/components/Velora/localized-text";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 const quickLinks = [
-  { label: "مشتريات", subtitle: "فواتير الموردين", href: "/inventory/purchases", icon: Truck, accent: "var(--mds-color-action-primary)" },
-  { label: "طلب شراء", subtitle: "اعتماد داخلي", href: "/inventory/purchase-requests", icon: ClipboardList, accent: "var(--mds-color-action-primary-hover)" },
-  { label: "أمر توريد", subtitle: "طلب من المورد", href: "/inventory/purchase-orders", icon: FileSpreadsheet, accent: "var(--mds-color-feedback-info)" },
-  { label: "مرتجع شراء", subtitle: "إرجاع للمورد", href: "/inventory/purchase-returns", icon: ScrollText, accent: "var(--mds-color-feedback-danger)" },
-  { label: "موردين", subtitle: "كشوف الحساب", href: "/inventory/suppliers", icon: Landmark, accent: "var(--mds-color-feedback-info)" },
-  { label: "تحويلات", subtitle: "نقل بين الفروع", href: "/inventory/transfers", icon: ArrowLeftRight, accent: "var(--mds-color-action-primary-hover)" },
-  { label: "هالك", subtitle: "الفاقد والتالف", href: "/inventory/waste", icon: Trash2, accent: "var(--mds-color-feedback-danger)" },
-  { label: "جرد", subtitle: "تسوية المخزون", href: "/inventory/stock-count", icon: ClipboardList, accent: "var(--mds-color-feedback-warning)" },
+  { label: "Purchases", subtitle: "Supplier invoices", href: "/inventory/purchases", icon: Truck, accent: "var(--mds-color-action-primary)" },
+  { label: "Purchase request", subtitle: "Internal approval", href: "/inventory/purchase-requests", icon: ClipboardList, accent: "var(--mds-color-action-primary-hover)" },
+  { label: "Purchase order", subtitle: "Supplier order", href: "/inventory/purchase-orders", icon: FileSpreadsheet, accent: "var(--mds-color-feedback-info)" },
+  { label: "Purchase return", subtitle: "Return to supplier", href: "/inventory/purchase-returns", icon: ScrollText, accent: "var(--mds-color-feedback-danger)" },
+  { label: "Suppliers", subtitle: "Account statements", href: "/inventory/suppliers", icon: Landmark, accent: "var(--mds-color-feedback-info)" },
+  { label: "Transfers", subtitle: "Between branches", href: "/inventory/transfers", icon: ArrowLeftRight, accent: "var(--mds-color-action-primary-hover)" },
+  { label: "Waste", subtitle: "Loss and damage", href: "/inventory/waste", icon: Trash2, accent: "var(--mds-color-feedback-danger)" },
+  { label: "Stock Count", subtitle: "Inventory adjustment", href: "/inventory/stock-count", icon: ClipboardList, accent: "var(--mds-color-feedback-warning)" },
 ];
 
 const productTypeFilters: { label: string; value?: ProductType }[] = [
-  { label: "الكل", value: undefined },
-  { label: "تام", value: "finished" },
-  { label: "خامات", value: "ingredient" },
+  { label: "All", value: undefined },
+  { label: "Finished", value: "finished" },
+  { label: "Ingredients", value: "ingredient" },
 ];
 
 function inventoryHref(warehouseId?: string, productType?: ProductType) {
@@ -97,49 +100,50 @@ export function InventoryHub({
   selectedWarehouseId,
   selectedProductType,
 }: InventoryHubProps) {
+  const { t } = useTranslation();
   const activeWarehouse = warehouses.find((w) => w.id === selectedWarehouseId);
   const hasStock = stockGroups.some((group) => group.items.length > 0);
   const movementChart = useMemo(
     () =>
       aggregateMovementTypeCounts(movements).map((row) => ({
-        label: row.label,
+        label: t(row.label),
         count: row.count,
       })),
-    [movements]
+    [movements, t]
   );
 
   return (
-    <div className="flex flex-col gap-3">
+    <PageShell>
       <PageHeader
-        breadcrumb={<span>المخزون</span>}
-        title="المخزون"
-        description={`صحة المخزون والحركة لفرع ${storeName}${
-          activeWarehouse ? ` · ${activeWarehouse.name}` : " · كل المخازن"
-        }. ابدأ من المشتريات أو الجرد حسب المطلوب.`}
+        breadcrumb={<LocalizedText text="Inventory" />}
+        title="Inventory"
+        description={`${t("Stock health and movements for")} ${storeName}${
+          activeWarehouse ? ` · ${activeWarehouse.name}` : ` · ${t("All warehouses")}`
+        }. ${t("Start with purchases or stock count as needed.")}`}
         action={
           <div className="flex flex-wrap items-center gap-3">
             <Link
               href="/reports/product-card"
               className="text-sm font-medium text-primary hover:underline"
             >
-              كارت صنف
+              {t("Product card")}
             </Link>
             <Link
               href="/inventory/movements"
               className="text-sm font-medium text-primary hover:underline"
             >
-              سجل الحركة الكامل
+              {t("Full movement log")}
             </Link>
           </div>
         }
       />
 
-      <div className="flex flex-col gap-3 rounded-[var(--mds-radius-lg)] border border-border bg-card px-3 py-3 sm:px-4">
+      <FilterBar className="items-stretch sm:flex-col">
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <span className="shrink-0 text-xs font-medium text-muted-foreground sm:min-w-[4.5rem]">
-            المخزن
+            {t("Warehouse")}
           </span>
-          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
+          <div className="scrollbar-none -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
             <Link
               href={inventoryHref(undefined, selectedProductType)}
               className={`shrink-0 rounded-[var(--mds-radius-md)] border px-3 py-2 text-sm transition-colors touch-manipulation ${
@@ -148,7 +152,7 @@ export function InventoryHub({
                   : "border-border bg-muted/40 hover:bg-muted"
               }`}
             >
-              الكل
+              {t("All")}
             </Link>
             {warehouses.map((warehouse) => (
               <Link
@@ -167,9 +171,9 @@ export function InventoryHub({
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <span className="shrink-0 text-xs font-medium text-muted-foreground sm:min-w-[4.5rem]">
-            النوع
+            {t("Type")}
           </span>
-          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
+          <div className="scrollbar-none -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
             {productTypeFilters.map(({ label, value }) => (
               <Link
                 key={label}
@@ -180,88 +184,67 @@ export function InventoryHub({
                     : "border-border bg-muted/40 hover:bg-muted"
                 }`}
               >
-                {label}
+                {t(label)}
               </Link>
             ))}
           </div>
         </div>
-      </div>
+      </FilterBar>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <OperationalCard
-          title="مؤشر الصحة"
-          value={`${healthScore}%`}
-          subtitle={healthLabel}
-          icon={<Warehouse className="size-5" />}
-          accent={
-            healthScore >= 85
-              ? "var(--mds-color-feedback-success)"
-              : healthScore >= 60
-                ? "var(--mds-color-feedback-warning)"
-                : "var(--mds-color-feedback-danger)"
-          }
-        />
-        <OperationalCard
-          title="أصناف متتبعة"
-          value={String(totalSkus)}
-          subtitle="عناصر مخزون نشطة"
-          icon={<Package className="size-5" />}
-        />
-        <OperationalCard
-          title="مخزون منخفض"
-          value={String(lowCount)}
-          subtitle="عند أو تحت حد إعادة الطلب"
-          accent="var(--mds-color-feedback-warning)"
-          href="/products"
-        />
-      </div>
+      <section aria-label={t("Inventory summary")} className="overflow-hidden rounded-[var(--mds-radius-lg)] border border-border bg-card">
+        <dl className="grid grid-cols-2 sm:grid-cols-3">
+          <div className="border-b border-border px-4 py-4 sm:border-b-0"><dt className="text-xs font-medium text-muted-foreground">{t("Health score")}</dt><dd className="mt-1 text-2xl font-semibold tabular-nums">{healthScore}%</dd><dd className="text-xs text-muted-foreground">{t(healthLabel)}</dd></div>
+          <div className="border-b border-border px-4 py-4 sm:border-b-0 sm:border-s"><dt className="text-xs font-medium text-muted-foreground">{t("Tracked items")}</dt><dd className="mt-1 text-2xl font-semibold tabular-nums">{totalSkus}</dd><dd className="text-xs text-muted-foreground">{t("Active inventory items")}</dd></div>
+          <Link href="/products" className="col-span-2 px-4 py-4 outline-none transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 sm:col-span-1 sm:border-s"><dt className="text-xs font-medium text-muted-foreground">{t("Low Stock")}</dt><dd className="mt-1 text-2xl font-semibold tabular-nums text-[var(--mds-color-feedback-warning)]">{lowCount}</dd><dd className="text-xs text-muted-foreground">{t("At or below reorder point")}</dd></Link>
+        </dl>
+      </section>
 
       {movementChart.length > 0 ? (
-        <ReportChartSection title="أحدث الحركات حسب النوع" height={200}>
+        <ReportChartSection title={t("Recent movements by type")} height={200}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={movementChart}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="label" />
               <YAxis allowDecimals={false} />
               <Tooltip />
-              <Bar dataKey="count" fill="#0F766E" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="count" fill="var(--mds-color-action-primary)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ReportChartSection>
       ) : null}
 
       <ModuleAnalyticsQuickLinks
-        title="تحليل المخزون"
-        description="تقارير وتفاصيل سريعة"
+        title={t("Inventory analytics")}
+        description={t("Quick reports and details")}
         links={[
           {
             href: "/reports/inventory",
-            label: "تقرير المخزون",
-            description: "تقييم وتشغيلات وانتهاء",
+            label: t("Inventory Report"),
+            description: t("Valuation, operations, and expiry"),
             icon: Warehouse,
           },
           {
             href: "/reports/product-card",
-            label: "كارت صنف",
-            description: "جه وطلع والمتاح على فترة",
+            label: t("Product card"),
+            description: t("Inbound, outbound, and available stock over time"),
             icon: ClipboardList,
           },
           {
             href: "/reports/sales/product",
-            label: "مبيعات منتج",
-            description: "إيراد وكمية لصنف واحد",
+            label: t("Product Sales Report"),
+            description: t("Revenue and quantity for one product"),
             icon: BarChart3,
           },
           {
             href: "/reports/replenishment",
-            label: "إعادة الطلب",
-            description: "قد إيه تشتري حسب الاستهلاك",
+            label: t("Replenishment Report"),
+            description: t("Suggested purchasing based on usage"),
             icon: Package,
           },
           {
             href: "/inventory/suppliers",
-            label: "الموردين",
-            description: "مستحقات وكشف حساب",
+            label: t("Suppliers"),
+            description: t("Balances and account statements"),
             icon: Landmark,
           },
         ]}
@@ -273,7 +256,7 @@ export function InventoryHub({
 
       <ReorderSuggestions suggestions={reorderSuggestions} />
 
-      <div className="grid gap-[var(--mds-space-3)] sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-[var(--mds-space-3)] lg:grid-cols-4">
         {quickLinks.map((link) => (
           <OperationalCard
             key={link.href}
@@ -288,18 +271,18 @@ export function InventoryHub({
 
       <Tabs defaultValue="stock">
         <TabsList variant="line" className="w-full justify-start">
-          <TabsTrigger value="stock">المخزون حسب الفئة</TabsTrigger>
-          <TabsTrigger value="movements">أحدث الحركات</TabsTrigger>
+          <TabsTrigger value="stock">{t("Stock by category")}</TabsTrigger>
+          <TabsTrigger value="movements">{t("Recent movements")}</TabsTrigger>
         </TabsList>
         <TabsContent value="stock" className="mt-4">
           {hasStock ? (
             <StockCards groups={stockGroups} />
           ) : (
             <EmptyStateBlock
-              title="لا يوجد مخزون معروض"
-              description="أضف أصناف متتبعة أو استلم مشتريات لبدء تتبع المخزون."
+              title={t("No inventory to display")}
+              description={t("Add tracked items or receive purchases to start tracking inventory.")}
               ctaHref="/products"
-              ctaLabel="إدارة الأصناف"
+              ctaLabel={t("Manage products")}
             />
           )}
         </TabsContent>
@@ -308,14 +291,14 @@ export function InventoryHub({
             <MovementTimeline movements={movements} compact />
           ) : (
             <EmptyStateBlock
-              title="لا توجد حركات بعد"
-              description="ستظهر هنا عمليات الاستلام والتحويل والهالك والجرد."
+              title={t("No movements yet")}
+              description={t("Receiving, transfers, waste, and stock counts will appear here.")}
               ctaHref="/inventory/purchases"
-              ctaLabel="فتح المشتريات"
+              ctaLabel={t("Open purchases")}
             />
           )}
         </TabsContent>
       </Tabs>
-    </div>
+    </PageShell>
   );
 }

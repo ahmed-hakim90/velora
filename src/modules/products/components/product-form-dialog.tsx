@@ -38,13 +38,14 @@ import { WholesalePriceTiersEditor } from "./wholesale-price-tiers-editor";
 import { GuidedProductDetailsForm } from "@/modules/products/components/guided-product-details-form";
 import { nextSequentialProductSku } from "@/modules/products/lib/generate-product-sku";
 import { toast } from "sonner";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 const productSchema = z.object({
-      name: z.string().min(1, "اسم المنتج مطلوب"),
-      sku: z.string().min(1, "كود المنتج مطلوب"),
-      barcode: z.string().min(1, "الباركود مطلوب"),
+      name: z.string().min(1, "Product name is required."),
+      sku: z.string().min(1, "Product code is required."),
+      barcode: z.string().min(1, "Barcode is required."),
   image_url: z.string().nullable(),
-      category_id: z.string().min(1, "التصنيف مطلوب"),
+      category_id: z.string().min(1, "Category is required."),
   base_price: z.number().min(0),
   description: z.string(),
   sale_price: z.number().min(0).nullable(),
@@ -98,6 +99,7 @@ export function ProductFormDialog({
   currency = "EGP",
   existingSkus = [],
 }: ProductFormDialogProps) {
+  const { t } = useTranslation();
   const [workingProduct, setWorkingProduct] = useState<Product | null>(product ?? null);
   const [wholesaleTiers, setWholesaleTiers] = useState<ProductPriceTier[] | null>(null);
   const [activeTab, setActiveTab] = useState("details");
@@ -324,7 +326,7 @@ export function ProductFormDialog({
           setWorkingProduct(savedProduct);
         }
         setImageFile(null);
-        toast.success("تم تحديث المنتج");
+        toast.success(t("Product updated."));
         onSaved?.();
         return;
       }
@@ -341,13 +343,13 @@ export function ProductFormDialog({
       setWorkingProduct(nextProduct);
       if (businessActivitySettings.enable_wholesale_sales) {
         setActiveTab("wholesale");
-        toast.success("تم إنشاء المنتج — كمّل أسعار الجملة من التبويب");
+        toast.success(t("Product created. Continue with wholesale prices in the next tab."));
       } else {
-        toast.success("تم إنشاء المنتج");
+        toast.success(t("Product created."));
       }
       onSaved?.();
     } catch {
-      toast.error("تعذر حفظ المنتج");
+      toast.error(t("Could not save product."));
     }
   }
 
@@ -380,11 +382,11 @@ export function ProductFormDialog({
     >
       <StandardModalContent
         size="lg"
-        title={isEdit ? "تعديل منتج" : "منتج جديد"}
+        title={isEdit ? t("Edit product") : t("New product")}
         description={
           businessActivitySettings.activity_type === "supermarket"
-            ? "اسم، طريقة البيع، سعر الشراء وسعر البيع."
-            : "عناصر المنيو والمكونات والأسعار والوصفات."
+            ? t("Set the name, sales method, purchase price, and sale price.")
+            : t("Manage menu details, ingredients, prices, and recipes.")
         }
         className="gap-5"
       >
@@ -392,26 +394,26 @@ export function ProductFormDialog({
           <Tabs value={activeTab} onValueChange={setActiveTab} className="gap-3">
             <TabsList className="w-full">
               <TabsTrigger value="details" className="flex-1">
-                التفاصيل
+                {t("Details")}
               </TabsTrigger>
               {showVariantsTab ? (
                 <TabsTrigger value="variants" className="flex-1">
-                  الخيارات
+                  {t("Variants")}
                 </TabsTrigger>
               ) : null}
               {showRecipeTab ? (
                 <TabsTrigger value="recipe" className="flex-1">
-                  الوصفة
+                  {t("Recipe")}
                 </TabsTrigger>
               ) : null}
               {showWholesaleTiersTab ? (
                 <TabsTrigger value="wholesale" className="flex-1">
-                  أسعار الجملة
+                  {t("Wholesale prices")}
                 </TabsTrigger>
               ) : null}
               {showModifiersTab ? (
                 <TabsTrigger value="modifiers" className="flex-1">
-                  إضافات
+                  {t("Modifiers")}
                 </TabsTrigger>
               ) : null}
             </TabsList>

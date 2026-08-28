@@ -1,6 +1,9 @@
+"use client";
+
 import { PrintableDocument } from "@/modules/reports/components/printable-document";
 import { formatCurrency } from "@/lib/format";
 import type { ReportBranding } from "@/modules/reports/core/report-context";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 export interface DailyCloseReportPrintData {
   report: {
@@ -34,24 +37,20 @@ export interface DailyCloseReportPrintData {
 }
 
 export function DailyClosePrintView({ report, context, currency }: DailyCloseReportPrintData) {
+  const { t: translate } = useTranslation();
   const t = report.totals;
   const rows = [
-    ["رصيد الافتتاح", t.openingCash],
-    ["مبيعات نقدية", t.cashSales],
-    ["مبيعات كارت", t.cardSales],
-    ["مبيعات محفظة", t.walletSales],
-    ["مبيعات آجلة", t.creditSales],
-    ["مرتجعات نقدية", t.cashRefunds],
-    ["المصروفات", t.expenses],
-    ["النقدية المتوقعة", t.expectedCash],
-    ["النقدية الفعلية", t.actualCash],
-    ["الفرق", t.variance],
+    ["Opening cash", t.openingCash], ["Cash sales", t.cashSales],
+    ["Card sales", t.cardSales], ["Wallet sales", t.walletSales],
+    ["Credit sales", t.creditSales], ["Cash refunds", t.cashRefunds],
+    ["Expenses", t.expenses], ["Expected cash", t.expectedCash],
+    ["Actual cash", t.actualCash], ["Variance", t.variance],
   ] as const;
 
   return (
     <PrintableDocument
       branding={context}
-      title="إقفال اليوم"
+      title="Daily Close Report"
       dateRange={context.filterSummary}
       generatedBy={context.generatedBy}
       generatedAt={context.generatedAt}
@@ -61,7 +60,7 @@ export function DailyClosePrintView({ report, context, currency }: DailyCloseRep
         <tbody>
           {rows.map(([label, value]) => (
             <tr key={label} className="border-b">
-              <td className="py-2 font-medium">{label}</td>
+              <td className="py-2 font-medium">{translate(label)}</td>
               <td className="py-2 text-end tabular-nums">
                 {formatCurrency(value, currency)}
               </td>
@@ -72,11 +71,11 @@ export function DailyClosePrintView({ report, context, currency }: DailyCloseRep
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b">
-            <th className="py-2 text-start">الكاشير</th>
-            <th className="py-2 text-start">الفرع</th>
-            <th className="py-2 text-end">المتوقع</th>
-            <th className="py-2 text-end">الفعلي</th>
-            <th className="py-2 text-end">الفرق</th>
+            <th className="py-2 text-start">{translate("Cashier")}</th>
+            <th className="py-2 text-start">{translate("Branch")}</th>
+            <th className="py-2 text-end">{translate("Expected")}</th>
+            <th className="py-2 text-end">{translate("Actual")}</th>
+            <th className="py-2 text-end">{translate("Variance")}</th>
           </tr>
         </thead>
         <tbody>

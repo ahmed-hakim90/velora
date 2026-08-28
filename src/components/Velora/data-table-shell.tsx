@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { LocalizedText } from "@/components/Velora/localized-text";
 
 type DataTableShellProps = {
   title?: string;
@@ -37,7 +38,7 @@ export function DataTableShell({
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex-1">
-              {title ? <h3 className="text-sm font-semibold tracking-tight">{title}</h3> : null}
+              {title ? <h3 className="text-sm font-semibold tracking-tight"><LocalizedText text={title} /></h3> : null}
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               {typeof search === "string" && onSearchChange ? (

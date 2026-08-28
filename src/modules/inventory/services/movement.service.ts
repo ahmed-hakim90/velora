@@ -1,7 +1,7 @@
 import * as inventoryRepo from "@/lib/repositories/inventory.repository";
 import * as catalogRepo from "@/lib/repositories/catalog.repository";
 import * as warehouseRepo from "@/lib/repositories/warehouse.repository";
-import type { InventoryMovement, Product, Warehouse } from "@/lib/types";
+import type { InventoryMovement, MovementType, Product, Warehouse } from "@/lib/types";
 
 export interface MovementWithProduct extends InventoryMovement {
   productName: string;
@@ -18,8 +18,8 @@ export function attachMovementNames(
 
   return movements.map((m) => ({
     ...m,
-    productName: productMap.get(m.product_id) ?? "صنف غير معروف",
-    warehouseName: warehouseMap.get(m.warehouse_id) ?? "مخزن غير معروف",
+    productName: productMap.get(m.product_id) ?? "Unknown product",
+    warehouseName: warehouseMap.get(m.warehouse_id) ?? "Unknown warehouse",
   }));
 }
 
@@ -27,10 +27,11 @@ export async function listMovementsWithProducts(
   storeId?: string,
   warehouseId?: string,
   limit = 200,
-  preloaded?: { products?: Product[]; warehouses?: Warehouse[] }
+  preloaded?: { products?: Product[]; warehouses?: Warehouse[] },
+  options?: { from?: string; to?: string; movementTypes?: MovementType[] }
 ): Promise<MovementWithProduct[]> {
   const [movements, products, warehouses] = await Promise.all([
-    inventoryRepo.listMovements(storeId, warehouseId, limit),
+    inventoryRepo.listMovements(storeId, warehouseId, limit, options),
     preloaded?.products
       ? Promise.resolve(preloaded.products)
       : catalogRepo.listProducts(),
@@ -47,7 +48,8 @@ export async function getMovementTimeline(
   storeId: string,
   warehouseId?: string,
   limit = 20,
-  preloaded?: { products?: Product[]; warehouses?: Warehouse[]; movements?: InventoryMovement[] }
+  preloaded?: { products?: Product[]; warehouses?: Warehouse[]; movements?: InventoryMovement[] },
+  options?: { from?: string; to?: string; movementTypes?: MovementType[] }
 ): Promise<MovementTimelineItem[]> {
   if (preloaded?.movements && preloaded.products && preloaded.warehouses) {
     return attachMovementNames(
@@ -56,5 +58,5 @@ export async function getMovementTimeline(
       preloaded.warehouses
     );
   }
-  return listMovementsWithProducts(storeId, warehouseId, limit, preloaded);
+  return listMovementsWithProducts(storeId, warehouseId, limit, preloaded, options);
 }

@@ -1,6 +1,7 @@
 import { getExpensesReportPageData } from "@/modules/reports/actions/expenses-report.actions";
 import { PrintableDocument } from "@/modules/reports/components/printable-document";
 import { formatCurrency } from "@/lib/format";
+import { LocalizedText } from "@/components/Velora/localized-text";
 
 export default async function PrintExpensesReportPage({
   searchParams,
@@ -13,15 +14,15 @@ export default async function PrintExpensesReportPage({
   return (
     <PrintableDocument
       branding={data.context}
-      title="تقرير المصروفات"
+      title="Expenses Report"
       dateRange={data.context.filterSummary}
       generatedBy={data.context.generatedBy}
       generatedAt={data.context.generatedAt}
     >
       <p className="mb-4 text-lg font-semibold">
-        الإجمالي: {formatCurrency(data.total, data.currency)}
+        <LocalizedText text="Total" />: {formatCurrency(data.total, data.currency)}
       </p>
-      <h3 className="mb-2 font-medium">حسب مركز التكلفة</h3>
+      <h3 className="mb-2 font-medium"><LocalizedText text="By cost center" /></h3>
       <table className="mb-6 w-full text-sm">
         <tbody>
           {data.byCenter.map((row) => (
@@ -32,7 +33,7 @@ export default async function PrintExpensesReportPage({
           ))}
         </tbody>
       </table>
-      <h3 className="mb-2 font-medium">حسب التصنيف</h3>
+      <h3 className="mb-2 font-medium"><LocalizedText text="By category" /></h3>
       <table className="w-full text-sm">
         <tbody>
           {data.byCategory.map((row) => (

@@ -6,19 +6,21 @@ import { computePosterHeight } from "@/modules/price-lists/lib/formats";
 import { loadPriceListPrintPayload } from "@/modules/price-lists/lib/print-payload";
 import { AutoPrintShell } from "@/components/print/auto-print-shell";
 import type { PriceListPrintPayload } from "@/modules/price-lists/lib/formats";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 export function PriceListPrintView() {
+  const { t } = useTranslation();
   const [payload, setPayload] = useState<PriceListPrintPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const loaded = loadPriceListPrintPayload();
     if (!loaded || loaded.rows.length === 0) {
-      setError("مفيش قائمة جاهزة للطباعة. ارجع لاستوديو الأسعار واضغط «PDF / طباعة» تاني.");
+      setError(t("No price list is ready. Return to the price studio and select PDF / Print again."));
       return;
     }
     setPayload(loaded);
-  }, []);
+  }, [t]);
 
   const width = 794;
   const height = useMemo(() => {
@@ -49,7 +51,7 @@ export function PriceListPrintView() {
         loading={!payload && !error}
         error={error}
         backHref="/inventory/purchases/price-list"
-        backLabel="رجوع لاستوديو الأسعار"
+        backLabel={t("Back to price studio")}
         autoPrintDelayMs={400}
       >
         {payload ? (
@@ -59,7 +61,7 @@ export function PriceListPrintView() {
               className="no-print mb-4 rounded-xl border bg-white px-4 py-2 text-sm font-medium"
               onClick={() => window.print()}
             >
-              طباعة / حفظ PDF ({payload.rows.length} صنف)
+              {t("Print / Save PDF")} ({payload.rows.length} {t("items")})
             </button>
             <PriceListPoster
               width={width}

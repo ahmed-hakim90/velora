@@ -39,9 +39,11 @@ import { buildSessionsGlance } from "@/modules/sessions/lib/sessions-glance";
 
 interface SessionsPageProps {
   filterStoreId?: string;
+  filterFrom?: string;
+  filterTo?: string;
 }
 
-export async function SessionsPage({ filterStoreId = "all" }: SessionsPageProps) {
+export async function SessionsPage({ filterStoreId = "all", filterFrom = "", filterTo = "" }: SessionsPageProps) {
   const storeResult = await requirePageStoreId("/sessions");
   if (!storeResult.ok) {
     return (
@@ -112,7 +114,13 @@ export async function SessionsPage({ filterStoreId = "all" }: SessionsPageProps)
   });
 
   const closedSessions = scopedSessions
-    .filter((s) => s.status === "closed")
+    .filter((s) => {
+      if (s.status !== "closed") return false;
+      const date = (s.closed_at ?? s.opened_at).slice(0, 10);
+      if (filterFrom && date < filterFrom) return false;
+      if (filterTo && date > filterTo) return false;
+      return true;
+    })
     .sort((a, b) => {
       const aTime = a.closed_at ?? a.opened_at;
       const bTime = b.closed_at ?? b.opened_at;
@@ -211,6 +219,8 @@ export async function SessionsPage({ filterStoreId = "all" }: SessionsPageProps)
             <SessionsStoreFilter
               stores={stores}
               value={filteredStoreId ?? "all"}
+              from={filterFrom}
+              to={filterTo}
             />
           ) : null}
         </div>
@@ -241,9 +251,10 @@ export async function SessionsPage({ filterStoreId = "all" }: SessionsPageProps)
       )}
 
       <section className="flex flex-col gap-[var(--mds-space-3)]">
-        <h2 className="font-heading text-base font-semibold">
-          الجلسات المقفولة ({closedRows.length})
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-heading text-base font-semibold">الجلسات المقفولة ({closedRows.length})</h2>
+          {!canViewAll ? <SessionsStoreFilter stores={[]} value="all" from={filterFrom} to={filterTo} hideStore /> : null}
+        </div>
         <ClosedSessionsTable rows={closedRows} showStoreColumn={canViewAll} />
       </section>
     </div>

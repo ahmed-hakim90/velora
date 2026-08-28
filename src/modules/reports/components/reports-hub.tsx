@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { CompactAction, CompactActions } from "@/components/Velora/compact-actions";
 import { PageHeader } from "@/components/Velora/page-header";
-import { OperationalCard } from "@/components/Velora/operational-card";
+import { EntityList, PageShell } from "@/components/Velora/page-patterns";
 import { filterReportHubGroups } from "@/modules/reports/lib/report-hub-links";
 
 const REPORT_HUB_ICONS: Record<string, LucideIcon> = {
@@ -65,11 +65,11 @@ export function ReportsHub({
   const groups = filterReportHubGroups(showProfit, showFinancial, showCustomerDebt);
 
   return (
-    <div className="flex flex-col gap-3" dir="rtl">
+    <PageShell dir="rtl">
       <PageHeader
         breadcrumb={<span>التقارير</span>}
         title="التقارير"
-        description="اختَر التقرير من الكارت — يفتح مباشرة"
+        description="كل تقارير الأداء والتشغيل والمالية في مكان واحد. اختَر التقرير المطلوب للبدء."
         action={
           canManageSchedule ? (
             <CompactActions>
@@ -83,34 +83,39 @@ export function ReportsHub({
         }
       />
 
-      {groups.map((group) => (
-        <section key={group.title} aria-label={group.title} className="space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground">{group.title}</h2>
-          <div className="grid gap-[var(--mds-space-4)] sm:grid-cols-2 xl:grid-cols-3">
+      <div className="space-y-[var(--mds-space-6)]">
+        {groups.map((group) => (
+          <section key={group.title} aria-label={group.title} className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="size-1.5 rounded-full bg-primary" aria-hidden />
+              <h2 className="text-sm font-semibold text-foreground">{group.title}</h2>
+            </div>
+            <EntityList className="grid sm:grid-cols-2 xl:grid-cols-3">
             {group.links.map((link) => {
               const Icon = REPORT_HUB_ICONS[link.icon] ?? ClipboardList;
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="group block h-full rounded-[var(--mds-radius-lg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="group block min-h-32 border-b border-border outline-none transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 sm:border-s"
                 >
-                  <OperationalCard
-                    title={link.label}
-                    description={link.description}
-                    className="h-full cursor-pointer transition-shadow group-hover:shadow-[var(--mds-elevation-2)] group-focus-visible:shadow-[var(--mds-elevation-2)]"
-                  >
-                    <div className="flex items-center gap-[var(--mds-space-3)] text-primary">
-                      <Icon className="size-5 shrink-0" aria-hidden />
-                      <span className="text-sm font-medium">فتح التقرير</span>
+                  <div className="flex h-full items-start gap-4 p-4">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--mds-radius-md)] bg-[var(--mds-color-harbor-50)] text-primary">
+                      <Icon className="size-5" aria-hidden />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-foreground">{link.label}</h3>
+                      <p className="mt-1 text-sm leading-6 text-muted-foreground">{link.description}</p>
+                      <span className="mt-2 inline-flex text-xs font-semibold text-primary">فتح التقرير</span>
                     </div>
-                  </OperationalCard>
+                  </div>
                 </Link>
               );
             })}
-          </div>
-        </section>
-      ))}
-    </div>
+            </EntityList>
+          </section>
+        ))}
+      </div>
+    </PageShell>
   );
 }

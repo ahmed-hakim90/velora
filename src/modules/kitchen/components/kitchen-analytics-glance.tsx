@@ -21,7 +21,7 @@ interface KitchenAnalyticsGlanceProps {
 export function KitchenAnalyticsGlance({ glance }: KitchenAnalyticsGlanceProps) {
   return (
     <div className="flex flex-col gap-[var(--mds-space-4)]">
-      <div className="grid gap-[var(--mds-space-4)] sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-[var(--mds-space-3)] sm:gap-[var(--mds-space-4)] lg:grid-cols-4">
         <KpiCard
           label="الطابور الحالي"
           value={String(glance.backlog)}

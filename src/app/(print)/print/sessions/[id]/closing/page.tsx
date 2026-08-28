@@ -1,6 +1,7 @@
 import { getSessionClosingData } from "@/modules/reports/actions/session-report.actions";
 import { PrintableDocument } from "@/modules/reports/components/printable-document";
 import { formatCurrency, formatDateTime } from "@/lib/format";
+import { LocalizedText } from "@/components/Velora/localized-text";
 
 export default async function PrintSessionClosingPage({
   params,
@@ -10,16 +11,16 @@ export default async function PrintSessionClosingPage({
   const { id } = await params;
   const data = await getSessionClosingData(id);
   const rows = [
-    ["رصيد الافتتاح", data.reconciliation.openingCash],
-    ["مبيعات نقدية", data.reconciliation.cashSales],
-    ["مبيعات كارت", data.reconciliation.cardSales],
-    ["مبيعات محفظة", data.reconciliation.walletSales],
-    ["مبيعات آجلة", data.reconciliation.creditSales],
-    ["مرتجعات نقدية", data.reconciliation.cashRefunds],
-    ["المصروفات", data.reconciliation.expenses],
-    ["النقدية المتوقعة", data.reconciliation.expectedCash],
-    ["النقدية الفعلية", data.actualCash ?? 0],
-    ["الفرق", data.variance ?? 0],
+    ["Opening cash", data.reconciliation.openingCash],
+    ["Cash sales", data.reconciliation.cashSales],
+    ["Card sales", data.reconciliation.cardSales],
+    ["Wallet sales", data.reconciliation.walletSales],
+    ["Credit sales", data.reconciliation.creditSales],
+    ["Cash refunds", data.reconciliation.cashRefunds],
+    ["Expenses", data.reconciliation.expenses],
+    ["Expected cash", data.reconciliation.expectedCash],
+    ["Actual cash", data.actualCash ?? 0],
+    ["Variance", data.variance ?? 0],
   ] as const;
 
   return (
@@ -34,7 +35,7 @@ export default async function PrintSessionClosingPage({
         receiptHeader: null,
         receiptFooter: null,
       }}
-      title="تقرير إغلاق الجلسة"
+      title="Session Closing Report"
       subtitle={`${data.cashierName} · ${formatDateTime(data.session.opened_at)}`}
       generatedBy={data.generatedBy}
       generatedAt={data.generatedAt}
@@ -43,7 +44,7 @@ export default async function PrintSessionClosingPage({
         <tbody>
           {rows.map(([label, value]) => (
             <tr key={label} className="border-b">
-              <td className="py-2 font-medium">{label}</td>
+              <td className="py-2 font-medium"><LocalizedText text={label} /></td>
               <td className="py-2 text-end tabular-nums">
                 {formatCurrency(value, data.currency)}
               </td>

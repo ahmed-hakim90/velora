@@ -10,7 +10,7 @@ export default async function CustomerDetailRoute({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ collect?: string }>;
+  searchParams: Promise<{ collect?: string; returnTo?: string }>;
 }) {
   const { id } = await params;
   const query = await searchParams;
@@ -40,6 +40,7 @@ export default async function CustomerDetailRoute({
       canVoidPayment={canVoidPayment}
       creditSalesEnabled={flags.credit_sales === true}
       initialCollectOpen={query.collect === "1" && canCollect}
+      returnHref={query.returnTo?.startsWith("/customers/directory") ? query.returnTo : "/customers/directory"}
     />
   );
 }

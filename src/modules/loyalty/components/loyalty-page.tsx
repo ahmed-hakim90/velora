@@ -55,7 +55,7 @@ export function LoyaltyPage({ rule, stats, ledger, customers }: LoyaltyPageProps
         description={t("Customers earn points on every sale and redeem them as a discount at the POS")}
       />
 
-      <div className="grid gap-[var(--mds-space-4)] sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-[var(--mds-space-3)] sm:gap-[var(--mds-space-4)] lg:grid-cols-3">
         <KpiCard
           label={t("Active Members")}
           value={String(stats.activeCustomers)}

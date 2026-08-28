@@ -16,7 +16,7 @@ export default function AuthErrorBoundary({
   }, [error]);
 
   return (
-    <div className="mx-auto flex min-h-[40vh] max-w-md flex-col items-center justify-center gap-4 p-6">
+    <div className="mx-auto flex min-h-[40dvh] max-w-md flex-col items-center justify-center gap-4 p-6">
       <ErrorStateBlock
         title="تعذر تحميل الشاشة"
         description="حاول مرة أخرى أو ارجع لتسجيل الدخول."

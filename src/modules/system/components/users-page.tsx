@@ -24,7 +24,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { CompactAction, CompactActions } from "@/components/Velora/compact-actions";
+import {
+  CompactAction,
+  CompactActions,
+} from "@/components/Velora/compact-actions";
 import { PageHeader } from "@/components/Velora/page-header";
 import { OperationalCard } from "@/components/Velora/operational-card";
 import { StatusPill } from "@/components/Velora/status-pill";
@@ -43,6 +46,7 @@ import {
   resetUserPasswordAction,
   updateUserAction,
 } from "@/modules/system/actions/system.actions";
+import { useTranslation } from "@/lib/i18n/use-translation";
 /** Device ACL UI retired — cashiers use store slug + PIN only. */
 const SHOW_DEVICE_ACL_UI = false;
 
@@ -84,6 +88,7 @@ export function UsersPage({
   embedded,
 }: UsersPageProps) {
   const router = useRouter();
+  const { t, language } = useTranslation();
   const [pending, startTransition] = useTransition();
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [userToDelete, setUserToDelete] = useState<AppUser | null>(null);
@@ -112,26 +117,29 @@ export function UsersPage({
           restrictDevices: (userDeviceIds[u.id]?.length ?? 0) > 0,
           isActive: u.is_active,
         },
-      ])
-    )
+      ]),
+    ),
   );
 
   const editingUser = useMemo(
     () => users.find((u) => u.id === editingUserId) ?? null,
-    [users, editingUserId]
+    [users, editingUserId],
   );
   const editing = editingUserId ? edits[editingUserId] : null;
 
   const createRoleOptions = useMemo(
     () =>
       (["owner", "manager", "cashier", "inventory"] as const).filter(
-        (role) => actorRole === "owner" || role !== "owner"
+        (role) => actorRole === "owner" || role !== "owner",
       ),
-    [actorRole]
+    [actorRole],
   );
   const editRoleOptions = useMemo(() => {
-    const roles = (["owner", "manager", "cashier", "inventory"] as const).filter(
-      (role) => actorRole === "owner" || role !== "owner" || editing?.role === "owner"
+    const roles = (
+      ["owner", "manager", "cashier", "inventory"] as const
+    ).filter(
+      (role) =>
+        actorRole === "owner" || role !== "owner" || editing?.role === "owner",
     );
     return roles;
   }, [actorRole, editing?.role]);
@@ -180,16 +188,18 @@ export function UsersPage({
 
     if (pinEntered) {
       if (!userRoleSupportsPin(current.role)) {
-        toast.error("PIN متاح للمالك والمدير والكاشير فقط.");
+        toast.error(
+          t("PIN is available only for owners, managers, and cashiers."),
+        );
         return;
       }
       if (!/^[0-9]{4,8}$/.test(pinValue)) {
-        toast.error("رقم PIN يجب أن يكون من 4 إلى 8 أرقام.");
+        toast.error(t("PIN must be 4 to 8 digits."));
         return;
       }
     }
     if (passwordEntered && passwordValue.length < 8) {
-      toast.error("كلمة المرور يجب أن تكون 8 أحرف أو أكثر.");
+      toast.error(t("Password must be at least 8 characters."));
       return;
     }
 
@@ -203,14 +213,16 @@ export function UsersPage({
           : [],
       });
       if (!result.success) {
-        toast.error(result.error ?? "تعذر تحديث المستخدم");
+        toast.error(result.error ?? t("Could not update user"));
         return;
       }
 
       if (pinEntered) {
         const pinResult = await resetUserPinAction(id, pinValue);
         if (!pinResult.success) {
-          toast.error(pinResult.error ?? "تم حفظ البيانات لكن تعذرت إعادة ضبط PIN");
+          toast.error(
+            pinResult.error ?? t("Details were saved, but PIN reset failed"),
+          );
           return;
         }
         setPinValue("");
@@ -220,7 +232,8 @@ export function UsersPage({
         const passwordResult = await resetUserPasswordAction(id, passwordValue);
         if (!passwordResult.success) {
           toast.error(
-            passwordResult.error ?? "تم حفظ البيانات لكن تعذرت إعادة ضبط كلمة المرور"
+            passwordResult.error ??
+              t("Details were saved, but password reset failed"),
           );
           return;
         }
@@ -229,8 +242,8 @@ export function UsersPage({
 
       toast.success(
         pinEntered || passwordEntered
-          ? "تم تحديث المستخدم وبيانات الدخول"
-          : "تم تحديث المستخدم"
+          ? t("User and login details updated")
+          : t("User updated"),
       );
       setEditingUserId(null);
     });
@@ -238,7 +251,11 @@ export function UsersPage({
 
   const create = () => {
     if (!canCreate) {
-      toast.error("أكمل البيانات المطلوبة. كلمة المرور 8 أحرف أو أكثر.");
+      toast.error(
+        t(
+          "Complete the required fields. Password must be at least 8 characters.",
+        ),
+      );
       return;
     }
 
@@ -252,7 +269,7 @@ export function UsersPage({
           : undefined,
       });
       if (result.success) {
-        toast.success("تم إنشاء المستخدم");
+        toast.success(t("User created"));
         setForm({
           name: "",
           email: "",
@@ -265,7 +282,7 @@ export function UsersPage({
         });
         return;
       }
-      toast.error(result.error ?? "فشل إنشاء المستخدم");
+      toast.error(result.error ?? t("Could not create user"));
     });
   };
 
@@ -273,25 +290,27 @@ export function UsersPage({
     <>
       {embedded ? null : (
         <PageHeader
-          title="المستخدمون والأدوار"
-          description="إدارة الفريق من قائمة واحدة — عدّل كل شخص من مكانه"
+          title={t("Users and roles")}
+          description={t("Manage your team and edit each user from one place.")}
         />
       )}
 
       <Tabs defaultValue="team" className="min-w-0 space-y-3">
         <div className="min-w-0">
           <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
-            <TabsTrigger value="team">الفريق</TabsTrigger>
-            <TabsTrigger value="create">إنشاء مستخدم</TabsTrigger>
-            {permissionsData ? <TabsTrigger value="permissions">الصلاحيات</TabsTrigger> : null}
+            <TabsTrigger value="team">{t("Team")}</TabsTrigger>
+            <TabsTrigger value="create">{t("Create user")}</TabsTrigger>
+            {permissionsData ? (
+              <TabsTrigger value="permissions">{t("Permissions")}</TabsTrigger>
+            ) : null}
           </TabsList>
         </div>
 
         <TabsContent value="team">
           {users.length === 0 ? (
             <EmptyStateBlock
-              title="لا يوجد مستخدمون"
-              description="أنشئ أول مستخدم للفريق من تبويب الإنشاء."
+              title={t("No users")}
+              description={t("Create the first team user from the Create tab.")}
             />
           ) : (
             <div className="grid gap-3">
@@ -306,18 +325,23 @@ export function UsersPage({
                     </div>
                     <div className="min-w-0">
                       <p className="truncate font-medium">{u.name}</p>
-                      <p className="break-all text-sm text-muted-foreground">{u.email}</p>
+                      <p className="break-all text-sm text-muted-foreground">
+                        {u.email}
+                      </p>
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <StatusPill label={roleLabel(u.role as UserRole)} variant="info" />
                     <StatusPill
-                      label={u.is_active ? "نشط" : "غير نشط"}
+                      label={t(roleLabel(u.role as UserRole))}
+                      variant="info"
+                    />
+                    <StatusPill
+                      label={u.is_active ? t("Active") : t("Inactive")}
                       variant={u.is_active ? "success" : "draft"}
                     />
                     <CompactActions>
                       <CompactAction
-                        label="تعديل"
+                        label={t("Edit")}
                         icon={Pencil}
                         onClick={() => openEditor(u)}
                       />
@@ -330,10 +354,10 @@ export function UsersPage({
         </TabsContent>
 
         <TabsContent value="create">
-          <OperationalCard title="إنشاء مستخدم">
+          <OperationalCard title={t("Create user")}>
             <div className="grid max-w-lg gap-4">
               <div className="space-y-2">
-                <Label htmlFor="create-name">الاسم</Label>
+                <Label htmlFor="create-name">{t("Name")}</Label>
                 <Input
                   id="create-name"
                   value={form.name}
@@ -341,7 +365,7 @@ export function UsersPage({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="create-email">البريد الإلكتروني</Label>
+                <Label htmlFor="create-email">{t("Email")}</Label>
                 <Input
                   id="create-email"
                   type="email"
@@ -350,21 +374,25 @@ export function UsersPage({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="create-password">كلمة مرور مؤقتة</Label>
+                <Label htmlFor="create-password">
+                  {t("Temporary password")}
+                </Label>
                 <PasswordInput
                   id="create-password"
                   value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, password: e.target.value })
+                  }
                   minLength={8}
                 />
                 {form.password.length > 0 && form.password.length < 8 ? (
                   <p className="text-sm text-destructive">
-                    كلمة المرور يجب أن تكون 8 أحرف أو أكثر.
+                    {t("Password must be at least 8 characters.")}
                   </p>
                 ) : null}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="create-role">الدور</Label>
+                <Label htmlFor="create-role">{t("Role")}</Label>
                 <Select
                   value={form.role}
                   onValueChange={(v) => {
@@ -382,7 +410,7 @@ export function UsersPage({
                   <SelectContent>
                     {createRoleOptions.map((r) => (
                       <SelectItem key={r} value={r}>
-                        {ROLE_LABELS[r]}
+                        {t(ROLE_LABELS[r])}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -392,29 +420,39 @@ export function UsersPage({
                 <div className="space-y-2">
                   <Label htmlFor="create-pin">
                     {form.role === "cashier"
-                      ? "PIN (4–8 أرقام)"
-                      : "PIN للموافقة على الكاشير (اختياري)"}
+                      ? t("PIN (4–8 digits)")
+                      : t("Cashier approval PIN (optional)")}
                   </Label>
                   <Input
                     id="create-pin"
                     value={form.pin}
-                    onChange={(e) => setForm({ ...form, pin: e.target.value.replace(/\D/g, "") })}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        pin: e.target.value.replace(/\D/g, ""),
+                      })
+                    }
                     maxLength={8}
                     inputMode="numeric"
                     autoComplete="off"
                   />
                   {form.role !== "cashier" ? (
                     <p className="text-xs text-muted-foreground">
-                      للموافقة على الخصم وفتح الدرج والبيع بعد انتهاء الجلسة. مش هيغيّر كاشير الجهاز.
+                      {t(
+                        "Used to approve discounts, open the cash drawer, and sell after session expiry. It does not switch the device cashier.",
+                      )}
                     </p>
                   ) : null}
                 </div>
               )}
               <div className="space-y-2">
-                <Label>صلاحيات الفروع</Label>
+                <Label>{t("Store access")}</Label>
                 <div className="grid gap-2 rounded-xl border border-border/60 p-3">
                   {stores.map((store) => (
-                    <label key={store.id} className="flex items-center gap-2 text-sm">
+                    <label
+                      key={store.id}
+                      className="flex items-center gap-2 text-sm"
+                    >
                       <Checkbox
                         checked={form.storeIds.includes(store.id)}
                         onCheckedChange={(v) => {
@@ -443,21 +481,31 @@ export function UsersPage({
                         })
                       }
                     />
-                    تقييد المستخدم على أجهزة كاشير محددة
+                    {t("Restrict user to specific cashier devices")}
                   </label>
                   {form.restrictDevices ? (
                     <div className="grid gap-2 rounded-xl border border-border/60 p-3">
                       {devices
                         .filter((d) => form.storeIds.includes(d.store_id))
                         .map((device) => (
-                          <label key={device.id} className="flex items-center gap-2 text-sm">
+                          <label
+                            key={device.id}
+                            className="flex items-center gap-2 text-sm"
+                          >
                             <Checkbox
                               checked={form.deviceIds.includes(device.id)}
                               onCheckedChange={(v) => {
                                 const next =
                                   v === true
-                                    ? [...new Set([...form.deviceIds, device.id])]
-                                    : form.deviceIds.filter((id) => id !== device.id);
+                                    ? [
+                                        ...new Set([
+                                          ...form.deviceIds,
+                                          device.id,
+                                        ]),
+                                      ]
+                                    : form.deviceIds.filter(
+                                        (id) => id !== device.id,
+                                      );
                                 setForm({ ...form, deviceIds: next });
                               }}
                             />
@@ -467,13 +515,19 @@ export function UsersPage({
                     </div>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      تركها فارغة يعني السماح بكل الأجهزة داخل الفروع المسموحة.
+                      {t(
+                        "Leave empty to allow all devices in permitted stores.",
+                      )}
                     </p>
                   )}
                 </div>
               )}
-              <Button onClick={create} disabled={pending || !canCreate} className="min-h-10">
-                إنشاء مستخدم
+              <Button
+                onClick={create}
+                disabled={pending || !canCreate}
+                className="min-h-10"
+              >
+                {t("Create user")}
               </Button>
             </div>
           </OperationalCard>
@@ -494,32 +548,44 @@ export function UsersPage({
         ) : null}
       </Tabs>
 
-      <Sheet open={Boolean(editingUser)} onOpenChange={(open) => !open && setEditingUserId(null)}>
-        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
+      <Sheet
+        open={Boolean(editingUser)}
+        onOpenChange={(open) => !open && setEditingUserId(null)}
+      >
+        <SheetContent
+          side="right"
+          className="w-full overflow-y-auto sm:max-w-lg"
+        >
           {editingUser && editing ? (
             <>
               <SheetHeader>
-                <SheetTitle>تعديل {editingUser.name}</SheetTitle>
+                <SheetTitle>
+                  {t("Edit")} {editingUser.name}
+                </SheetTitle>
               </SheetHeader>
               <div className="space-y-5 px-4 pb-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-name">الاسم</Label>
+                  <Label htmlFor="edit-name">{t("Name")}</Label>
                   <Input
                     id="edit-name"
                     value={editing.name}
-                    onChange={(e) => patchEdit(editingUser.id, { name: e.target.value })}
+                    onChange={(e) =>
+                      patchEdit(editingUser.id, { name: e.target.value })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-email">البريد الإلكتروني</Label>
+                  <Label htmlFor="edit-email">{t("Email")}</Label>
                   <Input
                     id="edit-email"
                     value={editing.email}
-                    onChange={(e) => patchEdit(editingUser.id, { email: e.target.value })}
+                    onChange={(e) =>
+                      patchEdit(editingUser.id, { email: e.target.value })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-role">الدور</Label>
+                  <Label htmlFor="edit-role">{t("Role")}</Label>
                   <Select
                     value={editing.role}
                     onValueChange={(role) =>
@@ -534,7 +600,7 @@ export function UsersPage({
                     <SelectContent>
                       {editRoleOptions.map((role) => (
                         <SelectItem key={role} value={role}>
-                          {ROLE_LABELS[role]}
+                          {t(ROLE_LABELS[role])}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -547,21 +613,26 @@ export function UsersPage({
                       patchEdit(editingUser.id, { isActive: v === true })
                     }
                   />
-                  نشط
+                  {t("Active")}
                 </label>
 
                 <div className="space-y-2">
-                  <Label>صلاحيات الفروع</Label>
+                  <Label>{t("Store access")}</Label>
                   <div className="grid gap-2 rounded-xl border border-border/60 p-3">
                     {stores.map((store) => (
-                      <label key={store.id} className="flex items-center gap-2 text-sm">
+                      <label
+                        key={store.id}
+                        className="flex items-center gap-2 text-sm"
+                      >
                         <Checkbox
                           checked={editing.storeIds.includes(store.id)}
                           onCheckedChange={(v) => {
                             const next =
                               v === true
                                 ? [...new Set([...editing.storeIds, store.id])]
-                                : editing.storeIds.filter((id) => id !== store.id);
+                                : editing.storeIds.filter(
+                                    (id) => id !== store.id,
+                                  );
                             patchEdit(editingUser.id, { storeIds: next });
                           }}
                         />
@@ -583,22 +654,34 @@ export function UsersPage({
                           })
                         }
                       />
-                      تقييد على أجهزة محددة
+                      {t("Restrict to specific devices")}
                     </label>
                     {editing.restrictDevices ? (
                       <div className="grid gap-2 rounded-xl border border-border/60 p-3">
                         {devices
                           .filter((d) => editing.storeIds.includes(d.store_id))
                           .map((device) => (
-                            <label key={device.id} className="flex items-center gap-2 text-sm">
+                            <label
+                              key={device.id}
+                              className="flex items-center gap-2 text-sm"
+                            >
                               <Checkbox
                                 checked={editing.deviceIds.includes(device.id)}
                                 onCheckedChange={(v) => {
                                   const next =
                                     v === true
-                                      ? [...new Set([...editing.deviceIds, device.id])]
-                                      : editing.deviceIds.filter((id) => id !== device.id);
-                                  patchEdit(editingUser.id, { deviceIds: next });
+                                      ? [
+                                          ...new Set([
+                                            ...editing.deviceIds,
+                                            device.id,
+                                          ]),
+                                        ]
+                                      : editing.deviceIds.filter(
+                                          (id) => id !== device.id,
+                                        );
+                                  patchEdit(editingUser.id, {
+                                    deviceIds: next,
+                                  });
                                 }}
                               />
                               {device.name}
@@ -611,38 +694,52 @@ export function UsersPage({
 
                 {userRoleSupportsPin(editing.role) ? (
                   <div className="space-y-2 rounded-xl border border-border/60 p-3">
-                    <Label htmlFor="edit-pin">PIN جديد (اختياري)</Label>
+                    <Label htmlFor="edit-pin">{t("New PIN (optional)")}</Label>
                     <Input
                       id="edit-pin"
-                      placeholder="اتركه فاضي لو مش هتغيّره — 4 إلى 8 أرقام"
+                      placeholder={t(
+                        "Leave empty to keep it unchanged — 4 to 8 digits",
+                      )}
                       maxLength={8}
                       inputMode="numeric"
                       autoComplete="off"
                       className="max-w-[18rem]"
                       value={pinValue}
-                      onChange={(e) => setPinValue(e.target.value.replace(/\D/g, ""))}
+                      onChange={(e) =>
+                        setPinValue(e.target.value.replace(/\D/g, ""))
+                      }
                     />
                     <p className="text-xs text-muted-foreground">
                       {editing.role === "cashier"
-                        ? "لو كتبت PIN، هيتطبّق مع «حفظ التغييرات»."
-                        : "PIN للموافقة على الخصم وفتح الدرج والبيع بعد انتهاء الجلسة — مش PIN الكاشير على الجهاز."}
+                        ? t(
+                            "The new PIN will be applied when you save changes.",
+                          )
+                        : t(
+                            "This PIN approves discounts, drawer opening, and sales after expiry. It is not the device cashier PIN.",
+                          )}
                     </p>
                   </div>
                 ) : null}
 
                 {editingUser.auth_user_id ? (
                   <div className="space-y-2 rounded-xl border border-border/60 p-3">
-                    <Label htmlFor="edit-password">كلمة مرور جديدة (اختياري)</Label>
+                    <Label htmlFor="edit-password">
+                      {t("New password (optional)")}
+                    </Label>
                     <div className="w-full max-w-[18rem]">
                       <PasswordInput
                         id="edit-password"
-                        placeholder="اتركها فاضية لو مش هتغيّرها — 8 أحرف أو أكثر"
+                        placeholder={t(
+                          "Leave empty to keep it unchanged — at least 8 characters",
+                        )}
                         value={passwordValue}
                         onChange={(e) => setPasswordValue(e.target.value)}
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      لو كتبت كلمة مرور، هتتطبّق مع «حفظ التغييرات».
+                      {t(
+                        "The new password will be applied when you save changes.",
+                      )}
                     </p>
                   </div>
                 ) : null}
@@ -653,7 +750,7 @@ export function UsersPage({
                   disabled={pending}
                   onClick={() => saveUser(editingUser.id)}
                 >
-                  حفظ التغييرات
+                  {t("Save changes")}
                 </Button>
                 <Button
                   type="button"
@@ -663,16 +760,18 @@ export function UsersPage({
                     startTransition(async () => {
                       const result = await deactivateUserAction(editingUser.id);
                       if (result.success) {
-                        toast.success("تم تعطيل المستخدم");
+                        toast.success(t("User deactivated"));
                         setEditingUserId(null);
                         router.refresh();
                         return;
                       }
-                      toast.error(result.error ?? "تعذر تعطيل المستخدم");
+                      toast.error(
+                        result.error ?? t("Could not deactivate user"),
+                      );
                     });
                   }}
                 >
-                  تعطيل
+                  {t("Deactivate")}
                 </Button>
                 <Button
                   type="button"
@@ -680,7 +779,7 @@ export function UsersPage({
                   disabled={pending}
                   onClick={() => setUserToDelete(editingUser)}
                 >
-                  حذف نهائي
+                  {t("Delete permanently")}
                 </Button>
               </SheetFooter>
             </>
@@ -693,22 +792,24 @@ export function UsersPage({
         onOpenChange={(open) => {
           if (!open) setUserToDelete(null);
         }}
-        title="حذف المستخدم نهائيًا؟"
+        title={t("Delete user permanently?")}
         description={
           userToDelete
-            ? `هيتشال ${userToDelete.name} (${userToDelete.email}) من الداتابيز وحساب الدخول. لو عنده طلبات أو جلسات أو مصروفات أو حركات مخزون، العملية هتترفض وعليك تستخدم التعطيل.`
+            ? language === "ar"
+              ? `سيُحذف ${userToDelete.name} (${userToDelete.email}) من النظام وحساب الدخول. إذا كان مرتبطًا بطلبات أو جلسات أو مصروفات أو مخزون، استخدم التعطيل بدلًا من الحذف.`
+              : `${userToDelete.name} (${userToDelete.email}) will be removed from the system and login account. If the user is linked to orders, sessions, expenses, or inventory, deactivate them instead.`
             : ""
         }
-        confirmLabel="حذف نهائي"
+        confirmLabel={t("Delete permanently")}
         destructive
         onConfirm={async () => {
           if (!userToDelete) return;
           const result = await deleteUserPermanentlyAction(userToDelete.id);
           if (!result.success) {
-            toast.error(result.error ?? "تعذر حذف المستخدم نهائيًا");
+            toast.error(result.error ?? t("Could not delete user permanently"));
             throw new Error(result.error ?? "delete failed");
           }
-          toast.success("تم حذف المستخدم نهائيًا");
+          toast.success(t("User permanently deleted"));
           setUserToDelete(null);
           setEditingUserId(null);
           router.refresh();

@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 type DocumentPrintPreviewModalProps = {
   open: boolean;
@@ -29,24 +30,25 @@ export function DocumentPrintPreviewModal({
   open,
   onOpenChange,
   href,
-  title = "معاينة الطباعة",
+  title = "Print preview",
 }: DocumentPrintPreviewModalProps) {
+  const { t } = useTranslation();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [loading, setLoading] = useState(true);
 
   const handlePrint = useCallback(() => {
     const frame = iframeRef.current;
     if (!frame?.contentWindow) {
-      toast.error("المعاينة لسه بتحمل… حاول تاني");
+      toast.error(t("Preview is still loading. Try again."));
       return;
     }
     try {
       frame.contentWindow.focus();
       frame.contentWindow.print();
     } catch {
-      toast.error("تعذرت الطباعة من المعاينة");
+      toast.error(t("Could not print the preview."));
     }
-  }, []);
+  }, [t]);
 
   return (
     <Dialog
@@ -65,14 +67,14 @@ export function DocumentPrintPreviewModal({
       >
         <DialogHeader className="shrink-0 border-b border-border/70 px-4 py-3">
           <DialogTitle className="flex items-center justify-between gap-2 text-base">
-            <span>{title}</span>
+            <span>{t(title)}</span>
             <Button
               type="button"
               variant="ghost"
               size="icon-sm"
               className="rounded-lg"
               onClick={() => onOpenChange(false)}
-              aria-label="إغلاق"
+              aria-label={t("Close")}
             >
               <X className="size-4" />
             </Button>
@@ -82,14 +84,14 @@ export function DocumentPrintPreviewModal({
         <div className="relative min-h-0 flex-1 bg-muted/40">
           {loading ? (
             <p className="absolute inset-0 z-10 grid place-items-center text-sm text-muted-foreground">
-              جاري تجهيز المعاينة…
+              {t("Preparing preview…")}
             </p>
           ) : null}
           {open && href ? (
             <iframe
               key={href}
               ref={iframeRef}
-              title={title}
+              title={t(title)}
               src={href}
               className="h-[min(70dvh,720px)] w-full border-0 bg-white"
               onLoad={() => setLoading(false)}
@@ -105,7 +107,7 @@ export function DocumentPrintPreviewModal({
             disabled={loading || !href}
           >
             <Printer className="size-4" />
-            طباعة
+            {t("Print")}
           </Button>
           <Button
             type="button"
@@ -113,7 +115,7 @@ export function DocumentPrintPreviewModal({
             className="h-11 min-w-28 flex-1 rounded-xl sm:flex-none"
             onClick={() => onOpenChange(false)}
           >
-            إغلاق
+            {t("Close")}
           </Button>
         </div>
       </DialogContent>

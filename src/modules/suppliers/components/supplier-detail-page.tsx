@@ -6,8 +6,7 @@ import { useAppRouter as useRouter } from "@/hooks/use-app-router";
 import { Landmark, Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { DateRangeFilter } from "@/components/Velora/date-range-filter";
 import { CompactAction, CompactActions } from "@/components/Velora/compact-actions";
 import { PageHeader } from "@/components/Velora/page-header";
 import { OperationalCard } from "@/components/Velora/operational-card";
@@ -55,6 +54,7 @@ interface SupplierDetailPageProps {
   storeId: string;
   /** Open payment dialog from aging deep-link `?pay=1`. */
   initialPayOpen?: boolean;
+  returnHref?: string;
 }
 
 export function SupplierDetailPage({
@@ -64,6 +64,7 @@ export function SupplierDetailPage({
   canEditSupplier,
   storeId,
   initialPayOpen = false,
+  returnHref = "/inventory/suppliers",
 }: SupplierDetailPageProps) {
   const router = useRouter();
   const [statement, setStatement] = useState(initialStatement);
@@ -98,16 +99,6 @@ export function SupplierDetailPage({
     return { purchased, paid, balance: statement.closingBalance };
   }, [statement]);
 
-  const applyFilter = () => {
-    refreshStatement(statementRange(from, to));
-  };
-
-  const clearFilter = () => {
-    setFrom("");
-    setTo("");
-    refreshStatement();
-  };
-
   const confirmVoidPayment = () => {
     if (!voidPaymentId) return;
     startTransition(async () => {
@@ -141,7 +132,7 @@ export function SupplierDetailPage({
       <PageHeader
         breadcrumb={
           <span className="flex flex-wrap items-center gap-1">
-            <Link href="/inventory/suppliers" className="text-primary hover:underline">
+            <Link href={returnHref} className="text-primary hover:underline">
               الموردين
             </Link>
             <span aria-hidden>·</span>
@@ -192,7 +183,7 @@ export function SupplierDetailPage({
         }
       />
 
-      <div className="grid gap-[var(--mds-space-4)] sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-[var(--mds-space-3)] sm:gap-[var(--mds-space-4)] lg:grid-cols-4">
         <KpiCard
           label="الرصيد المستحق"
           value={formatCurrency(kpis.balance, currency)}
@@ -216,38 +207,15 @@ export function SupplierDetailPage({
         title="كشف الحساب"
         description={`الرصيد الختامي ${formatCurrency(statement.closingBalance, currency)}`}
       >
-        <div className="mb-4 grid grid-cols-2 gap-2 rounded-[var(--mds-radius-md)] border border-border/60 bg-muted/30 p-3 sm:flex sm:flex-wrap sm:items-end sm:gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">من</Label>
-            <Input
-              type="date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-              className="h-11 w-full bg-background sm:h-9 sm:w-[9.5rem]"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">إلى</Label>
-            <Input
-              type="date"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              className="h-11 w-full bg-background sm:h-9 sm:w-[9.5rem]"
-            />
-          </div>
-          <Button size="sm" className="col-span-2 min-h-11 sm:col-auto sm:min-h-9" onClick={applyFilter} disabled={pending}>
-            تطبيق
-          </Button>
-          {hasDateFilter ? (
-            <Button size="sm" variant="outline" className="col-span-2 min-h-11 sm:col-auto sm:min-h-9" onClick={clearFilter} disabled={pending}>
-              مسح
-            </Button>
-          ) : null}
-          {from && !to ? (
-            <p className="col-span-2 basis-full text-xs text-muted-foreground">
-              تاريخ النهاية يكون اليوم تلقائيًا عند تحديد تاريخ البداية فقط.
-            </p>
-          ) : null}
+        <div className="mb-4 rounded-[var(--mds-radius-md)] border border-border/60 bg-muted/30 p-3">
+          <DateRangeFilter
+            value={{ from, to }}
+            onChange={(range) => {
+              setFrom(range.from);
+              setTo(range.to);
+              refreshStatement(range.from || range.to ? statementRange(range.from, range.to) : undefined);
+            }}
+          />
         </div>
         <ResponsiveListLayout
           mobile={

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useAppRouter as useRouter } from "@/hooks/use-app-router";
 import { PageHeader } from "@/components/Velora/page-header";
 import { EmptyStateBlock } from "@/components/Velora/state-blocks";
+import { PageShell } from "@/components/Velora/page-patterns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { selectLabelById } from "@/lib/select-label";
+import { useTranslation } from "@/lib/i18n/use-translation";
 import type { FeatureFlag } from "@/lib/constants";
 import type {
   AppUser,
@@ -94,13 +96,22 @@ export interface SettingsShellProps {
   usersBundle: {
     users: AppUser[];
     stores: Store[];
-    devices: { id: string; store_id: string; name: string; is_active: boolean; last_seen_at: string | null }[];
+    devices: {
+      id: string;
+      store_id: string;
+      name: string;
+      is_active: boolean;
+      last_seen_at: string | null;
+    }[];
     userDeviceIds: Record<string, string[]>;
     actorRole: UserRole;
     permissionsData: {
       permissions: Permission[];
       matrix: Record<UserRole, PermissionKey[]>;
-      userGrants: Record<string, { permission_key: string; granted: boolean }[]>;
+      userGrants: Record<
+        string,
+        { permission_key: string; granted: boolean }[]
+      >;
     } | null;
   } | null;
   costCentersBundle: {
@@ -154,6 +165,7 @@ export function SettingsShell({
   canUploadLogo = false,
 }: SettingsShellProps) {
   const router = useRouter();
+  const { t, language } = useTranslation();
   const searchParams = useSearchParams();
   const [, startTransition] = useTransition();
   const [settingsQuery, setSettingsQuery] = useState("");
@@ -174,7 +186,7 @@ export function SettingsShell({
         router.push(`/settings?${params.toString()}`);
       });
     },
-    [router, searchParams]
+    [router, searchParams],
   );
 
   const bundle = settingsBundle;
@@ -184,28 +196,43 @@ export function SettingsShell({
     const query = settingsQuery.trim().toLowerCase();
     if (!query) return visibleTabs;
     return visibleTabs.filter((tab) => {
-      const haystack = `${tab.label} ${tab.group} ${tab.searchTerms.join(" ")}`.toLowerCase();
+      const haystack =
+        `${tab.label} ${tab.group} ${tab.searchTerms.join(" ")}`.toLowerCase();
       return haystack.includes(query);
     });
   }, [settingsQuery, visibleTabs]);
 
   return (
-    <>
+    <PageShell dir={language === "ar" ? "rtl" : "ltr"}>
       <PageHeader
-        breadcrumb={<span>الإدارة · الإعدادات</span>}
-        title="الإعدادات"
+        breadcrumb={
+          <span>
+            {t("Administration")} · {t("Settings")}
+          </span>
+        }
+        title={t("Settings")}
+        description={t(
+          "Manage your business, branches, users, and operations.",
+        )}
       />
-      <Tabs value={activeTab} onValueChange={setTab} className="min-w-0 flex-col gap-3">
-        <div className="min-w-0 space-y-3 rounded-[var(--mds-radius-lg)] border border-border bg-card p-3 shadow-[var(--mds-elevation-1)] sm:p-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={setTab}
+        className="min-w-0 flex-col gap-[var(--mds-space-4)]"
+      >
+        <div className="min-w-0 space-y-3 rounded-[var(--mds-radius-lg)] border border-border bg-card p-3 sm:p-4">
           <Input
-            aria-label="بحث في الإعدادات"
-            placeholder="ابحث في الإعدادات..."
+            aria-label={t("Search settings")}
+            placeholder={t("Search settings...")}
             className="h-10"
             value={settingsQuery}
             onChange={(event) => setSettingsQuery(event.target.value)}
           />
           {filteredTabs.length === 0 ? (
-            <EmptyStateBlock title="لا توجد نتائج" description="جرّب كلمة بحث أخرى." />
+            <EmptyStateBlock
+              title={t("No results")}
+              description={t("Try another search.")}
+            />
           ) : (
             <>
               <div className="md:hidden">
@@ -215,19 +242,38 @@ export function SettingsShell({
                     if (value) setTab(value);
                   }}
                 >
-                  <SelectTrigger className="h-11 w-full" aria-label="قسم الإعدادات">
+                  <SelectTrigger
+                    className="h-11 w-full"
+                    aria-label={t("Settings section")}
+                  >
                     <SelectValue>
                       {() =>
-                        selectLabelById(filteredTabs, activeTab, (tab) => tab.label) ||
-                        selectLabelById(visibleTabs, activeTab, (tab) => tab.label) ||
-                        "اختر قسمًا"
+                        t(
+                          String(
+                            selectLabelById(
+                              filteredTabs,
+                              activeTab,
+                              (tab) => tab.label,
+                            ) ||
+                              selectLabelById(
+                                visibleTabs,
+                                activeTab,
+                                (tab) => tab.label,
+                              ) ||
+                              "Choose a section",
+                          ),
+                        )
                       }
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {filteredTabs.map((tab) => (
-                      <SelectItem key={tab.id} value={tab.id} label={tab.label}>
-                        {tab.label}
+                      <SelectItem
+                        key={tab.id}
+                        value={tab.id}
+                        label={t(tab.label)}
+                      >
+                        {t(tab.label)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -239,10 +285,10 @@ export function SettingsShell({
                     <TabsTrigger
                       key={tab.id}
                       value={tab.id}
-                      title={tab.label}
+                      title={t(tab.label)}
                       className="h-9 shrink-0 rounded-[var(--mds-radius-md)] px-3 text-sm font-medium whitespace-nowrap data-active:bg-[var(--mds-color-action-primary)] data-active:text-[var(--mds-color-text-inverse)] data-active:shadow-[var(--mds-elevation-1)]"
                     >
-                      {tab.label}
+                      {t(tab.label)}
                     </TabsTrigger>
                   ))}
                 </TabsList>
@@ -253,13 +299,22 @@ export function SettingsShell({
 
         {canManageSettings && bundle ? (
           <>
-            <TabsContent value="business" className="min-w-0 data-hidden:hidden">
+            <TabsContent
+              value="business"
+              className="min-w-0 data-hidden:hidden"
+            >
               <BusinessSettingsTab org={bundle.org} />
             </TabsContent>
-            <TabsContent value="activity" className="min-w-0 data-hidden:hidden">
+            <TabsContent
+              value="activity"
+              className="min-w-0 data-hidden:hidden"
+            >
               <ActivitySettingsTab businessActivity={bundle.businessActivity} />
             </TabsContent>
-            <TabsContent value="branches" className="min-w-0 data-hidden:hidden">
+            <TabsContent
+              value="branches"
+              className="min-w-0 data-hidden:hidden"
+            >
               <BranchSettingsTab
                 stores={bundle.stores}
                 warehouses={bundle.warehouses}
@@ -268,7 +323,10 @@ export function SettingsShell({
                 menuViewStatsByStore={bundle.menuViewStatsByStore}
               />
             </TabsContent>
-            <TabsContent value="features" className="min-w-0 data-hidden:hidden">
+            <TabsContent
+              value="features"
+              className="min-w-0 data-hidden:hidden"
+            >
               <SystemFeaturesTab
                 featureFlags={bundle.featureFlags}
                 activityType={bundle.businessActivity.activity_type}
@@ -306,7 +364,10 @@ export function SettingsShell({
         )}
 
         {usersBundle ? (
-          <TabsContent value="users" className="min-w-0 overflow-hidden data-hidden:hidden">
+          <TabsContent
+            value="users"
+            className="min-w-0 overflow-hidden data-hidden:hidden"
+          >
             <UsersSettingsTab {...usersBundle} />
           </TabsContent>
         ) : null}
@@ -322,19 +383,24 @@ export function SettingsShell({
               />
             ) : (
               <EmptyStateBlock
-                title="محرك الطباعة"
-                description="مقدرناش نحمّل القالب. حدّث الصفحة وحاول تاني."
+                title={t("Print engine")}
+                description={t(
+                  "Could not load the template. Refresh the page and try again.",
+                )}
               />
             )}
           </TabsContent>
         ) : null}
 
         {auditBundle ? (
-          <TabsContent value="audit" className="min-w-0 overflow-hidden data-hidden:hidden">
+          <TabsContent
+            value="audit"
+            className="min-w-0 overflow-hidden data-hidden:hidden"
+          >
             <AuditSettingsTab {...auditBundle} />
           </TabsContent>
         ) : null}
       </Tabs>
-    </>
+    </PageShell>
   );
 }

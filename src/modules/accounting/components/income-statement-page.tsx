@@ -11,9 +11,8 @@ import { MobileEntityCard } from "@/components/Velora/mobile-entity-card";
 import { OperationalCard } from "@/components/Velora/operational-card";
 import { ResponsiveListLayout } from "@/components/Velora/responsive-list-layout";
 import { EmptyStateBlock } from "@/components/Velora/state-blocks";
+import { DateRangeFilter } from "@/components/Velora/date-range-filter";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/format";
 import type { Store } from "@/lib/types";
 import { exportIncomeStatementExcel } from "@/modules/accounting/actions/gl-export.actions";
@@ -89,7 +88,7 @@ export function IncomeStatementPage({
         <AccountingSubnav />
       </div>
 
-      <div className="mb-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard
           label="إجمالي الإيراد"
           value={formatCurrency(result.grossRevenue, currency)}
@@ -118,27 +117,12 @@ export function IncomeStatementPage({
       </div>
 
       <OperationalCard title="الفترة">
-        <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_auto]">
-          <div className="min-w-0 space-y-1.5">
-            <Label htmlFor="is-from">من</Label>
-            <Input
-              id="is-from"
-              type="date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-              className="w-full min-w-0"
-            />
-          </div>
-          <div className="min-w-0 space-y-1.5">
-            <Label htmlFor="is-to">إلى</Label>
-            <Input
-              id="is-to"
-              type="date"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              className="w-full min-w-0"
-            />
-          </div>
+        <div className="grid grid-cols-2 items-end gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_auto]">
+          <DateRangeFilter
+            className="col-span-2 min-w-0"
+            value={{ from, to }}
+            onChange={(range) => { setFrom(range.from); setTo(range.to); }}
+          />
           <AccountingStoreSelect
             id="is-store"
             stores={stores}
@@ -147,7 +131,7 @@ export function IncomeStatementPage({
             allowAll
           />
           <div className="flex items-end">
-            <Button type="button" disabled={pending} onClick={applyFilters}>
+            <Button type="button" className="w-full" disabled={pending} onClick={applyFilters}>
               عرض
             </Button>
           </div>

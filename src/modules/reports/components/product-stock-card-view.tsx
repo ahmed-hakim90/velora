@@ -12,8 +12,6 @@ import {
   Scale,
   Warehouse,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -43,6 +41,8 @@ import { selectLabelById } from "@/lib/select-label";
 import type { Store, Warehouse as WarehouseType } from "@/lib/types";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n/use-translation";
+import { DateRangeFilter } from "@/components/Velora/date-range-filter";
 
 interface ProductOption {
   id: string;
@@ -73,6 +73,22 @@ function formatQty(n: number): string {
   });
 }
 
+const stockCardLabelsEn: Record<string, string> = {
+  بيع: "Sale",
+  شراء: "Purchase",
+  "شراء من جلسة": "Purchase from session",
+  "تحويل وارد": "Transfer in",
+  "تحويل صادر": "Transfer out",
+  هدر: "Waste",
+  تعديل: "Adjustment",
+  جرد: "Stock count",
+  حجز: "Reservation",
+  "فك حجز": "Reservation release",
+  جه: "Inbound",
+  طلع: "Outbound",
+  اتساوى: "Adjustment",
+};
+
 export function ProductStockCardView({
   filters,
   stores,
@@ -84,6 +100,7 @@ export function ProductStockCardView({
   canPdf,
 }: ProductStockCardViewProps) {
   const router = useRouter();
+  const { t, language } = useTranslation();
   const [pending, startTransition] = useTransition();
   const printQs = reportFiltersToSearchParams(filters);
   const printHref = `/print/reports/product-card${printQs ? `?${printQs}` : ""}`;
@@ -107,7 +124,7 @@ export function ProductStockCardView({
 
   const columns: ColumnDef<ProductStockCardLine>[] = [
     {
-      header: "التاريخ",
+      header: t("Date"),
       id: "at",
       cell: ({ row }) => (
         <span className="whitespace-nowrap tabular-nums text-sm">
@@ -116,17 +133,25 @@ export function ProductStockCardView({
       ),
     },
     {
-      header: "النوع",
+      header: t("Type"),
       id: "type",
       cell: ({ row }) => (
         <div>
-          <p className="font-medium">{row.original.movementTypeLabel}</p>
-          <p className="text-xs text-muted-foreground">{row.original.bucketLabel}</p>
+          <p className="font-medium">
+            {language === "en"
+              ? stockCardLabelsEn[row.original.movementTypeLabel] ?? row.original.movementTypeLabel
+              : t(row.original.movementTypeLabel)}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {language === "en"
+              ? stockCardLabelsEn[row.original.bucketLabel] ?? row.original.bucketLabel
+              : t(row.original.bucketLabel)}
+          </p>
         </div>
       ),
     },
     {
-      header: "جه",
+      header: t("Inbound"),
       id: "in",
       cell: ({ row }) =>
         row.original.inQty > 0 ? (
@@ -138,7 +163,7 @@ export function ProductStockCardView({
         ),
     },
     {
-      header: "طلع",
+      header: t("Outbound"),
       id: "out",
       cell: ({ row }) =>
         row.original.outQty > 0 ? (
@@ -150,7 +175,7 @@ export function ProductStockCardView({
         ),
     },
     {
-      header: "اتساوى",
+      header: t("Adjustment"),
       id: "eq",
       cell: ({ row }) =>
         row.original.equalizeQty !== 0 ? (
@@ -170,7 +195,7 @@ export function ProductStockCardView({
         ),
     },
     {
-      header: "الرصيد",
+      header: t("Balance"),
       id: "balance",
       cell: ({ row }) => (
         <span className="font-semibold tabular-nums">
@@ -179,7 +204,7 @@ export function ProductStockCardView({
       ),
     },
     {
-      header: "المخزن / السبب",
+      header: t("Warehouse / reason"),
       id: "meta",
       cell: ({ row }) => (
         <div className="max-w-[14rem]">
@@ -192,17 +217,17 @@ export function ProductStockCardView({
     },
   ];
 
-  const unitSuffix = report ? ` ${report.product.unitLabel}` : "";
+  const unitSuffix = report ? ` ${t(report.product.unitLabel)}` : "";
 
   return (
     <ReportPage
-      title="كارت صنف"
-      description="رصيد افتتاحي، وارد، منصرف، تسوية، ومتاح — على الفترة اللي تختارها"
+      title="Product Card"
+      description={t("Opening balance, inbound, outbound, adjustments, and available stock for the selected period.")}
       actions={
         report ? (
           <div className="flex flex-wrap items-center gap-[var(--mds-space-2)] print:hidden">
             <CompactAction
-              label="مبيعات المنتج"
+              label="Product sales"
               icon={BarChart3}
               href={salesProductHref!}
             />
@@ -235,83 +260,43 @@ export function ProductStockCardView({
         ) : undefined
       }
       filters={
-        <div className="flex flex-wrap items-end gap-[var(--mds-space-3)]">
-          <div className="flex gap-[var(--mds-space-2)]">
-            {[7, 30, 90].map((days) => (
-              <Button
-                key={days}
-                type="button"
-                size="sm"
-                variant={filters.days === days && !filters.from ? "default" : "outline"}
-                className="rounded-[var(--mds-radius-md)]"
-                onClick={() => apply({ days, from: undefined, to: undefined })}
-              >
-                {days} يوم
-              </Button>
-            ))}
-          </div>
-
-          <form
-            className="flex flex-wrap items-end gap-[var(--mds-space-2)]"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const fd = new FormData(e.currentTarget);
+        <div className="grid w-full grid-cols-2 gap-[var(--mds-space-3)] sm:gap-[var(--mds-space-4)] lg:grid-cols-[auto_auto_minmax(13rem,1fr)_auto] lg:items-end">
+          <DateRangeFilter
+            className="col-span-2 lg:col-span-2"
+            value={{ from: filters.from ?? "", to: filters.to ?? "" }}
+            onChange={(range) =>
               apply({
-                from: fd.get("from")?.toString() || undefined,
-                to: fd.get("to")?.toString() || undefined,
+                from: range.from || undefined,
+                to: range.to || undefined,
                 days: undefined,
-              });
-            }}
-          >
-            <div className="space-y-[var(--mds-space-1)]">
-              <Label htmlFor="from">من</Label>
-              <Input
-                id="from"
-                name="from"
-                type="date"
-                defaultValue={filters.from ?? ""}
-                className="rounded-[var(--mds-radius-md)]"
-              />
-            </div>
-            <div className="space-y-[var(--mds-space-1)]">
-              <Label htmlFor="to">إلى</Label>
-              <Input
-                id="to"
-                name="to"
-                type="date"
-                defaultValue={filters.to ?? ""}
-                className="rounded-[var(--mds-radius-md)]"
-              />
-            </div>
-            <Button type="submit" size="sm" variant="secondary">
-              تطبيق الفترة
-            </Button>
-          </form>
+              })
+            }
+          />
 
-          <div className="space-y-[var(--mds-space-1)]">
-            <Label>الصنف</Label>
+          <div className="min-w-0 space-y-[var(--mds-space-1)]">
+            <Label>{t("Product")}</Label>
             <Select
               value={filters.productId ?? "__unset"}
               onValueChange={(v) =>
                 apply({ productId: !v || v === "__unset" ? undefined : v })
               }
             >
-              <SelectTrigger className="w-[220px] rounded-[var(--mds-radius-md)]">
-                <SelectValue placeholder="اختر صنف…">
+              <SelectTrigger className="min-h-11 w-full rounded-[var(--mds-radius-md)] sm:min-h-9 lg:w-[220px]">
+                <SelectValue placeholder={t("Select a product…")}>
                   {(value) =>
                     !value || value === "__unset"
-                      ? "اختر صنف…"
+                      ? t("Select a product…")
                       : selectLabelById(products, value, (p) => p.name)
                   }
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__unset" label="اختر صنف…">
-                  اختر صنف…
+                <SelectItem value="__unset" label={t("Select a product…")}>
+                  {t("Select a product…")}
                 </SelectItem>
                 {products.length === 0 ? (
                   <SelectItem value="__none" disabled>
-                    مفيش أصناف متتبعة
+                    {t("No tracked products")}
                   </SelectItem>
                 ) : (
                   products.map((p) => (
@@ -331,7 +316,7 @@ export function ProductStockCardView({
 
           {stores.length > 1 ? (
             <div className="space-y-[var(--mds-space-1)]">
-              <Label>الفرع</Label>
+              <Label>{t("Store")}</Label>
               <Select
                 value={filters.storeId ?? "all"}
                 onValueChange={(v) =>
@@ -341,18 +326,18 @@ export function ProductStockCardView({
                   })
                 }
               >
-                <SelectTrigger className="w-[160px] rounded-[var(--mds-radius-md)]">
+                <SelectTrigger className="min-h-11 w-full rounded-[var(--mds-radius-md)] sm:min-h-9 lg:w-[160px]">
                   <SelectValue>
                     {(value) =>
                       !value || value === "all"
-                        ? "كل الفروع"
+                        ? t("All stores")
                         : selectLabelById(stores, value, (s) => s.name)
                     }
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all" label="كل الفروع">
-                    كل الفروع
+                  <SelectItem value="all" label={t("All stores")}>
+                    {t("All stores")}
                   </SelectItem>
                   {stores.map((s) => (
                     <SelectItem key={s.id} value={s.id} label={s.name}>
@@ -365,25 +350,25 @@ export function ProductStockCardView({
           ) : null}
 
           <div className="space-y-[var(--mds-space-1)]">
-            <Label>المخزن</Label>
+            <Label>{t("Warehouse")}</Label>
             <Select
               value={filters.warehouseId ?? "all"}
               onValueChange={(v) =>
                 apply({ warehouseId: !v || v === "all" ? undefined : v })
               }
             >
-              <SelectTrigger className="w-[160px] rounded-[var(--mds-radius-md)]">
+              <SelectTrigger className="min-h-11 w-full rounded-[var(--mds-radius-md)] sm:min-h-9 lg:w-[160px]">
                 <SelectValue>
                   {(value) =>
                     value === "all"
-                      ? "كل المخازن"
+                      ? t("All warehouses")
                       : selectLabelById(warehouses, value, (w) => w.name)
                   }
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" label="كل المخازن">
-                  كل المخازن
+                <SelectItem value="all" label={t("All warehouses")}>
+                  {t("All warehouses")}
                 </SelectItem>
                 {warehouses.map((w) => (
                   <SelectItem key={w.id} value={w.id} label={w.name}>
@@ -398,8 +383,8 @@ export function ProductStockCardView({
     >
       {!filters.productId || !report ? (
         <EmptyStateBlock
-          title="اختار صنف عشان تشوف الكارت"
-          description="حدّد الصنف والفترة — هيظهر الرصيد الافتتاحي، اللي جه، اللي طلع، التسوية، والمتاح."
+          title={t("Select a product to view its card")}
+          description={t("Choose a product and period to see opening balance, inbound, outbound, adjustments, and available stock.")}
         />
       ) : (
         <>
@@ -407,8 +392,8 @@ export function ProductStockCardView({
             <p className="font-semibold">{report.product.name}</p>
             <p className="text-muted-foreground">
               {report.product.sku ? `SKU ${report.product.sku} · ` : ""}
-              الوحدة: {report.product.unitLabel}
-              {report.warehouseName ? ` · مخزن ${report.warehouseName}` : " · كل المخازن"}
+              {t("Unit")}: {t(report.product.unitLabel)}
+              {report.warehouseName ? ` · ${t("Warehouse")} ${report.warehouseName}` : ` · ${t("All warehouses")}`}
             </p>
           </div>
 
@@ -416,34 +401,34 @@ export function ProductStockCardView({
             columns={3}
             items={[
               {
-                label: "بدانا بـ",
+                label: "Opening balance",
                 value: `${formatQty(report.openingQty)}${unitSuffix}`,
                 icon: <Package className="size-5" />,
               },
               {
-                label: "جه",
+                label: "Inbound",
                 value: `${formatQty(report.totals.inQty)}${unitSuffix}`,
                 icon: <ArrowDownToLine className="size-5" />,
                 trend: "up",
               },
               {
-                label: "طلع",
+                label: "Outbound",
                 value: `${formatQty(report.totals.outQty)}${unitSuffix}`,
                 icon: <ArrowUpFromLine className="size-5" />,
                 trend: "down",
               },
               {
-                label: "اتساوى",
+                label: "Adjustments",
                 value: `${report.totals.equalizeQty > 0 ? "+" : ""}${formatQty(report.totals.equalizeQty)}${unitSuffix}`,
                 icon: <Scale className="size-5" />,
               },
               {
-                label: "متاح (نهاية الفترة)",
+                label: "Available at period end",
                 value: `${formatQty(report.closingQty)}${unitSuffix}`,
                 icon: <Warehouse className="size-5" />,
               },
               {
-                label: "رصيد حالي الآن",
+                label: "Current balance",
                 value: `${formatQty(report.onHandQty)}${unitSuffix}`,
                 icon: <Package className="size-5" />,
               },
@@ -451,10 +436,10 @@ export function ProductStockCardView({
           />
 
           <ReportTable
-            title="حركة الصنف في الفترة"
+            title={t("Product movement during the period")}
             columns={columns}
             data={report.lines}
-            emptyMessage="مفيش حركات للصنف ده في الفترة دي"
+            emptyMessage={t("No movements for this product during the selected period")}
           />
         </>
       )}

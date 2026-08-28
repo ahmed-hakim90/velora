@@ -69,7 +69,7 @@ export function SessionDetailPage({ detail, lifecycle }: SessionDetailPageProps)
         }
       />
 
-      <div className="grid gap-[var(--mds-space-4)] sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-[var(--mds-space-3)] sm:gap-[var(--mds-space-4)] lg:grid-cols-3">
         <OperationalCard
           title="الفواتير المكتملة"
           value={String(detail.orderCount)}

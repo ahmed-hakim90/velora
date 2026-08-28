@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   ArrowLeftRight,
@@ -11,83 +13,85 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/Velora/page-header";
 import { OperationalCard } from "@/components/Velora/operational-card";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 const SETUP_STEPS = [
   {
-    title: "أضف الفروع والمخازن",
-    body: "من صفحة المخازن راجع مخزن كل فرع. كل فرع بيتعمل له مخزن رئيسي تلقائيًا، وتقدر تضيف مخازن إضافية (ثلاجة، مخزن إنتاج…).",
+    title: "Add branches and warehouses",
+    body: "Review each branch warehouse. A main warehouse is created automatically, and you can add more when needed.",
     href: "/inventory/warehouses",
-    linkLabel: "إدارة المخازن",
+    linkLabel: "Manage warehouses",
     icon: Warehouse,
   },
   {
-    title: "أضف المنتجات والتصنيفات",
-    body: "أنشئ التصنيفات والمنتجات بالأسعار والباركود. تقدر تستورد ملف Excel من صفحة المنتجات.",
+    title: "Add products and categories",
+    body: "Create categories and products with prices and barcodes. You can also import an Excel file from Products.",
     href: "/products",
-    linkLabel: "المنتجات",
+    linkLabel: "Products",
     icon: Package,
   },
   {
-    title: "فعّل برنامج الولاء",
-    body: "حدد كام نقطة يكسبها العميل لكل جنيه، وقيمة النقطة عند الاستبدال. النقاط بتتحسب تلقائيًا مع كل فاتورة.",
+    title: "Enable loyalty",
+    body: "Set how customers earn and redeem points. Points are calculated automatically with every invoice.",
     href: "/customers/loyalty",
-    linkLabel: "إعدادات الولاء",
+    linkLabel: "Loyalty settings",
     icon: Heart,
   },
 ] as const;
 
 const DAILY_STEPS = [
   {
-    step: "١",
-    title: "افتح وردية",
-    body: "من صفحة الورديات افتح وردية جديدة وسجّل النقدية الافتتاحية في الدرج.",
+    step: "1",
+    title: "Open a shift",
+    body: "Open a new cashier shift and enter the opening cash in the drawer.",
   },
   {
-    step: "٢",
-    title: "بيع من شاشة الكاشير",
-    body: "افتح رابط الفرع زي /nutalla/pos، اكتب PIN الكاشير، اختار المنتجات أو امسح الباركود، واقبض نقدي أو كارت.",
+    step: "2",
+    title: "Sell from POS",
+    body: "Open the branch POS, enter the cashier PIN, select or scan products, then collect payment.",
   },
   {
-    step: "٣",
-    title: "استبدال نقاط الولاء",
-    body: "لو العميل عنده نقاط، هتظهر في شاشة الدفع — اكتب عدد النقاط أو اضغط «استخدم الكل» وهتتخصم من الفاتورة فورًا.",
+    step: "3",
+    title: "Redeem loyalty points",
+    body: "Available points appear during payment. Enter an amount or use all points to apply the discount.",
   },
   {
-    step: "٤",
-    title: "اقفل الوردية",
-    body: "في نهاية اليوم عدّ النقدية الفعلية واقفل الوردية. النظام بيحسب الفرق تلقائيًا ويسجله في التقارير.",
+    step: "4",
+    title: "Close the shift",
+    body: "Count the actual cash and close the shift. The system records any variance automatically.",
   },
 ] as const;
 
 const INVENTORY_TIPS = [
   {
     icon: Warehouse,
-    title: "المخزن الافتراضي",
-    body: "البيع من الكاشير بيخصم من المخزن الافتراضي للفرع تلقائيًا. غيّر المخزن الافتراضي من صفحة المخازن.",
+    title: "Default warehouse",
+    body: "POS sales deduct stock from the branch default warehouse automatically. You can change it from Warehouses.",
   },
   {
     icon: ArrowLeftRight,
-    title: "التحويلات",
-    body: "انقل بضاعة بين الفروع والمخازن من صفحة التحويلات، مع تتبع حالة الإرسال والاستلام.",
+    title: "Transfers",
+    body: "Move stock between branches and warehouses and track sending and receiving status.",
   },
   {
     icon: ClipboardList,
-    title: "الجرد",
-    body: "اعمل جرد دوري من صفحة الجرد — النظام بيقارن العدد الفعلي بالمسجل ويظهر الفروقات.",
+    title: "Stock count",
+    body: "Run regular stock counts. The system compares actual and recorded quantities and shows the variance.",
   },
 ] as const;
 
 export function GuidePage() {
+  const { t } = useTranslation();
   return (
     <>
       <PageHeader
-        title="دليل الاستخدام"
-        description="Velora — كل اللي تحتاجه علشان تجهّز المتجر وتشغّل الكاشير يوم بيوم"
+        title="User Guide"
+        description="Set up your store and run daily operations with Velora."
       />
 
       <OperationalCard
-        title="الإعداد لأول مرة"
-        description="أربع خطوات وتكون جاهز للبيع"
+        title={t("First-time setup")}
+        description={t("Get ready to sell in a few steps.")}
         className="mb-3"
       >
         <div className="grid gap-4 md:grid-cols-2">
@@ -98,14 +102,14 @@ export function GuidePage() {
               </div>
               <div className="min-w-0">
                 <p className="font-semibold">
-                  {index + 1}. {title}
+                  {index + 1}. {t(title)}
                 </p>
-                <p className="mt-1 text-sm text-muted-foreground">{body}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{t(body)}</p>
                 <Link
                   href={href}
                   className="mt-2 inline-block text-sm font-medium text-primary hover:underline"
                 >
-                  {linkLabel} ←
+                  {t(linkLabel)} ←
                 </Link>
               </div>
             </div>
@@ -114,8 +118,8 @@ export function GuidePage() {
       </OperationalCard>
 
       <OperationalCard
-        title="يوم العمل على الكاشير"
-        description="الدورة اليومية من فتح الوردية لإغلاقها"
+        title={t("Daily POS workflow")}
+        description={t("From opening the shift to closing it.")}
         className="mb-3"
       >
         <ol className="grid gap-3 lg:grid-cols-4">
@@ -125,9 +129,9 @@ export function GuidePage() {
                 <span className="flex size-7 items-center justify-center rounded-full bg-primary text-sm text-primary-foreground">
                   {step}
                 </span>
-                {title}
+                {t(title)}
               </p>
-              <p className="text-sm text-muted-foreground">{body}</p>
+              <p className="text-sm text-muted-foreground">{t(body)}</p>
             </li>
           ))}
         </ol>
@@ -137,21 +141,21 @@ export function GuidePage() {
             className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 px-3 py-2 text-sm font-medium hover:bg-muted"
           >
             <Clock className="size-4" />
-            الورديات
+            {t("Cashier Sessions")}
           </Link>
           <Link
             href="/pos"
             className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 px-3 py-2 text-sm font-medium hover:bg-muted"
           >
             <ShoppingCart className="size-4" />
-            شاشة الكاشير
+            {t("POS")}
           </Link>
         </div>
       </OperationalCard>
 
       <OperationalCard
-        title="إدارة المخزون"
-        description="إزاي البضاعة بتتحرك جوه النظام"
+        title={t("Inventory management")}
+        description={t("How stock moves through the system.")}
         className="mb-3"
       >
         <div className="grid gap-4 md:grid-cols-3">
@@ -159,38 +163,35 @@ export function GuidePage() {
             <div key={title} className="rounded-2xl border border-border/60 p-4">
               <p className="mb-1 flex items-center gap-2 font-semibold">
                 <Icon className="size-4 text-primary" />
-                {title}
+                {t(title)}
               </p>
-              <p className="text-sm text-muted-foreground">{body}</p>
+              <p className="text-sm text-muted-foreground">{t(body)}</p>
             </div>
           ))}
         </div>
       </OperationalCard>
 
       <OperationalCard
-        title="برنامج ولاء العملاء"
-        description="عميل بيرجع تاني أحسن من عميل جديد"
+        title={t("Customer loyalty")}
+        description={t("Reward returning customers automatically.")}
       >
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-2xl bg-muted/50 p-4">
             <p className="mb-1 flex items-center gap-2 font-semibold">
               <Rocket className="size-4 text-primary" />
-              كسب النقاط
+              {t("Earning points")}
             </p>
             <p className="text-sm text-muted-foreground">
-              اربط العميل بالفاتورة من شاشة الكاشير (بحث برقم الموبايل أو إنشاء عميل جديد
-              بضغطة). النقاط بتتحسب تلقائيًا على إجمالي الفاتورة بعد الخصومات حسب المعدل اللي
-              حددته في إعدادات الولاء.
+              {t("Attach the customer to the invoice. Points are calculated automatically after discounts using your loyalty settings.")}
             </p>
           </div>
           <div className="rounded-2xl bg-muted/50 p-4">
             <p className="mb-1 flex items-center gap-2 font-semibold">
               <Heart className="size-4 text-primary" />
-              استبدال النقاط
+              {t("Redeeming points")}
             </p>
             <p className="text-sm text-muted-foreground">
-              في شاشة الدفع هيظهر رصيد نقاط العميل. الكاشير يكتب عدد النقاط أو يضغط «استخدم
-              الكل» — القيمة بتتخصم من الفاتورة والنقاط بتتسجل في كشف حساب العميل فورًا.
+              {t("The customer point balance appears during payment. Enter the points or use them all to apply the discount instantly.")}
             </p>
           </div>
         </div>
@@ -198,7 +199,7 @@ export function GuidePage() {
           href="/customers/loyalty"
           className="mt-4 inline-block text-sm font-medium text-primary hover:underline"
         >
-          إعدادات برنامج الولاء ←
+          {t("Loyalty settings")} ←
         </Link>
       </OperationalCard>
     </>

@@ -101,7 +101,7 @@ export function ReportScheduleCard({ initial, canManage }: ReportScheduleCardPro
 
         <div className="space-y-2">
           <Label>التقارير في الإيميل</Label>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-2">
             {REPORT_SCHEDULE_KEYS.map((key) => (
               <label key={key} className="flex items-center gap-2 text-sm">
                 <Checkbox

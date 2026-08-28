@@ -16,8 +16,8 @@ import {
 } from "recharts";
 import { DollarSign, Receipt, Scale, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DateRangeFilter } from "@/components/Velora/date-range-filter";
 import {
   Select,
   SelectContent,
@@ -147,30 +147,10 @@ export function CashierSalesMiniView({
               </Button>
             ))}
           </div>
-          <form
-            className="flex flex-wrap items-end gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const fd = new FormData(e.currentTarget);
-              apply({
-                from: fd.get("from")?.toString() || undefined,
-                to: fd.get("to")?.toString() || undefined,
-                days: undefined,
-              });
-            }}
-          >
-            <div className="space-y-1">
-              <Label htmlFor="from">من</Label>
-              <Input id="from" name="from" type="date" defaultValue={filters.from ?? ""} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="to">إلى</Label>
-              <Input id="to" name="to" type="date" defaultValue={filters.to ?? ""} />
-            </div>
-            <Button type="submit" size="sm" variant="secondary">
-              تطبيق
-            </Button>
-          </form>
+          <DateRangeFilter
+            value={{ from: filters.from ?? "", to: filters.to ?? "" }}
+            onChange={(range) => apply({ from: range.from || undefined, to: range.to || undefined, days: undefined })}
+          />
           <div className="min-w-[14rem] space-y-1">
             <Label>الموظف</Label>
             <Select

@@ -39,17 +39,17 @@ export function PosReadinessBanner({ state, action }: PosReadinessBannerProps) {
   return (
     <div
       className={cn(
-        "flex w-full shrink-0 items-center justify-between gap-3 rounded-2xl border px-4 py-3 max-[390px]:gap-2 max-[390px]:rounded-xl max-[390px]:px-2.5 max-[390px]:py-2",
+        "flex min-h-12 w-full shrink-0 items-center justify-between gap-1.5 rounded-lg border px-2 py-0.5 sm:gap-2 sm:rounded-xl sm:px-3 sm:py-2",
         isExpired
           ? "border-destructive/40 bg-destructive/10"
           : "border-amber-500/30 bg-amber-500/10"
       )}
     >
-      <div className="flex min-w-0 items-center gap-3 max-[390px]:gap-2">
+      <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
         {Icon ? (
           <Icon
             className={cn(
-              "size-5 shrink-0 max-[390px]:size-4",
+              "size-4 shrink-0",
               isExpired ? "text-destructive" : "text-amber-700 dark:text-amber-300"
             )}
           />
@@ -57,7 +57,7 @@ export function PosReadinessBanner({ state, action }: PosReadinessBannerProps) {
         <div className="min-w-0">
           <p
             className={cn(
-              "text-sm font-semibold max-[390px]:text-xs",
+              "truncate text-[11px] font-semibold sm:text-xs",
               isExpired ? "text-destructive" : "text-amber-900 dark:text-amber-200"
             )}
           >
@@ -65,7 +65,7 @@ export function PosReadinessBanner({ state, action }: PosReadinessBannerProps) {
           </p>
           <p
             className={cn(
-              "text-xs max-[390px]:line-clamp-2 max-[390px]:text-[11px]",
+              "text-[11px] max-sm:sr-only sm:line-clamp-2",
               isExpired ? "text-destructive/90" : "text-amber-800/90 dark:text-amber-200/90"
             )}
           >
@@ -74,13 +74,13 @@ export function PosReadinessBanner({ state, action }: PosReadinessBannerProps) {
         </div>
       </div>
       {action ? (
-        <div className="shrink-0">{action}</div>
+        <div className="shrink-0 [&_button]:h-11 [&_button]:rounded-lg [&_p]:hidden sm:[&_p]:block">{action}</div>
       ) : copy.href && copy.cta ? (
         <Link
           href={copy.href}
           className={cn(
             buttonVariants({ size: "sm", variant: "outline" }),
-            "shrink-0 rounded-full"
+            "h-11 shrink-0 rounded-lg px-2.5 text-xs sm:px-3"
           )}
         >
           {copy.cta}

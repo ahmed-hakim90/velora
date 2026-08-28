@@ -9,6 +9,7 @@ import {
 } from "recharts";
 import { EmptyStateBlock } from "@/components/Velora/state-blocks";
 import { formatCurrency } from "@/lib/format";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface LiveSalesPulseProps {
   data: { hour: string; total: number }[];
@@ -18,10 +19,11 @@ interface LiveSalesPulseProps {
 const HARBOR = "#0E7490";
 
 export function LiveSalesPulse({ data, todaySales }: LiveSalesPulseProps) {
+  const { t } = useTranslation();
   return (
     <div className="rounded-[var(--mds-radius-lg)] border border-border bg-card p-5 text-card-foreground shadow-[var(--mds-elevation-1)]">
       <div className="mb-1 flex items-baseline justify-between">
-        <p className="text-sm font-medium text-muted-foreground">مبيعات اليوم</p>
+        <p className="text-sm font-medium text-muted-foreground">{t("Today's sales")}</p>
         <p className="text-2xl font-semibold tabular-nums tracking-tight">
           {formatCurrency(todaySales)}
         </p>
@@ -63,7 +65,7 @@ export function LiveSalesPulse({ data, todaySales }: LiveSalesPulseProps) {
         </ResponsiveContainer>
         ) : (
           <EmptyStateBlock
-            title="مفيش مبيعات النهاردة لسة"
+            title="No sales today"
             className="flex h-full min-h-[120px] items-center justify-center border-0 bg-transparent p-[var(--mds-space-3)] shadow-none"
           />
         )}

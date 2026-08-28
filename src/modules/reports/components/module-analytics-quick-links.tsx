@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { OperationalCard } from "@/components/Velora/operational-card";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 export interface AnalyticsQuickLink {
   href: string;
@@ -29,10 +30,11 @@ export function ModuleAnalyticsQuickLinks({
   links,
   className,
 }: ModuleAnalyticsQuickLinksProps) {
+  const { t } = useTranslation();
   if (links.length === 0) return null;
 
   return (
-    <OperationalCard title={title} description={description} className={className}>
+    <OperationalCard title={t(title)} description={description ? t(description) : undefined} className={className}>
       <div
         className={cn(
           "grid gap-[var(--mds-space-3)] sm:grid-cols-2 lg:grid-cols-3"
@@ -50,9 +52,9 @@ export function ModuleAnalyticsQuickLinks({
                 <Icon className="size-4" aria-hidden />
               </span>
               <span className="min-w-0">
-                <span className="block text-sm font-medium">{link.label}</span>
+                <span className="block text-sm font-medium">{t(link.label)}</span>
                 <span className="mt-0.5 block text-xs text-muted-foreground">
-                  {link.description}
+                  {t(link.description)}
                 </span>
               </span>
             </Link>

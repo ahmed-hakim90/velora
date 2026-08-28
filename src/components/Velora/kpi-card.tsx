@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { GlassPanel } from "./glass-panel";
+import { LocalizedText } from "@/components/Velora/localized-text";
 
 interface KpiCardProps {
   label: string;
@@ -20,10 +21,10 @@ export function KpiCard({ label, value, change, trend, icon, className }: KpiCar
       )}
     >
       <div className="h-1 w-full bg-[var(--mds-color-action-primary)]" aria-hidden />
-      <div className="flex items-start justify-between gap-3 p-3">
-        <div>
-          <p className="text-xs font-medium text-muted-foreground">{label}</p>
-          <p className="mt-0.5 text-xl font-semibold tracking-tight tabular-nums text-foreground sm:text-2xl">
+      <div className="flex min-w-0 items-start justify-between gap-2 p-2.5 sm:gap-3 sm:p-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-muted-foreground"><LocalizedText text={label} /></p>
+          <p className="mt-0.5 break-words text-lg font-semibold tracking-tight tabular-nums text-foreground sm:text-2xl">
             {value}
           </p>
           {change && (
@@ -35,12 +36,12 @@ export function KpiCard({ label, value, change, trend, icon, className }: KpiCar
                 trend === "neutral" && "text-muted-foreground"
               )}
             >
-              {change}
+              <LocalizedText text={change} />
             </p>
           )}
         </div>
         {icon && (
-          <div className="flex size-8 items-center justify-center rounded-[var(--mds-radius-md)] bg-[var(--mds-color-harbor-50)] text-[var(--mds-color-action-primary)]">
+          <div className="hidden size-8 shrink-0 items-center justify-center rounded-[var(--mds-radius-md)] bg-[var(--mds-color-harbor-50)] text-[var(--mds-color-action-primary)] min-[360px]:flex">
             {icon}
           </div>
         )}

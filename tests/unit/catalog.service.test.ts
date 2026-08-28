@@ -64,4 +64,23 @@ describe("findPosProductByBarcode", () => {
     expect(match?.product.name).toBe("Vanilla");
     expect(match?.variant).toBeNull();
   });
+
+  it("matches product SKU regardless of casing and surrounding spaces", () => {
+    const product = mockProduct({ hasVariants: false, variants: [] });
+    const match = findPosProductByBarcode([product], "  ice-001  ");
+
+    expect(match).toEqual({ product, variant: null });
+  });
+
+  it("finds a variant by SKU when the scanner sends its stock code", () => {
+    const product = mockProduct();
+    const match = findPosProductByBarcode([product], "ice-001-s");
+
+    expect(match?.product.id).toBe("p1");
+    expect(match?.variant?.id).toBe("v1");
+  });
+
+  it("ignores whitespace-only scanner input", () => {
+    expect(findPosProductByBarcode([mockProduct()], "   ")).toBeNull();
+  });
 });

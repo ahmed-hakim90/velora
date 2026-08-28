@@ -12,6 +12,7 @@ import {
 import { selectLabelById } from "@/lib/select-label";
 import { ProductSearchCombobox } from "@/modules/products/components/product-search-combobox";
 import type { Category, Product, Warehouse } from "@/lib/types";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 export interface StockCountScopeValue {
   warehouseId: string;
@@ -37,6 +38,7 @@ export function StockCountScopeFields({
   value,
   onChange,
 }: StockCountScopeFieldsProps) {
+  const { t } = useTranslation();
   const trackedProducts = products.filter((product) => {
     if (!product.track_inventory) return false;
     if (value.categoryId !== "all" && product.category_id !== value.categoryId) {
@@ -48,7 +50,7 @@ export function StockCountScopeFields({
   return (
     <>
       <div className="space-y-1.5">
-        <Label htmlFor={`${idPrefix}-warehouse`}>المخزن</Label>
+        <Label htmlFor={`${idPrefix}-warehouse`}>{t("Warehouse")}</Label>
         <Select
           value={value.warehouseId}
           onValueChange={(warehouseId) =>
@@ -56,7 +58,7 @@ export function StockCountScopeFields({
           }
         >
           <SelectTrigger id={`${idPrefix}-warehouse`} className="h-11">
-            <SelectValue placeholder="المخزن">
+            <SelectValue placeholder={t("Warehouse")}>
               {(selected) => selectLabelById(warehouses, selected, (w) => w.name)}
             </SelectValue>
           </SelectTrigger>
@@ -71,7 +73,7 @@ export function StockCountScopeFields({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor={`${idPrefix}-category`}>قسم المنتجات</Label>
+        <Label htmlFor={`${idPrefix}-category`}>{t("Product category")}</Label>
         <Select
           value={value.categoryId}
           onValueChange={(categoryId) =>
@@ -84,17 +86,17 @@ export function StockCountScopeFields({
           }
         >
           <SelectTrigger id={`${idPrefix}-category`} className="h-11">
-            <SelectValue placeholder="كل الأقسام">
+            <SelectValue placeholder={t("All categories")}>
               {(selected) =>
                 selected === "all"
-                  ? "كل الأقسام"
+                  ? t("All categories")
                   : selectLabelById(categories, selected, (c) => c.name)
               }
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all" label="كل الأقسام">
-              كل الأقسام
+            <SelectItem value="all" label={t("All categories")}>
+              {t("All categories")}
             </SelectItem>
             {categories.map((category) => (
               <SelectItem key={category.id} value={category.id} label={category.name}>
@@ -118,8 +120,8 @@ export function StockCountScopeFields({
               productQuery: product.name,
             })
           }
-          label="منتج واحد (اختياري)"
-          placeholder="سيب فاضي لكل الأصناف — أو ابحث عن منتج"
+          label={t("One product (optional)")}
+          placeholder={t("Leave empty for all products, or search for one")}
         />
         {value.productId ? (
           <Button
@@ -131,7 +133,7 @@ export function StockCountScopeFields({
               onChange({ ...value, productId: "", productQuery: "" })
             }
           >
-            إلغاء اختيار المنتج
+            {t("Clear product selection")}
           </Button>
         ) : null}
       </div>

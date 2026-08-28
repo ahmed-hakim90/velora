@@ -56,7 +56,7 @@ export default async function PosHubPage() {
     }
 
     return (
-      <div className="mx-auto flex min-h-[70vh] w-full max-w-lg flex-col justify-center gap-4 p-6">
+      <div className="mx-auto flex min-h-[70dvh] w-full max-w-lg flex-col justify-center gap-4 p-6">
         <h1 className="text-xl font-semibold">اختار فرع الكاشير</h1>
         <p className="text-sm text-muted-foreground">
           كل فرع ليه رابط ثابت. افتح رابط الفرع ودخل برقم PIN.
@@ -91,7 +91,7 @@ export default async function PosHubPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[70vh] w-full max-w-lg flex-col justify-center gap-4 p-6 text-center">
+    <div className="mx-auto flex min-h-[70dvh] w-full max-w-lg flex-col justify-center gap-4 p-6 text-center">
       <h1 className="text-xl font-semibold">رابط نقطة البيع</h1>
       <p className="text-sm text-muted-foreground">
         افتح رابط الفرع مباشرة، مثال:{" "}

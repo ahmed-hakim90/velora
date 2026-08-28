@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/Velora/page-header";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface ReportPageProps {
   title: string;
@@ -21,12 +22,14 @@ export function ReportPage({
   children,
   className,
 }: ReportPageProps) {
+  const { t, language } = useTranslation();
+
   return (
-    <div className={cn("flex flex-col gap-3", className)} dir="rtl">
+    <div className={cn("flex flex-col gap-3", className)} dir={language === "ar" ? "rtl" : "ltr"}>
       <PageHeader
         breadcrumb={
           <Link href="/reports" className="text-primary hover:underline">
-            التقارير
+            {t("Reports")}
           </Link>
         }
         title={title}

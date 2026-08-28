@@ -1,10 +1,40 @@
-# Meridian Design System
+# Meridian Design System 2.0
 
-**Version:** 1.0.0  
+**Version:** 2.0.0
 **Status:** Production Source of Truth  
 **Owner:** Design Systems & Frontend Architecture  
 **Applies to:** ERP · POS · OMS · CRM · HR · Inventory · Manufacturing · E-commerce · SaaS · Dashboards · Admin Panels · Mobile-Responsive Web Apps  
-**Last reviewed:** 2026-07-11  
+**Last reviewed:** 2026-08-27
+
+## Meridian 2.0 implementation contract
+
+Meridian 2.0 uses an **attention-first** hierarchy. Operational exceptions and the next correct action appear before passive KPIs. Overview pages must not become collections of equal-weight cards.
+
+### Canonical page patterns
+
+- `PageShell` owns page rhythm and vertical spacing.
+- `EntityList` owns list/table boundaries; rows use dividers rather than individual cards.
+- `DetailLayout` owns the main/aside relationship and collapses to one column below desktop.
+- `FilterBar` is the only shared container for search, filters, view controls, and result context.
+- `FormLayout` uses one column by default and two columns only when fields can be compared safely.
+- `StateView` is required for neutral, warning, and error outcomes. Loading, empty, denied, and failure states may not be omitted.
+
+### Responsive contract
+
+| Width | Required behavior |
+|---|---|
+| `390px` | One content column, bottom navigation, 44px minimum interactive targets, no horizontal page scrolling |
+| `834px` | Two-column summaries where useful; navigation may remain compact |
+| `1440px` | Dense operational layout with a persistent sidebar and a maximum content width of 1480px |
+
+### UI review rules
+
+1. Use semantic `--mds-*` tokens only. Raw color, spacing, radius, shadow, motion, and z-index values require a documented token addition.
+2. Use spacing, alignment, typography, and dividers before introducing a new card or elevation.
+3. Each region has one primary action. Secondary actions use links, ghost buttons, or menus.
+4. Arabic and English, RTL and LTR, light and dark themes are release states—not later enhancements.
+5. Focus visibility, reduced motion, keyboard order, readable labels, and WCAG 2.2 AA contrast are part of component acceptance.
+6. New product UI must use a canonical page pattern or update this contract in the same change.
 
 ---
 

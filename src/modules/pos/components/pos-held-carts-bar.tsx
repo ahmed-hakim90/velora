@@ -19,8 +19,10 @@ import {
   resumeHeldCartAction,
 } from "@/modules/pos/actions/held-cart.actions";
 import { getCartSubtotal, usePosStore } from "@/stores/pos-store";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 export function PosHeldCartsBar() {
+  const { t } = useTranslation();
   const heldCarts = usePosStore((s) => s.heldCarts);
   const resumeHeldCart = usePosStore((s) => s.resumeHeldCart);
   const removeHeldCart = usePosStore((s) => s.removeHeldCart);
@@ -36,7 +38,7 @@ export function PosHeldCartsBar() {
     const target = state.heldCarts.find((held) => held.id === id);
     if (!target) return;
     if (target.id.startsWith("temp-hold-") && !target.failedCheckout) {
-      toast.error("لسه بنحفظ الفاتورة المعلّقة… حاول تاني لحظات");
+      toast.error(t("The held invoice is still saving. Try again shortly."));
       return;
     }
 
@@ -44,12 +46,12 @@ export function PosHeldCartsBar() {
     if (target.failedCheckout) {
       const ok = resumeHeldCart(id, null);
       if (!ok) {
-        toast.error("الفاتورة المعلّقة غير موجودة");
+        toast.error(t("Held invoice not found"));
         return;
       }
       setPickerOpen(false);
       playPosSuccessSound();
-      toast.success("اترجعت الفاتورة — راجع وادفع تاني");
+      toast.success(t("Invoice restored — review it and try payment again"));
       return;
     }
 
@@ -85,7 +87,7 @@ export function PosHeldCartsBar() {
             name:
               parkCurrent.name?.trim() ||
               parkCurrent.customer?.name ||
-              `معلّقة ${state.heldCarts.length + 1}`,
+              `${t("Held")} ${state.heldCarts.length + 1}`,
             cart: parkCurrent.cart,
             customer: parkCurrent.customer,
             discountAmount: parkCurrent.discountAmount,
@@ -97,7 +99,7 @@ export function PosHeldCartsBar() {
 
     const ok = resumeHeldCart(id, parkedLocal);
     if (!ok) {
-      toast.error("الفاتورة المعلّقة غير موجودة");
+      toast.error(t("Held invoice not found"));
       return;
     }
 
@@ -114,7 +116,7 @@ export function PosHeldCartsBar() {
         return;
       }
       playPosSuccessSound();
-      toast.success("تم استئناف الفاتورة");
+      toast.success(t("Invoice resumed"));
       if (parkedLocal && result.parked) {
         reconcileHeldCartId(parkedLocal.id, result.parked);
       }
@@ -151,30 +153,34 @@ export function PosHeldCartsBar() {
         type="button"
         variant="outline"
         size="sm"
-        className="h-11 shrink-0 justify-center gap-1.5 rounded-xl border-orange-200 bg-orange-50 px-2.5 text-sm font-semibold text-orange-950 hover:bg-orange-100 sm:h-10 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-200 dark:hover:bg-orange-500/20"
+        className="relative h-11 shrink-0 justify-center gap-1.5 rounded-xl border-orange-200 bg-orange-50 px-2.5 text-sm font-semibold text-orange-950 hover:bg-orange-100 max-lg:size-11 max-lg:px-0 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-200 dark:hover:bg-orange-500/20"
         onClick={() => setPickerOpen(true)}
-        aria-label={`فواتير معلّقة: ${heldCarts.length}`}
+        aria-label={`${t("Held invoices")}: ${heldCarts.length}`}
       >
         <Clock3 className="size-4 shrink-0" />
-        <span className="truncate max-[390px]:sr-only">فواتير معلّقة</span>
-        <span className="rounded-full bg-orange-700 px-1.5 py-0.5 text-[11px] font-bold text-white tabular-nums dark:bg-orange-400 dark:text-orange-950">
+        <span className="truncate max-lg:sr-only">{t("Held invoices")}</span>
+        <span className="rounded-full bg-orange-700 px-1.5 py-0.5 text-[11px] font-bold text-white tabular-nums max-lg:absolute max-lg:-end-1 max-lg:-top-1 dark:bg-orange-400 dark:text-orange-950">
           {heldCarts.length}
         </span>
       </Button>
 
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-        <DialogContent className="max-h-[92dvh] max-w-lg overflow-hidden rounded-2xl p-0 sm:max-w-lg">
-          <DialogHeader className="space-y-2 border-b border-border/70 px-4 py-4 text-start">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-orange-500/15 text-orange-800 dark:text-orange-200">
-              <Clock3 className="size-5" />
+        <DialogContent className="max-h-[94dvh] max-w-lg overflow-hidden rounded-2xl p-0 max-sm:max-w-[calc(100%-0.5rem)] sm:max-w-lg">
+          <DialogHeader className="border-b border-border/70 px-3 py-3 text-start">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-orange-500/15 text-orange-800 dark:text-orange-200">
+                <Clock3 className="size-4" />
+              </div>
+              <div className="min-w-0">
+                <DialogTitle className="text-base">{t("Held invoices")}</DialogTitle>
+                <DialogDescription className="truncate text-xs">
+                  {t("Choose an invoice to resume. Your current cart will be held automatically.")}
+                </DialogDescription>
+              </div>
             </div>
-            <DialogTitle>فواتير معلّقة</DialogTitle>
-            <DialogDescription>
-              اختار فاتورة للاستئناف — الفاتورة الحالية هتتعلّق تلقائي لو فيها أصناف
-            </DialogDescription>
           </DialogHeader>
 
-          <ul className="max-h-[min(70dvh,560px)] space-y-2 overflow-y-auto px-4 py-4">
+          <ul className="max-h-[min(76dvh,620px)] space-y-1.5 overflow-y-auto px-2.5 py-2.5 sm:px-3">
             {heldCarts.map((held) => {
               const itemCount = held.cart.length;
               const subtotal = getCartSubtotal(held.cart);
@@ -185,32 +191,32 @@ export function PosHeldCartsBar() {
                   <div
                     className={
                       failed
-                        ? "flex items-stretch gap-1.5 rounded-xl border border-destructive/40 bg-destructive/5 p-1.5"
-                        : "flex items-stretch gap-1.5 rounded-xl border border-border/70 bg-background p-1.5"
+                        ? "flex items-stretch gap-1 rounded-lg border border-destructive/40 bg-destructive/5 p-1"
+                        : "flex items-stretch gap-1 rounded-lg border border-border/70 bg-background p-1"
                     }
                   >
                     <button
                       type="button"
-                      className="min-w-0 flex-1 rounded-lg px-2.5 py-2.5 text-start transition-colors hover:bg-muted/60 disabled:opacity-60"
+                      className="min-w-0 flex-1 rounded-md px-2 py-1.5 text-start transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 disabled:opacity-60"
                       onClick={() => handleResumeHeldCart(held.id)}
                       disabled={saving || discardPending}
                     >
                       <p className="truncate text-sm font-semibold">{held.name}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         {saving
-                          ? "جاري الحفظ…"
+                          ? t("Saving…")
                           : failed
-                            ? held.failureMessage || "اضغط للاستعادة وإعادة المحاولة"
+                            ? held.failureMessage || t("Tap to restore and try again")
                             : [
                                 held.customer?.name,
-                                `${itemCount} صنف`,
+                                `${itemCount} ${t(itemCount === 1 ? "item" : "items")}`,
                                 formatCurrency(subtotal),
                               ]
                                 .filter(Boolean)
                                 .join(" · ")}
                       </p>
                       {!saving && held.createdAt ? (
-                        <p className="mt-0.5 text-[11px] text-muted-foreground/80">
+                        <p className="text-[10px] text-muted-foreground/80">
                           {formatDateTime(held.createdAt)}
                         </p>
                       ) : null}
@@ -219,8 +225,8 @@ export function PosHeldCartsBar() {
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="size-11 shrink-0 self-center rounded-xl text-muted-foreground hover:text-destructive"
-                      aria-label={`حذف ${held.name}`}
+                      className="size-11 shrink-0 self-center rounded-lg text-muted-foreground hover:text-destructive"
+                      aria-label={`${t("Delete")} ${held.name}`}
                       disabled={discardPending}
                       onClick={() => setHeldDeleteId(held.id)}
                     >
@@ -239,9 +245,9 @@ export function PosHeldCartsBar() {
         onOpenChange={(open) => {
           if (!open) setHeldDeleteId(null);
         }}
-        title="حذف الفاتورة المعلّقة؟"
-        description="هتتمسح الفاتورة المعلّقة ومش هتقدر ترجعها."
-        confirmLabel="حذف"
+        title={t("Delete held invoice?")}
+        description={t("This held invoice will be deleted permanently.")}
+        confirmLabel={t("Delete")}
         destructive
         onConfirm={() => {
           if (heldDeleteId) handleDiscardHeldCart(heldDeleteId);

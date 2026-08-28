@@ -11,11 +11,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { LoadingStateBlock } from "@/components/Velora/state-blocks";
+import { ErrorStateBlock, LoadingStateBlock } from "@/components/Velora/state-blocks";
 import { listActiveModifiersForPosAction } from "@/modules/products/actions/product-modifiers.actions";
 import type { ProductModifierGroup } from "@/modules/products/services/product-modifiers.service";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 export function PosModifierPicker(props: {
   open: boolean;
@@ -25,13 +26,19 @@ export function PosModifierPicker(props: {
   onClose: () => void;
   onConfirm: (modifiers: { name: string; price: number }[]) => void;
 }) {
+  const { t } = useTranslation();
   const [groups, setGroups] = useState<ProductModifierGroup[]>([]);
   const [selected, setSelected] = useState<Record<string, Set<string>>>({});
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [selectionError, setSelectionError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
     if (!props.open) return;
     setLoading(true);
+    setLoadError(null);
+    setSelectionError(null);
     setSelected({});
     void listActiveModifiersForPosAction(props.productId)
       .then((next) => {
@@ -42,14 +49,16 @@ export function PosModifierPicker(props: {
         }
       })
       .catch((error) => {
-        toast.error(error instanceof Error ? error.message : "فشل تحميل الإضافات");
-        props.onClose();
+        const message = t(error instanceof Error ? error.message : "Could not load modifiers");
+        setLoadError(message);
+        toast.error(message);
       })
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- open/productId drive load
-  }, [props.open, props.productId]);
+  }, [loadAttempt, props.open, props.productId]);
 
   function toggle(groupId: string, modifierId: string, maxSelect: number) {
+    setSelectionError(null);
     setSelected((prev) => {
       const current = new Set(prev[groupId] ?? []);
       if (current.has(modifierId)) {
@@ -69,7 +78,7 @@ export function PosModifierPicker(props: {
     for (const group of groups) {
       const count = selected[group.id]?.size ?? 0;
       if (count < group.minSelect) {
-        toast.error(`اختر على الأقل ${group.minSelect} من «${group.name}»`);
+        setSelectionError(`${t("Choose at least")} ${group.minSelect} ${t("from")} “${group.name}”`);
         return;
       }
     }
@@ -89,40 +98,48 @@ export function PosModifierPicker(props: {
   return (
     <Dialog open={props.open} onOpenChange={(o) => !o && props.onClose()}>
       <DialogContent className="max-h-[min(92dvh,100%)] max-w-md overflow-hidden p-0 max-sm:max-w-[calc(100%-0.75rem)] sm:max-w-md">
-        <DialogHeader className="border-b border-border/60 px-4 py-3 text-start">
-          <DialogTitle className="text-base sm:text-lg">
-            إضافات — {props.productName}
+        <DialogHeader className="border-b border-border/60 px-3 py-2.5 text-start sm:px-4 sm:py-3">
+          <DialogTitle className="truncate pe-7 text-base sm:text-lg">
+            {t("Modifiers")} — {props.productName}
           </DialogTitle>
         </DialogHeader>
         {loading ? (
           <LoadingStateBlock
-            label="جاري التحميل…"
+            label={t("Loading…")}
             className="mx-4 my-4 border-0 shadow-none"
           />
+        ) : loadError ? (
+          <ErrorStateBlock
+            title={t("Could not load modifiers")}
+            description={loadError}
+            retryLabel={t("Try again")}
+            onRetry={() => setLoadAttempt((current) => current + 1)}
+            className="m-3 border-0 px-3 py-5 shadow-none"
+          />
         ) : (
-          <div className="max-h-[min(55dvh,22rem)] space-y-4 overflow-y-auto overscroll-y-contain px-3 py-3 sm:px-4">
+          <div className="max-h-[min(62dvh,26rem)] space-y-3 overflow-y-auto overscroll-y-contain px-2.5 py-2.5 sm:px-3">
             {groups.map((group) => (
-              <div key={group.id} className="space-y-2">
-                <p className="text-sm font-semibold">
+              <div key={group.id} className="space-y-1.5">
+                <p className="px-0.5 text-xs font-semibold">
                   {group.name}{" "}
                   <span className="font-normal text-muted-foreground">
                     ({group.minSelect}–{group.maxSelect})
                   </span>
                 </p>
-                <ul className="space-y-1.5">
+                <ul className="space-y-1">
                   {group.modifiers.map((mod) => {
                     const checked = selected[group.id]?.has(mod.id) ?? false;
                     return (
                       <li key={mod.id}>
                         <label
                           className={cn(
-                            "flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-sm transition active:scale-[0.99]",
+                            "flex min-h-11 cursor-pointer items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-sm transition active:scale-[0.99]",
                             checked
                               ? "border-primary/50 bg-primary/5"
                               : "border-border/70 bg-card hover:bg-muted/40"
                           )}
                         >
-                          <span className="flex min-w-0 items-center gap-2.5">
+                          <span className="flex min-w-0 items-center gap-2">
                             <Checkbox
                               checked={checked}
                               onCheckedChange={() =>
@@ -145,22 +162,27 @@ export function PosModifierPicker(props: {
             ))}
           </div>
         )}
-        <DialogFooter className="mx-0 mb-0 border-t border-border/60 px-3 py-3 sm:px-4">
+        {selectionError ? (
+          <p className="border-t border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive" role="alert">
+            {selectionError}
+          </p>
+        ) : null}
+        <DialogFooter className="mx-0 mb-0 grid grid-cols-2 gap-1.5 border-t border-border/60 px-2.5 py-2 sm:px-3 sm:py-2.5">
           <Button
             type="button"
             variant="outline"
-            className="h-12 rounded-xl"
+            className="h-11 rounded-lg"
             onClick={props.onClose}
           >
-            إلغاء
+            {t("Cancel")}
           </Button>
           <Button
             type="button"
-            className="h-12 rounded-xl font-semibold"
+            className="h-11 rounded-lg font-semibold"
             onClick={confirm}
-            disabled={loading}
+            disabled={loading || Boolean(loadError)}
           >
-            إضافة للسلة
+            {t("Add to cart")}
           </Button>
         </DialogFooter>
       </DialogContent>

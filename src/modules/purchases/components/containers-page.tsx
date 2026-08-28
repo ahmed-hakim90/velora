@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Plus, Ship } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,11 +15,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PageHeader } from "@/components/Velora/page-header";
-import { OperationalCard } from "@/components/Velora/operational-card";
 import { EmptyStateBlock } from "@/components/Velora/state-blocks";
 import { StatusPill } from "@/components/Velora/status-pill";
 import { CompactAction, CompactActions } from "@/components/Velora/compact-actions";
-import { formatCurrency } from "@/lib/format";
+import { DateRangeFilter, type DateRangeValue } from "@/components/Velora/date-range-filter";
+import { MobileEntityCard } from "@/components/Velora/mobile-entity-card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatCurrency, formatDateTime } from "@/lib/format";
 import {
   attachContainerCertificateAction,
   createContainerAction,
@@ -32,6 +35,7 @@ import {
   PURCHASE_CONTAINER_STATUS_LABELS,
   type PurchaseContainerStatus,
 } from "@/modules/purchases/lib/import-constants";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 const statusVariant: Record<
   PurchaseContainerStatus,
@@ -51,10 +55,14 @@ interface ContainersPageProps {
 }
 
 export function ContainersPage({ containers: initial, currency }: ContainersPageProps) {
+  const { t } = useTranslation();
   const [containers, setContainers] = useState(initial);
+  const searchParams = useSearchParams();
   const [certificates, setCertificates] = useState<CertificateWithDetails[]>([]);
   const [pending, startTransition] = useTransition();
-  const [filter, setFilter] = useState("");
+  const [filter, setFilter] = useState(searchParams.get("q") ?? "");
+  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") ?? "all");
+  const [dateRange, setDateRange] = useState<DateRangeValue>({ from: searchParams.get("from") ?? "", to: searchParams.get("to") ?? "" });
 
   useEffect(() => {
     void (async () => {
@@ -67,14 +75,39 @@ export function ContainersPage({ containers: initial, currency }: ContainersPage
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    if (!q) return containers;
-    return containers.filter(
-      (c) =>
+    return containers.filter((c) => {
+      const date = c.created_at.slice(0, 10);
+      const matchesSearch = !q ||
         c.container_number.toLowerCase().includes(q) ||
         c.purchaseOrderNumber.toLowerCase().includes(q) ||
-        (c.certificateNumber ?? "").toLowerCase().includes(q)
-    );
-  }, [containers, filter]);
+        (c.certificateNumber ?? "").toLowerCase().includes(q);
+      return matchesSearch && (statusFilter === "all" || c.status === statusFilter) && (!dateRange.from || date >= dateRange.from) && (!dateRange.to || date <= dateRange.to);
+    });
+  }, [containers, filter, statusFilter, dateRange]);
+
+  function updateUrl(patch: Record<string, string>) {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(patch).forEach(([key, value]) => value && value !== "all" ? params.set(key, value) : params.delete(key));
+    const query = params.toString();
+    window.history.replaceState(null, "", query ? `/inventory/containers?${query}` : "/inventory/containers");
+  }
+
+  function containerActions(container: ContainerWithLines) {
+    if (container.status === "received" || container.status === "cancelled") return null;
+    return <CompactActions>
+      {container.status === "planned" ? <CompactAction label={t("Mark as shipped")} icon={Ship} disabled={pending} onClick={() => advance(container.id, "shipped")} /> : null}
+      {container.status === "shipped" ? <CompactAction label={t("Arrived at port")} icon={Ship} disabled={pending} onClick={() => advance(container.id, "at_port")} /> : null}
+      {container.status === "at_port" ? <CompactAction label={t("On the way to warehouse")} icon={Ship} disabled={pending} onClick={() => advance(container.id, "inland")} /> : null}
+      {(container.status === "inland" || container.status === "at_port" || container.status === "shipped") ? <CompactAction label={t("Receive into warehouse")} icon={Plus} variant="default" disabled={pending} onClick={() => receive(container.id)} /> : null}
+    </CompactActions>;
+  }
+
+  function certificateSelect(container: ContainerWithLines) {
+    if (container.status === "cancelled" || certificates.length === 0) {
+      return container.certificateNumber ?? "—";
+    }
+    return <Select value={container.customs_certificate_id ?? "__none__"} onValueChange={(value) => attachCert(container.id, !value || value === "__none__" ? null : value)}><SelectTrigger size="sm" className="w-full min-w-32" aria-label={`${t("Customs certificate for container")} ${container.container_number}`}><SelectValue>{(value) => value === "__none__" ? t("None") : certificates.find((certificate) => certificate.id === value)?.certificate_number ?? t("None")}</SelectValue></SelectTrigger><SelectContent><SelectItem value="__none__">{t("None")}</SelectItem>{certificates.map((certificate) => <SelectItem key={certificate.id} value={certificate.id}>{certificate.certificate_number}</SelectItem>)}</SelectContent></Select>;
+  }
 
   function advance(containerId: string, status: PurchaseContainerStatus) {
     startTransition(async () => {
@@ -86,7 +119,7 @@ export function ContainersPage({ containers: initial, currency }: ContainersPage
       setContainers((prev) =>
         prev.map((c) => (c.id === containerId ? result.data : c))
       );
-      toast.success("تم تحديث حالة الحاوية");
+      toast.success(t("Container status updated"));
     });
   }
 
@@ -101,7 +134,7 @@ export function ContainersPage({ containers: initial, currency }: ContainersPage
         prev.map((c) => (c.id === containerId ? result.data.container : c))
       );
       toast.success(
-        `اتاستلمت الحاوية — فاتورة ${result.data.purchase.invoice_number} · ${formatCurrency(result.data.purchase.total, currency)}`
+        `${t("Container received")} — ${t("Invoice")} ${result.data.purchase.invoice_number} · ${formatCurrency(result.data.purchase.total, currency)}`
       );
     });
   }
@@ -119,131 +152,58 @@ export function ContainersPage({ containers: initial, currency }: ContainersPage
       setContainers((prev) =>
         prev.map((c) => (c.id === containerId ? result.data : c))
       );
-      toast.success(certificateId ? "اتربطت بالشهادة" : "اتشالت من الشهادة");
+      toast.success(certificateId ? t("Certificate linked") : t("Certificate removed"));
     });
   }
 
   return (
     <div className="space-y-4">
       <PageHeader
-        title="الحاويات"
-        description="حاويات أمر التوريد من الشحن لحد استلام المخزن"
+        title="Containers"
+        description="Track purchase order containers from shipping to warehouse receipt"
       />
-      <div className="max-w-md">
-        <Label htmlFor="container-search">بحث</Label>
+      <div className="grid grid-cols-2 gap-2 rounded-[var(--mds-radius-md)] border border-border bg-card p-2 xl:grid-cols-[minmax(12rem,1fr)_auto_11rem] xl:items-end">
+        <div className="min-w-0 flex-1">
+        <Label htmlFor="container-search" className="sr-only">{t("Search")}</Label>
         <Input
           id="container-search"
-          className="mt-1.5 min-h-11"
+          className="h-8 min-h-8"
           value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder="رقم حاوية / أمر / شهادة"
+          onChange={(e) => { setFilter(e.target.value); updateUrl({ q: e.target.value }); }}
+          placeholder={t("Container / order / certificate number")}
         />
+        </div>
+        <DateRangeFilter className="order-first col-span-2 xl:order-none xl:col-span-1" value={dateRange} onChange={(next) => { setDateRange(next); updateUrl(next); }} />
+        <Select value={statusFilter} onValueChange={(value) => { const next = value ?? "all"; setStatusFilter(next); updateUrl({ status: next }); }}><SelectTrigger size="sm" className="w-full xl:w-44" aria-label={t("Container status")}><SelectValue>{() => statusFilter === "all" ? t("All statuses") : t(PURCHASE_CONTAINER_STATUS_LABELS[statusFilter as PurchaseContainerStatus])}</SelectValue></SelectTrigger><SelectContent><SelectItem value="all">{t("All statuses")}</SelectItem>{Object.entries(PURCHASE_CONTAINER_STATUS_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{t(label)}</SelectItem>)}</SelectContent></Select>
       </div>
       {filtered.length === 0 ? (
         <EmptyStateBlock
-          title="مفيش حاويات"
-          description="أنشئ حاوية من داخل أمر التوريد بعد تفعيل استيراد الحاويات"
+          title={containers.length === 0 ? t("No containers") : t("No matching results")}
+          description={containers.length === 0 ? t("Create a container from a purchase order after enabling container imports.") : t("Change the date range or filters to view other containers.")}
         />
       ) : (
-        <div className="grid gap-3">
+        <><div className="hidden overflow-hidden rounded-[var(--mds-radius-lg)] border border-border bg-card md:block"><Table><TableHeader><TableRow><TableHead>{t("Container number")}</TableHead><TableHead>{t("Purchase order")}</TableHead><TableHead>{t("Certificate")}</TableHead><TableHead>{t("Created")}</TableHead><TableHead>{t("Status")}</TableHead><TableHead className="text-end">{t("Items / quantity")}</TableHead><TableHead className="text-center">{t("Action")}</TableHead></TableRow></TableHeader><TableBody>{filtered.map((container) => <TableRow key={container.id}><TableCell className="font-semibold tabular-nums">{container.container_number}</TableCell><TableCell>{container.purchaseOrderNumber}</TableCell><TableCell>{certificateSelect(container)}</TableCell><TableCell className="text-muted-foreground">{formatDateTime(container.created_at)}</TableCell><TableCell><StatusPill label={t(PURCHASE_CONTAINER_STATUS_LABELS[container.status])} variant={statusVariant[container.status]} /></TableCell><TableCell className="text-end tabular-nums">{container.lines.length} / {container.lines.reduce((sum, line) => sum + line.quantity, 0)}</TableCell><TableCell><div className="flex justify-center">{containerActions(container)}</div></TableCell></TableRow>)}</TableBody></Table></div>
+        <div className="grid gap-3 md:hidden">
           {filtered.map((container) => (
-            <OperationalCard
+            <MobileEntityCard
               key={container.id}
               title={container.container_number}
-              description={`أمر ${container.purchaseOrderNumber}${
+              subtitle={`${t("Order")} ${container.purchaseOrderNumber}${
                 container.certificateNumber
-                  ? ` · شهادة ${container.certificateNumber}`
+                  ? ` · ${t("Certificate")} ${container.certificateNumber}`
                   : ""
               }`}
-              action={
+              badge={
                 <StatusPill
-                  label={PURCHASE_CONTAINER_STATUS_LABELS[container.status]}
+                  label={t(PURCHASE_CONTAINER_STATUS_LABELS[container.status])}
                   variant={statusVariant[container.status]}
                 />
               }
-            >
-              <p className="text-sm text-muted-foreground">
-                {container.lines.length} أصناف · كمية{" "}
-                {container.lines.reduce((s, l) => s + l.quantity, 0)}
-              </p>
-              {container.status !== "cancelled" && certificates.length > 0 ? (
-                <div className="mt-3 max-w-sm space-y-1.5">
-                  <Label>الشهادة الجمركية</Label>
-                  <Select
-                    value={container.customs_certificate_id ?? "__none__"}
-                    onValueChange={(v) =>
-                      attachCert(container.id, !v || v === "__none__" ? null : v)
-                    }
-                  >
-                    <SelectTrigger className="min-h-11 w-full">
-                      <SelectValue>
-                        {(value) =>
-                          value === "__none__"
-                            ? "بدون"
-                            : certificates.find((c) => c.id === value)
-                                ?.certificate_number ?? "بدون"
-                        }
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__" label="بدون">
-                        بدون
-                      </SelectItem>
-                      {certificates.map((cert) => (
-                        <SelectItem
-                          key={cert.id}
-                          value={cert.id}
-                          label={cert.certificate_number}
-                        >
-                          {cert.certificate_number}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : null}
-              {container.status !== "received" && container.status !== "cancelled" ? (
-                <CompactActions className="mt-3">
-                  {container.status === "planned" ? (
-                    <CompactAction
-                      label="اتشحنت"
-                      icon={Ship}
-                      disabled={pending}
-                      onClick={() => advance(container.id, "shipped")}
-                    />
-                  ) : null}
-                  {container.status === "shipped" ? (
-                    <CompactAction
-                      label="وصلت المينا"
-                      icon={Ship}
-                      disabled={pending}
-                      onClick={() => advance(container.id, "at_port")}
-                    />
-                  ) : null}
-                  {container.status === "at_port" ? (
-                    <CompactAction
-                      label="في الطريق للمخزن"
-                      icon={Ship}
-                      disabled={pending}
-                      onClick={() => advance(container.id, "inland")}
-                    />
-                  ) : null}
-                  {(container.status === "inland" ||
-                    container.status === "at_port" ||
-                    container.status === "shipped") && (
-                    <CompactAction
-                      label="استلام للمخزن"
-                      icon={Plus}
-                      variant="default"
-                      disabled={pending}
-                      onClick={() => receive(container.id)}
-                    />
-                  )}
-                </CompactActions>
-              ) : null}
-            </OperationalCard>
+              fields={[{ label: t("Items"), value: String(container.lines.length) }, { label: t("Quantity"), value: String(container.lines.reduce((sum, line) => sum + line.quantity, 0)) }, { label: t("Created"), value: formatDateTime(container.created_at) }]}
+              footer={<div className="grid w-full gap-2"><div>{certificateSelect(container)}</div>{containerActions(container)}</div>}
+            />
           ))}
-        </div>
+        </div></>
       )}
     </div>
   );
@@ -259,6 +219,7 @@ export function CreateContainerInline({
   lines: { sourceLineId: string; productName: string; remaining: number }[];
   onCreated: (container: ContainerWithLines) => void;
 }) {
+  const { t } = useTranslation();
   const [pending, startTransition] = useTransition();
   const [number, setNumber] = useState("");
   const [qtys, setQtys] = useState<Record<string, string>>(() =>
@@ -284,7 +245,7 @@ export function CreateContainerInline({
         toast.error(result.error);
         return;
       }
-      toast.success("اتعملت الحاوية");
+      toast.success(t("Container created"));
       setNumber("");
       onCreated(result.data);
     });
@@ -293,7 +254,7 @@ export function CreateContainerInline({
   return (
     <div className="space-y-3 rounded-xl border border-border/60 p-3">
       <div className="space-y-1.5">
-        <Label>رقم الحاوية</Label>
+        <Label>{t("Container number")}</Label>
         <Input
           className="min-h-11"
           value={number}
@@ -305,7 +266,7 @@ export function CreateContainerInline({
         <div key={line.sourceLineId} className="grid grid-cols-[1fr_7rem] items-end gap-2">
           <div>
             <p className="text-sm font-medium">{line.productName}</p>
-            <p className="text-xs text-muted-foreground">متبقي {line.remaining}</p>
+            <p className="text-xs text-muted-foreground">{t("Remaining")} {line.remaining}</p>
           </div>
           <Input
             className="min-h-11"
@@ -324,7 +285,7 @@ export function CreateContainerInline({
         onClick={submit}
         className="min-h-11 w-full"
       >
-        إضافة حاوية
+        {t("Add container")}
       </Button>
     </div>
   );

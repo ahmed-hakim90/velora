@@ -13,6 +13,7 @@ import {
   StockCountScopeFields,
   type StockCountScopeValue,
 } from "./stock-count-scope-fields";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface StockCountStartFormProps {
   warehouses: Warehouse[];
@@ -29,6 +30,7 @@ export function StockCountStartForm({
   barcodeScannerEnabled,
   onStarted,
 }: StockCountStartFormProps) {
+  const { t } = useTranslation();
   const [pending, startTransition] = useTransition();
   const [countFromZero, setCountFromZero] = useState(barcodeScannerEnabled);
   const [scope, setScope] = useState<StockCountScopeValue>(() => ({
@@ -62,19 +64,19 @@ export function StockCountStartForm({
           countFromZero,
         });
         toast.success(
-          countFromZero ? "تم بدء الجرد من صفر — امسح الباركود" : "تم بدء الجرد"
+          countFromZero ? t("Stock count started from zero. Scan barcodes.") : t("Stock count started")
         );
         onStarted();
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "فشل بدء الجرد");
+        toast.error(error instanceof Error ? error.message : t("Could not start stock count"));
       }
     });
   };
 
   return (
     <OperationalCard
-      title="بدء جرد"
-      description="جرد مخزن كامل، أو قسم، أو منتج واحد. السكانر بيزود 1 لكل مسحة."
+      title={t("Start stock count")}
+      description={t("Count a warehouse, category, or product. Each barcode scan adds one.")}
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <StockCountScopeFields
@@ -92,20 +94,20 @@ export function StockCountStartForm({
             onCheckedChange={(checked) => setCountFromZero(checked === true)}
           />
           <div className="space-y-1">
-            <Label htmlFor="count-from-zero">ابدأ العد من صفر</Label>
+            <Label htmlFor="count-from-zero">{t("Start counting from zero")}</Label>
             <p className="text-sm text-muted-foreground">
-              مناسب للسكانر: كل مسحة +1. لو مش متعلّم، سيبه مقفول ويبدأ برصيد النظام.
+              {t("Best for scanners: each scan adds one. Otherwise, counting starts from system stock.")}
             </p>
           </div>
         </div>
       </div>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          {previewCount} صنف هيتدرج في الجرد
+          {previewCount} {t("items will be included")}
         </p>
         <CompactActions>
           <CompactAction
-            label="بدء الجرد"
+            label={t("Start stock count")}
             icon={Play}
             variant="default"
             disabled={pending || !scope.warehouseId || previewCount === 0}

@@ -12,11 +12,13 @@ import {
   upsertModifierGroupAction,
 } from "@/modules/products/actions/product-modifiers.actions";
 import type { ProductModifierGroup } from "@/modules/products/services/product-modifiers.service";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 export function ProductModifiersEditor({ productId }: { productId: string }) {
+  const { t } = useTranslation();
   const [groups, setGroups] = useState<ProductModifierGroup[]>([]);
   const [pending, startTransition] = useTransition();
-  const [groupName, setGroupName] = useState("إضافات");
+  const [groupName, setGroupName] = useState(() => t("Extras"));
   const [modName, setModName] = useState("");
   const [modPrice, setModPrice] = useState("0");
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
@@ -28,7 +30,7 @@ export function ProductModifiersEditor({ productId }: { productId: string }) {
         setGroups(next);
         if (!activeGroupId && next[0]) setActiveGroupId(next[0].id);
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "فشل تحميل الإضافات");
+        toast.error(error instanceof Error ? error.message : t("Could not load modifiers"));
       }
     });
   }
@@ -41,15 +43,15 @@ export function ProductModifiersEditor({ productId }: { productId: string }) {
   return (
     <div className="space-y-4 rounded-[var(--mds-radius-md)] border border-border p-4">
       <div>
-        <h3 className="text-sm font-semibold">إضافات المنتج (Modifiers)</h3>
+        <h3 className="text-sm font-semibold">{t("Product modifiers")}</h3>
         <p className="text-xs text-muted-foreground">
-          للمجموعات مثل حجم/إضافات — تظهر في نقطة البيع عند إضافة المنتج.
+          {t("Create groups such as size or extras. They appear at the POS.")}
         </p>
       </div>
 
       <div className="flex flex-wrap items-end gap-2">
         <div className="space-y-1">
-          <Label>مجموعة جديدة</Label>
+          <Label>{t("New group")}</Label>
           <Input
             value={groupName}
             onChange={(e) => setGroupName(e.target.value)}
@@ -72,18 +74,18 @@ export function ProductModifiersEditor({ productId }: { productId: string }) {
                 toast.error(result.error);
                 return;
               }
-              toast.success("تم إنشاء المجموعة");
+              toast.success(t("Group created"));
               setActiveGroupId(result.id);
               reload();
             });
           }}
         >
-          إضافة مجموعة
+          {t("Add group")}
         </Button>
       </div>
 
       {groups.length === 0 ? (
-        <p className="text-sm text-muted-foreground">لا توجد مجموعات بعد.</p>
+        <p className="text-sm text-muted-foreground">{t("No groups yet.")}</p>
       ) : (
         <ul className="space-y-3">
           {groups.map((group) => (
@@ -118,7 +120,7 @@ export function ProductModifiersEditor({ productId }: { productId: string }) {
                     });
                   }}
                 >
-                  {group.isActive ? "إيقاف" : "تفعيل"}
+                  {group.isActive ? t("Disable") : t("Enable")}
                 </Button>
               </div>
               <ul className="mt-2 space-y-1 text-sm">
@@ -140,16 +142,16 @@ export function ProductModifiersEditor({ productId }: { productId: string }) {
       {activeGroupId ? (
         <div className="flex flex-wrap items-end gap-2 border-t border-border pt-3">
           <div className="space-y-1">
-            <Label>إضافة</Label>
+            <Label>{t("Modifier")}</Label>
             <Input
               value={modName}
               onChange={(e) => setModName(e.target.value)}
               className="w-40"
-              placeholder="جبن إضافي"
+              placeholder={t("Extra cheese")}
             />
           </div>
           <div className="space-y-1">
-            <Label>فرق السعر</Label>
+            <Label>{t("Price difference")}</Label>
             <Input
               dir="ltr"
               value={modPrice}
@@ -173,12 +175,12 @@ export function ProductModifiersEditor({ productId }: { productId: string }) {
                   return;
                 }
                 setModName("");
-                toast.success("تمت الإضافة");
+                toast.success(t("Modifier added"));
                 reload();
               });
             }}
           >
-            حفظ الإضافة
+            {t("Save modifier")}
           </Button>
         </div>
       ) : null}

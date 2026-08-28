@@ -40,7 +40,7 @@ export function AppShell({
   return (
     <div className="flex min-h-dvh bg-[var(--mds-color-bg-canvas)]">
       {posReadinessState ? <ImplicitPosDeviceBinder state={posReadinessState} /> : null}
-      <div className="hidden shrink-0 md:block">
+      <div className="hidden shrink-0 lg:block">
         <AppSidebar
           className="sticky top-0 h-dvh"
           userRole={userRole}
@@ -66,8 +66,8 @@ export function AppShell({
           permissions={permissions}
         />
         <SessionBar />
-        <main className="flex-1 bg-[var(--mds-color-bg-canvas)] p-[var(--mds-space-3)] pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:p-[var(--mds-space-4)] md:pb-[var(--mds-space-4)]">
-          <div className="mx-auto w-full max-w-[1600px] pb-2 md:pb-0">
+        <main className="flex-1 bg-[var(--mds-color-bg-canvas)] px-[var(--mds-space-2)] pb-[calc(4.25rem+env(safe-area-inset-bottom))] pt-[var(--mds-space-3)] sm:px-[var(--mds-space-4)] sm:pt-[var(--mds-space-4)] md:px-[var(--mds-space-6)] md:pt-[var(--mds-space-6)] lg:pb-[var(--mds-space-6)]">
+          <div className="mx-auto w-full max-w-[1480px] pb-2 md:pb-0">
             <RouteTransitionMain>{children}</RouteTransitionMain>
           </div>
         </main>

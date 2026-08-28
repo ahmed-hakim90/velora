@@ -37,6 +37,7 @@ import type { Category, MeasurementUnit } from "@/lib/types";
 import { ConfirmActionDialog } from "@/components/Velora/confirm-action-dialog";
 import { FormField } from "@/components/Velora/form-field";
 import { getVisibleAdvancedSettingsForProduct } from "@/modules/products/lib/advanced-settings-visibility";
+import { useTranslation } from "@/lib/i18n/use-translation";
 import {
   getFirstProductFormErrorStep,
   getProductFormFieldsForStep,
@@ -57,12 +58,22 @@ type Props = {
   onImageFileChange?: (file: File | null) => void;
   onApplyActivityTemplate?: (
     productType: ProductFormValues["product_type"],
-    salesUnitType?: ProductFormValues["sales_unit_type"]
+    salesUnitType?: ProductFormValues["sales_unit_type"],
   ) => void;
 };
 
-const STEP_TITLES = ["البيانات الأساسية", "نوع المنتج", "التسعير", "المخزون"] as const;
-const SUPERMARKET_STEP_TITLES = ["البيانات الأساسية", "طريقة البيع", "الأسعار", "مراجعة"] as const;
+const STEP_TITLES = [
+  "Basic details",
+  "Product type",
+  "Pricing",
+  "Inventory",
+] as const;
+const SUPERMARKET_STEP_TITLES = [
+  "Basic details",
+  "Sales method",
+  "Prices",
+  "Review",
+] as const;
 
 const PRODUCT_TYPE_CHOICES: Array<{
   id: ProductFormValues["product_type"];
@@ -70,11 +81,15 @@ const PRODUCT_TYPE_CHOICES: Array<{
   hint: string;
   salesUnitType?: ProductFormValues["sales_unit_type"];
 }> = [
-  { id: "finished_product", label: "منتج بيع مباشر", hint: "منتج جاهز للبيع" },
-  { id: "finished", label: "منتج وزني", hint: "يُسعّر حسب الوزن أو الكمية" },
-  { id: "ingredient", label: "مكوّن", hint: "يُستخدم في تحضير الوصفات" },
-  { id: "packaging_material", label: "مواد تعبئة", hint: "أكواب وملاعق وعلب وأكياس" },
-  { id: "service", label: "خدمة", hint: "خدمة بدون مخزون" },
+  { id: "finished_product", label: "Direct-sale product", hint: "Ready to sell" },
+  { id: "finished", label: "Weighted product", hint: "Priced by weight or quantity" },
+  { id: "ingredient", label: "Ingredient", hint: "Used in recipes" },
+  {
+    id: "packaging_material",
+    label: "Packaging material",
+    hint: "Cups, spoons, boxes, and bags",
+  },
+  { id: "service", label: "Service", hint: "A service with no inventory" },
 ];
 
 /** Supermarket: keep only the two everyday choices; rare types stay in advanced. */
@@ -86,20 +101,22 @@ const SUPERMARKET_PRODUCT_TYPE_CHOICES: Array<{
 }> = [
   {
     id: "finished_product",
-    label: "بالقطعة",
-    hint: "مياه، بقالة، معلبات…",
+    label: "By piece",
+    hint: "Water, groceries, canned goods…",
     salesUnitType: "piece",
   },
   {
     id: "finished_product",
-    label: "بالكيلو",
-    hint: "خضار، جبنة، لحوم…",
+    label: "By kilogram",
+    hint: "Vegetables, cheese, meat…",
     salesUnitType: "weight",
   },
 ];
 
-function supermarketSellLabel(salesUnitType: ProductFormValues["sales_unit_type"]): string {
-  return salesUnitType === "weight" ? "بالكيلو" : "بالقطعة";
+function supermarketSellLabel(
+  salesUnitType: ProductFormValues["sales_unit_type"],
+): string {
+  return salesUnitType === "weight" ? "By kilogram" : "By piece";
 }
 
 const SUPERMARKET_PIECE_PURCHASE_UNITS: Array<{
@@ -108,10 +125,30 @@ const SUPERMARKET_PIECE_PURCHASE_UNITS: Array<{
   hint: string;
   isLoose: boolean;
 }> = [
-  { id: "piece", label: "بالقطعة", hint: "بشتري قطعة زي ما ببيع", isLoose: true },
-  { id: "carton", label: "بالكرتونة", hint: "بشتري كرتونة وفيها قطع", isLoose: false },
-  { id: "pack", label: "بالعلبة", hint: "بشتري علبة وفيها قطع", isLoose: false },
-  { id: "box", label: "بالصندوق", hint: "بشتري صندوق وفيه قطع", isLoose: false },
+  {
+    id: "piece",
+    label: "By piece",
+    hint: "Buy and sell by piece",
+    isLoose: true,
+  },
+  {
+    id: "carton",
+    label: "By carton",
+    hint: "A carton containing pieces",
+    isLoose: false,
+  },
+  {
+    id: "pack",
+    label: "By pack",
+    hint: "A pack containing pieces",
+    isLoose: false,
+  },
+  {
+    id: "box",
+    label: "By box",
+    hint: "A box containing pieces",
+    isLoose: false,
+  },
 ];
 
 const SUPERMARKET_WEIGHT_PURCHASE_UNITS: Array<{
@@ -120,11 +157,21 @@ const SUPERMARKET_WEIGHT_PURCHASE_UNITS: Array<{
   hint: string;
   isLoose: boolean;
 }> = [
-  { id: "kg", label: "بالكيلو", hint: "بشتري وزن زي ما ببيع", isLoose: true },
-  { id: "carton", label: "بالكرتونة", hint: "كرتونة وفيها وزن ثابت", isLoose: false },
-  { id: "pack", label: "بالعلبة", hint: "علبة وفيها وزن ثابت", isLoose: false },
-  { id: "box", label: "بالصندوق", hint: "صندوق وفيه وزن ثابت", isLoose: false },
-  { id: "bag", label: "بالكيس", hint: "كيس أو شكاره بوزن ثابت", isLoose: false },
+  { id: "kg", label: "By kilogram", hint: "Buy and sell by weight", isLoose: true },
+  {
+    id: "carton",
+    label: "By carton",
+    hint: "A carton with a fixed weight",
+    isLoose: false,
+  },
+  { id: "pack", label: "By pack", hint: "A pack with a fixed weight", isLoose: false },
+  { id: "box", label: "By box", hint: "A box with a fixed weight", isLoose: false },
+  {
+    id: "bag",
+    label: "By bag",
+    hint: "A bag with a fixed weight",
+    isLoose: false,
+  },
 ];
 
 export function GuidedProductDetailsForm({
@@ -141,6 +188,7 @@ export function GuidedProductDetailsForm({
   onImageFileChange,
   onApplyActivityTemplate,
 }: Props) {
+  const { t } = useTranslation();
   const [step, setStep] = useState(1);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [reapplyDialogOpen, setReapplyDialogOpen] = useState(false);
@@ -153,25 +201,27 @@ export function GuidedProductDetailsForm({
   const visibleAdvancedSettings = getVisibleAdvancedSettingsForProduct(
     activityType,
     values.product_type,
-    values.sales_unit_type
+    values.sales_unit_type,
   );
-  const showInventoryTracking = visibleAdvancedSettings.has("inventory_tracking");
+  const showInventoryTracking =
+    visibleAdvancedSettings.has("inventory_tracking");
   const showBatchTracking = visibleAdvancedSettings.has("batch_tracking");
   const showExpiryTracking = visibleAdvancedSettings.has("expiry_tracking");
   const showFefo = visibleAdvancedSettings.has("fefo");
-  const showFractionalQuantity = visibleAdvancedSettings.has("fractional_quantity");
+  const showFractionalQuantity = visibleAdvancedSettings.has(
+    "fractional_quantity",
+  );
   const showPriceByAmount = enablePriceByAmount;
   const isSupermarket = activityType === "supermarket";
   const stepTitles = isSupermarket ? SUPERMARKET_STEP_TITLES : STEP_TITLES;
   const productTypeChoices = isSupermarket
     ? SUPERMARKET_PRODUCT_TYPE_CHOICES.filter(
-        (choice) => enableWeightSales || choice.salesUnitType !== "weight"
+        (choice) => enableWeightSales || choice.salesUnitType !== "weight",
       )
     : PRODUCT_TYPE_CHOICES.filter((choice) => {
         if (enableWeightSales) return true;
         if (choice.salesUnitType === "weight") return false;
-        // Non-supermarket "منتج وزني" uses product_type finished without salesUnitType.
-        return !(choice.id === "finished" && choice.label === "منتج وزني");
+        return choice.id !== "finished";
       });
   const showWholesale = enableWholesaleSales;
   const showSerialNumber = false;
@@ -180,7 +230,8 @@ export function GuidedProductDetailsForm({
   const showSupermarketPurchasePacking =
     isSupermarket &&
     (values.sales_unit_type === "piece" || isWeightSell) &&
-    (values.product_type === "finished_product" || values.product_type === "finished");
+    (values.product_type === "finished_product" ||
+      values.product_type === "finished");
   const purchasePackUnit =
     showSupermarketPurchasePacking &&
     values.cost_unit !== baseUnit &&
@@ -191,12 +242,12 @@ export function GuidedProductDetailsForm({
     ? SUPERMARKET_WEIGHT_PURCHASE_UNITS
     : SUPERMARKET_PIECE_PURCHASE_UNITS;
   const salesUnitChoices = [
-    { id: "piece" as const, label: "منتج بيع مباشر" },
+    { id: "piece" as const, label: "Direct-sale product" },
     ...(enableWeightSales
-      ? [{ id: "weight" as const, label: "منتج وزني" }]
+      ? [{ id: "weight" as const, label: "Weighted product" }]
       : []),
-    { id: "volume" as const, label: "مكوّن" },
-    { id: "pack" as const, label: "مواد تعبئة" },
+    { id: "volume" as const, label: "Ingredient" },
+    { id: "pack" as const, label: "Packaging material" },
   ];
 
   /** Only fields the activity template overwrites — not name/prices/purchase packing. */
@@ -228,7 +279,7 @@ export function GuidedProductDetailsForm({
 
   const requestTemplateReapply = (
     productType: ProductFormValues["product_type"],
-    salesUnitType?: ProductFormValues["sales_unit_type"]
+    salesUnitType?: ProductFormValues["sales_unit_type"],
   ) => {
     if (!onApplyActivityTemplate) return;
     if (shouldConfirmTemplateReapply()) {
@@ -241,7 +292,11 @@ export function GuidedProductDetailsForm({
 
   const trackingModes = INVENTORY_TRACKING_MODES.filter((mode) => {
     if (mode === "batch" && !showBatchTracking) return false;
-    if (mode === "batch_and_expiry" && !(showBatchTracking && showExpiryTracking)) return false;
+    if (
+      mode === "batch_and_expiry" &&
+      !(showBatchTracking && showExpiryTracking)
+    )
+      return false;
     if (mode === "serial_number" && !showSerialNumber) return false;
     return true;
   });
@@ -270,13 +325,14 @@ export function GuidedProductDetailsForm({
   const handleFormSubmit = form.handleSubmit(onSubmit, (fieldErrors) => {
     const errorStep = getFirstProductFormErrorStep(fieldErrors);
     if (errorStep !== undefined) setStep(errorStep);
-    const firstField = Object.keys(fieldErrors)[0] as keyof ProductFormValues | undefined;
+    const firstField = Object.keys(fieldErrors)[0] as
+      keyof ProductFormValues | undefined;
     if (firstField) void form.setFocus(firstField);
   });
 
   return (
     <form onSubmit={handleFormSubmit} className="flex flex-col gap-5">
-      <nav aria-label="خطوات تعريف المنتج" className="flex gap-1.5">
+      <nav aria-label={t("Product setup steps")} className="flex gap-1.5">
         {stepTitles.map((title, idx) => {
           const active = step === idx + 1;
           return (
@@ -297,7 +353,7 @@ export function GuidedProductDetailsForm({
                 {idx + 1}
               </span>
               <span className="mt-0.5 block truncate text-[11px] font-medium leading-tight sm:text-xs">
-                {title}
+                {t(title)}
               </span>
             </button>
           );
@@ -305,401 +361,490 @@ export function GuidedProductDetailsForm({
       </nav>
 
       <div className="min-h-[14rem] space-y-4">
-      {step === 1 ? (
-        <div className="space-y-4">
-          <FormField id="name" label="اسم المنتج" error={errors.name?.message}>
-            <Input
-              id="name"
-              aria-invalid={!!errors.name}
-              {...form.register("name")}
-            />
-          </FormField>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <FormField id="category_id" label="التصنيف" error={errors.category_id?.message}>
-              <Select
-                value={values.category_id}
-                onValueChange={(v) =>
-                  form.setValue("category_id", v ?? "", { shouldValidate: true })
-                }
-              >
-                <SelectTrigger aria-invalid={!!errors.category_id}>
-                  <SelectValue placeholder="اختر التصنيف">
-                    {(value) => selectLabelById(categories, value, (c) => c.name)}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id} label={c.name}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
+        {step === 1 ? (
+          <div className="space-y-4">
             <FormField
-              id="product_code"
-              label={isSupermarket ? "الباركود" : "كود المنتج / الباركود"}
-              hint={isEdit ? undefined : "يُنشأ تلقائياً"}
+              id="name"
+              label={t("Product name")}
+              error={errors.name?.message ? t(errors.name.message) : undefined}
             >
               <Input
-                id="product_code"
-                readOnly
-                value={values.sku || "—"}
-                className="bg-muted/50"
+                id="name"
+                aria-invalid={!!errors.name}
+                {...form.register("name")}
               />
             </FormField>
-          </div>
-          <FormField
-            id="image_upload"
-            label="صورة المنتج"
-            hint="ارفع صورة من الجهاز. يمكن أيضاً استخدام رابط صورة مباشر."
-            error={errors.image_url?.message}
-          >
-            <div className="grid gap-2">
-              <Input
-                id="image_upload"
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                onChange={(e) => onImageFileChange?.(e.target.files?.[0] ?? null)}
-              />
-              <Input
-                id="image_url"
-                aria-invalid={!!errors.image_url}
-                value={values.image_url ?? ""}
-                onChange={(e) => form.setValue("image_url", e.target.value || null)}
-                placeholder="https://example.com/image.jpg"
-              />
-            </div>
-          </FormField>
-        </div>
-      ) : null}
-
-      {step === 2 ? (
-        <div className="space-y-4">
-          <FormField
-            id="product_type"
-            label={isSupermarket ? "بتبيع إزاي؟" : "نوع المنتج"}
-            error={errors.product_type?.message}
-          >
-            <div className="grid gap-2 sm:grid-cols-2">
-              {productTypeChoices.map((item) => {
-                const salesUnitType = item.salesUnitType ?? values.sales_unit_type;
-                const selected =
-                  values.product_type === item.id &&
-                  (!isSupermarket || values.sales_unit_type === salesUnitType);
-                return (
-                  <button
-                    key={`${item.id}-${item.salesUnitType ?? item.id}`}
-                    type="button"
-                    className={`rounded-xl border p-3 text-left ${selected ? "border-primary bg-primary/10" : "border-border/60"} ${errors.product_type ? "border-destructive ring-3 ring-destructive/20" : ""}`}
-                    onClick={() => {
-                      const unchanged =
-                        values.product_type === item.id &&
-                        (!isSupermarket || values.sales_unit_type === salesUnitType);
-                      if (unchanged) return;
-
-                      form.setValue("product_type", item.id, { shouldValidate: true });
-                      if (isSupermarket && item.salesUnitType) {
-                        form.setValue("sales_unit_type", item.salesUnitType, {
-                          shouldValidate: true,
-                        });
-                        // Reset purchase packing when sell mode changes (piece ↔ weight).
-                        form.setValue(
-                          "cost_unit",
-                          item.salesUnitType === "weight" ? "kg" : "piece",
-                          { shouldValidate: true }
-                        );
-                        form.setValue("units_per_purchase_unit", 1, { shouldValidate: true });
-                        requestTemplateReapply(item.id, item.salesUnitType);
-                      } else {
-                        requestTemplateReapply(item.id, values.sales_unit_type);
-                      }
-                    }}
-                  >
-                    <div className="text-sm font-medium">{item.label}</div>
-                    <div className="text-xs text-muted-foreground">{item.hint}</div>
-                  </button>
-                );
-              })}
-            </div>
-          </FormField>
-          {!isSupermarket ? (
             <div className="grid gap-3 sm:grid-cols-2">
               <FormField
-                id="sales_unit_type"
-                label="طريقة البيع"
-                error={errors.sales_unit_type?.message}
+                id="category_id"
+                label={t("Category")}
+                error={errors.category_id?.message ? t(errors.category_id.message) : undefined}
               >
                 <Select
-                  value={values.sales_unit_type}
-                  onValueChange={(v) => {
-                    const nextSales = (v ?? "piece") as ProductFormValues["sales_unit_type"];
-                    form.setValue("sales_unit_type", nextSales, { shouldValidate: true });
-                    requestTemplateReapply(values.product_type, nextSales);
-                  }}
-                >
-                  <SelectTrigger aria-invalid={!!errors.sales_unit_type}>
-                    <SelectValue>
-                      {(value) =>
-                        salesUnitChoices.find((u) => u.id === value)?.label ?? null
-                      }
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {salesUnitChoices.map((u) => (
-                      <SelectItem key={u.id} value={u.id} label={u.label}>
-                        {u.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
-              <FormField id="sale_unit" label="وحدة المخزون">
-                <Select
-                  value={values.sale_unit}
+                  value={values.category_id}
                   onValueChange={(v) =>
-                    form.setValue(
-                      "sale_unit",
-                      (v ?? "piece") as ProductFormValues["sale_unit"],
-                      { shouldValidate: true }
-                    )
+                    form.setValue("category_id", v ?? "", {
+                      shouldValidate: true,
+                    })
                   }
                 >
-                  <SelectTrigger>
-                    <SelectValue>
+                  <SelectTrigger aria-invalid={!!errors.category_id}>
+                    <SelectValue placeholder={t("Select category")}>
                       {(value) =>
-                        value ? formatUnit(value as ProductFormValues["sale_unit"]) : null
+                        selectLabelById(categories, value, (c) => c.name)
                       }
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {MEASUREMENT_UNITS.map((u) => (
-                      <SelectItem key={u} value={u} label={formatUnit(u)}>
-                        {formatUnit(u)}
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={c.id} label={c.name}>
+                        {c.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </FormField>
+              <FormField
+                id="product_code"
+                label={
+                  isSupermarket ? t("Barcode") : t("Product code / barcode")
+                }
+                hint={isEdit ? undefined : t("Generated automatically")}
+              >
+                <Input
+                  id="product_code"
+                  readOnly
+                  value={values.sku || "—"}
+                  className="bg-muted/50"
+                />
+              </FormField>
             </div>
-          ) : null}
-          {showSupermarketPurchasePacking ? (
-            <div className="space-y-3 rounded-xl border border-border/60 p-3">
-              <div className="text-sm font-medium">بتشتري إزاي من المورد؟</div>
-              <div className="text-xs text-muted-foreground">
-                {isWeightSell
-                  ? "البيع بالكيلو — واختيار الشراء لوحده: كيلو أو كرتونة / علبة / كيس بوزن ثابت."
-                  : "البيع بالقطعة — واختيار الشراء لوحده: قطعة أو كرتونة / علبة / صندوق."}
+            <FormField
+              id="image_upload"
+              label={t("Product image")}
+              hint={t("Upload an image or enter a direct image link.")}
+              error={errors.image_url?.message}
+            >
+              <div className="grid gap-2">
+                <Input
+                  id="image_upload"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={(e) =>
+                    onImageFileChange?.(e.target.files?.[0] ?? null)
+                  }
+                />
+                <Input
+                  id="image_url"
+                  aria-invalid={!!errors.image_url}
+                  value={values.image_url ?? ""}
+                  onChange={(e) =>
+                    form.setValue("image_url", e.target.value || null)
+                  }
+                  placeholder="https://example.com/image.jpg"
+                />
               </div>
+            </FormField>
+          </div>
+        ) : null}
+
+        {step === 2 ? (
+          <div className="space-y-4">
+            <FormField
+              id="product_type"
+              label={
+                isSupermarket ? t("How do you sell it?") : t("Product type")
+              }
+              error={errors.product_type?.message}
+            >
               <div className="grid gap-2 sm:grid-cols-2">
-                {supermarketPurchaseUnits.map((option) => {
-                  const selected = option.isLoose
-                    ? !purchasePackUnit
-                    : values.cost_unit === option.id;
+                {productTypeChoices.map((item) => {
+                  const salesUnitType =
+                    item.salesUnitType ?? values.sales_unit_type;
+                  const selected =
+                    values.product_type === item.id &&
+                    (!isSupermarket ||
+                      values.sales_unit_type === salesUnitType);
                   return (
                     <button
-                      key={option.id}
+                      key={`${item.id}-${item.salesUnitType ?? item.id}`}
                       type="button"
-                      className={`rounded-xl border p-3 text-right ${selected ? "border-primary bg-primary/10" : "border-border/60"}`}
+                      className={`rounded-xl border p-3 text-left ${selected ? "border-primary bg-primary/10" : "border-border/60"} ${errors.product_type ? "border-destructive ring-3 ring-destructive/20" : ""}`}
                       onClick={() => {
-                        if (option.isLoose) {
+                        const unchanged =
+                          values.product_type === item.id &&
+                          (!isSupermarket ||
+                            values.sales_unit_type === salesUnitType);
+                        if (unchanged) return;
+
+                        form.setValue("product_type", item.id, {
+                          shouldValidate: true,
+                        });
+                        if (isSupermarket && item.salesUnitType) {
+                          form.setValue("sales_unit_type", item.salesUnitType, {
+                            shouldValidate: true,
+                          });
+                          // Reset purchase packing when sell mode changes (piece ↔ weight).
                           form.setValue(
                             "cost_unit",
-                            isWeightSell ? "kg" : baseUnit,
-                            { shouldValidate: true }
+                            item.salesUnitType === "weight" ? "kg" : "piece",
+                            { shouldValidate: true },
                           );
                           form.setValue("units_per_purchase_unit", 1, {
                             shouldValidate: true,
                           });
-                          return;
+                          requestTemplateReapply(item.id, item.salesUnitType);
+                        } else {
+                          requestTemplateReapply(
+                            item.id,
+                            values.sales_unit_type,
+                          );
                         }
-                        form.setValue("cost_unit", option.id, { shouldValidate: true });
-                        const currentFactor = Number(values.units_per_purchase_unit);
-                        const nextFactor = isWeightSell
-                          ? currentFactor > 0 && currentFactor !== 1
-                            ? currentFactor
-                            : 2.5
-                          : Math.max(2, currentFactor || 24);
-                        form.setValue("units_per_purchase_unit", nextFactor, {
-                          shouldValidate: true,
-                        });
                       }}
                     >
-                      <div className="text-sm font-medium">{option.label}</div>
-                      <div className="text-xs text-muted-foreground">{option.hint}</div>
+                      <div className="text-sm font-medium">{t(item.label)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {t(item.hint)}
+                      </div>
                     </button>
                   );
                 })}
               </div>
-              {purchasePackUnit ? (
+            </FormField>
+            {!isSupermarket ? (
+              <div className="grid gap-3 sm:grid-cols-2">
                 <FormField
-                  id="units_per_purchase_unit"
-                  label={
-                    isWeightSell
-                      ? `كام كيلو في ال${formatUnit(purchasePackUnit)}؟`
-                      : `كام قطعة في ال${formatUnit(purchasePackUnit)}؟`
-                  }
-                  hint={isWeightSell ? "مثال: 2.5 أو 1.5" : "مثال: 24"}
-                  error={errors.units_per_purchase_unit?.message}
+                  id="sales_unit_type"
+                  label={t("Sales method")}
+                  error={errors.sales_unit_type?.message}
                 >
-                  <Input
-                    id="units_per_purchase_unit"
-                    type="number"
-                    min={isWeightSell ? 0.01 : 2}
-                    step={isWeightSell ? 0.01 : 1}
-                    aria-invalid={!!errors.units_per_purchase_unit}
-                    {...form.register("units_per_purchase_unit", { valueAsNumber: true })}
-                  />
+                  <Select
+                    value={values.sales_unit_type}
+                    onValueChange={(v) => {
+                      const nextSales = (v ??
+                        "piece") as ProductFormValues["sales_unit_type"];
+                      form.setValue("sales_unit_type", nextSales, {
+                        shouldValidate: true,
+                      });
+                      requestTemplateReapply(values.product_type, nextSales);
+                    }}
+                  >
+                    <SelectTrigger aria-invalid={!!errors.sales_unit_type}>
+                      <SelectValue>
+                        {(value) =>
+                          t(
+                            salesUnitChoices.find((u) => u.id === value)
+                              ?.label ?? "",
+                          ) || null
+                        }
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {salesUnitChoices.map((u) => (
+                        <SelectItem key={u.id} value={u.id} label={t(u.label)}>
+                          {t(u.label)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </FormField>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {step === 3 ? (
-        <div className="space-y-4">
-          {isSupermarket ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <FormField
-                id="last_unit_cost"
-                label={
-                  isWeightSell ? "سعر الشراء / الكيلو" : "سعر الشراء / القطعة"
-                }
-                hint={
-                  purchasePackUnit
-                    ? isWeightSell
-                      ? `تكلفة الكيلو الواحد (مش سعر ال${formatUnit(purchasePackUnit)})`
-                      : `تكلفة القطعة الواحدة (مش سعر ال${formatUnit(purchasePackUnit)})`
-                    : undefined
-                }
-                error={errors.last_unit_cost?.message}
-              >
-                <Input
-                  id="last_unit_cost"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  aria-invalid={!!errors.last_unit_cost}
-                  {...form.register("last_unit_cost", { valueAsNumber: true })}
-                />
-              </FormField>
-              <FormField
-                id="base_price"
-                label={
-                  values.sales_unit_type === "weight" ? "سعر البيع / الكيلو" : "سعر البيع / القطعة"
-                }
-                error={errors.base_price?.message}
-              >
-                <Input
-                  id="base_price"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  aria-invalid={!!errors.base_price}
-                  {...form.register("base_price", { valueAsNumber: true })}
-                />
-              </FormField>
-            </div>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <FormField
-                id="base_price"
-                label="سعر التكلفة"
-                error={errors.base_price?.message}
-              >
-                <Input
-                  id="base_price"
-                  type="number"
-                  step="0.01"
-                  aria-invalid={!!errors.base_price}
-                  {...form.register("base_price", { valueAsNumber: true })}
-                />
-              </FormField>
-              <FormField
-                id="sale_price"
-                label="سعر البيع"
-                error={errors.sale_price?.message}
-              >
-                <Input
-                  id="sale_price"
-                  type="number"
-                  step="0.01"
-                  aria-invalid={!!errors.sale_price}
-                  value={values.sale_price ?? ""}
-                  onChange={(e) =>
-                    form.setValue(
-                      "sale_price",
-                      e.target.value === "" ? null : Number(e.target.value),
-                      { shouldValidate: true }
-                    )
-                  }
-                />
-              </FormField>
-            </div>
-          )}
-        </div>
-      ) : null}
-
-      {step === 4 ? (
-        <div className="space-y-4">
-          <div className="rounded-xl border border-border/60 p-3 text-sm">
-            <div className="font-medium">{values.name || "منتج بدون اسم"}</div>
-            <div className="text-muted-foreground">
-              {isSupermarket ? (
-                <>
-                  {supermarketSellLabel(values.sales_unit_type)}
-                  {purchasePackUnit
-                    ? ` · شراء ${formatUnit(purchasePackUnit)} فيها ${values.units_per_purchase_unit} ${isWeightSell ? "كيلو" : "قطعة"}`
-                    : isWeightSell
-                      ? " · شراء بالكيلو"
-                      : " · شراء بالقطعة"}
-                  {" · "}
-                  شراء {values.last_unit_cost} · بيع {values.base_price} {currency}
-                </>
-              ) : (
-                <>
-                  النوع {labelProductType(values.product_type)} |{" "}
-                  التكلفة {values.base_price} {currency}
-                </>
-              )}
-            </div>
-          </div>
-          <FormField id="description" label="الوصف">
-            <Textarea id="description" rows={3} {...form.register("description")} />
-          </FormField>
-          <div className="flex flex-wrap gap-4">
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox checked={values.is_active} onCheckedChange={(v) => form.setValue("is_active", Boolean(v))} />
-              نشط
-            </label>
-            {(values.product_type === "finished" ||
-              values.product_type === "finished_product") && (
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={values.show_on_online_menu}
-                  onCheckedChange={(v) => form.setValue("show_on_online_menu", v === true)}
-                />
-                يظهر في {isSupermarket ? "البيع أونلاين" : "منيو الأونلاين"}
-              </label>
-            )}
-            {showInventoryTracking ? (
-              <>
-                <label className="flex items-center gap-2 text-sm">
-                  <Checkbox checked={values.track_inventory} onCheckedChange={(v) => form.setValue("track_inventory", Boolean(v))} />
-                  تتبّع المخزون
-                </label>
-                {showExpiryTracking ? (
-                  <label className="flex items-center gap-2 text-sm">
-                    <Checkbox checked={values.expiry_tracking_enabled} onCheckedChange={(v) => form.setValue("expiry_tracking_enabled", v === true)} />
-                    تتبّع الصلاحية
-                  </label>
+                <FormField id="sale_unit" label={t("Inventory unit")}>
+                  <Select
+                    value={values.sale_unit}
+                    onValueChange={(v) =>
+                      form.setValue(
+                        "sale_unit",
+                        (v ?? "piece") as ProductFormValues["sale_unit"],
+                        { shouldValidate: true },
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue>
+                        {(value) =>
+                          value
+                            ? formatUnit(
+                                value as ProductFormValues["sale_unit"],
+                              )
+                            : null
+                        }
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MEASUREMENT_UNITS.map((u) => (
+                        <SelectItem key={u} value={u} label={formatUnit(u)}>
+                          {formatUnit(u)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormField>
+              </div>
+            ) : null}
+            {showSupermarketPurchasePacking ? (
+              <div className="space-y-3 rounded-xl border border-border/60 p-3">
+                <div className="text-sm font-medium">
+                  {t("How do you buy it from the supplier?")}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {isWeightSell
+                    ? t(
+                        "Sell by kilogram. Buy by kilogram or in a carton, pack, or bag with a fixed weight.",
+                      )
+                    : t(
+                        "Sell by piece. Buy by piece or in a carton, pack, or box.",
+                      )}
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {supermarketPurchaseUnits.map((option) => {
+                    const selected = option.isLoose
+                      ? !purchasePackUnit
+                      : values.cost_unit === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        className={`rounded-xl border p-3 text-right ${selected ? "border-primary bg-primary/10" : "border-border/60"}`}
+                        onClick={() => {
+                          if (option.isLoose) {
+                            form.setValue(
+                              "cost_unit",
+                              isWeightSell ? "kg" : baseUnit,
+                              { shouldValidate: true },
+                            );
+                            form.setValue("units_per_purchase_unit", 1, {
+                              shouldValidate: true,
+                            });
+                            return;
+                          }
+                          form.setValue("cost_unit", option.id, {
+                            shouldValidate: true,
+                          });
+                          const currentFactor = Number(
+                            values.units_per_purchase_unit,
+                          );
+                          const nextFactor = isWeightSell
+                            ? currentFactor > 0 && currentFactor !== 1
+                              ? currentFactor
+                              : 2.5
+                            : Math.max(2, currentFactor || 24);
+                          form.setValue("units_per_purchase_unit", nextFactor, {
+                            shouldValidate: true,
+                          });
+                        }}
+                      >
+                        <div className="text-sm font-medium">
+                          {t(option.label)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {t(option.hint)}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                {purchasePackUnit ? (
+                  <FormField
+                    id="units_per_purchase_unit"
+                    label={
+                      `${t("How many")} ${t(isWeightSell ? "kilograms" : "pieces")} ${t("per")} ${formatUnit(purchasePackUnit)}?`
+                    }
+                    hint={
+                      isWeightSell ? t("Example: 2.5 or 1.5") : t("Example: 24")
+                    }
+                    error={errors.units_per_purchase_unit?.message}
+                  >
+                    <Input
+                      id="units_per_purchase_unit"
+                      type="number"
+                      min={isWeightSell ? 0.01 : 2}
+                      step={isWeightSell ? 0.01 : 1}
+                      aria-invalid={!!errors.units_per_purchase_unit}
+                      {...form.register("units_per_purchase_unit", {
+                        valueAsNumber: true,
+                      })}
+                    />
+                  </FormField>
                 ) : null}
-              </>
+              </div>
             ) : null}
           </div>
-        </div>
-      ) : null}
+        ) : null}
+
+        {step === 3 ? (
+          <div className="space-y-4">
+            {isSupermarket ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <FormField
+                  id="last_unit_cost"
+                  label={
+                    isWeightSell
+                      ? t("Purchase price / kg")
+                      : t("Purchase price / piece")
+                  }
+                  hint={
+                    purchasePackUnit
+                      ? isWeightSell
+                        ? `${t("Cost per kilogram, not per")} ${formatUnit(purchasePackUnit)}`
+                        : `${t("Cost per piece, not per")} ${formatUnit(purchasePackUnit)}`
+                      : undefined
+                  }
+                  error={errors.last_unit_cost?.message}
+                >
+                  <Input
+                    id="last_unit_cost"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    aria-invalid={!!errors.last_unit_cost}
+                    {...form.register("last_unit_cost", {
+                      valueAsNumber: true,
+                    })}
+                  />
+                </FormField>
+                <FormField
+                  id="base_price"
+                  label={
+                    values.sales_unit_type === "weight"
+                      ? t("Sale price / kg")
+                      : t("Sale price / piece")
+                  }
+                  error={errors.base_price?.message}
+                >
+                  <Input
+                    id="base_price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    aria-invalid={!!errors.base_price}
+                    {...form.register("base_price", { valueAsNumber: true })}
+                  />
+                </FormField>
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <FormField
+                  id="base_price"
+                  label={t("Cost price")}
+                  error={errors.base_price?.message}
+                >
+                  <Input
+                    id="base_price"
+                    type="number"
+                    step="0.01"
+                    aria-invalid={!!errors.base_price}
+                    {...form.register("base_price", { valueAsNumber: true })}
+                  />
+                </FormField>
+                <FormField
+                  id="sale_price"
+                  label={t("Sale price")}
+                  error={errors.sale_price?.message}
+                >
+                  <Input
+                    id="sale_price"
+                    type="number"
+                    step="0.01"
+                    aria-invalid={!!errors.sale_price}
+                    value={values.sale_price ?? ""}
+                    onChange={(e) =>
+                      form.setValue(
+                        "sale_price",
+                        e.target.value === "" ? null : Number(e.target.value),
+                        { shouldValidate: true },
+                      )
+                    }
+                  />
+                </FormField>
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {step === 4 ? (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-border/60 p-3 text-sm">
+              <div className="font-medium">
+                {values.name || t("Unnamed product")}
+              </div>
+              <div className="text-muted-foreground">
+                {isSupermarket ? (
+                  <>
+                    {t(supermarketSellLabel(values.sales_unit_type))}
+                    {purchasePackUnit
+                      ? ` · ${t("Buy by")} ${formatUnit(purchasePackUnit)} ${t("with")} ${values.units_per_purchase_unit} ${t(isWeightSell ? "kg" : "pieces")}`
+                      : isWeightSell
+                        ? ` · ${t("Buy by kilogram")}`
+                        : ` · ${t("Buy by piece")}`}
+                    {" · "}
+                    {t("Purchase")} {values.last_unit_cost} · {t("Sale")}{" "}
+                    {values.base_price} {currency}
+                  </>
+                ) : (
+                  <>
+                    {t("Type")} {t(labelProductType(values.product_type))} |{" "}
+                    {t("Cost")} {values.base_price} {currency}
+                  </>
+                )}
+              </div>
+            </div>
+            <FormField id="description" label={t("Description")}>
+              <Textarea
+                id="description"
+                rows={3}
+                {...form.register("description")}
+              />
+            </FormField>
+            <div className="flex flex-wrap gap-4">
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={values.is_active}
+                  onCheckedChange={(v) =>
+                    form.setValue("is_active", Boolean(v))
+                  }
+                />
+                {t("Active")}
+              </label>
+              {(values.product_type === "finished" ||
+                values.product_type === "finished_product") && (
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={values.show_on_online_menu}
+                    onCheckedChange={(v) =>
+                      form.setValue("show_on_online_menu", v === true)
+                    }
+                  />
+                  {t("Show in")}{" "}
+                  {isSupermarket ? t("Online sales") : t("Online menu")}
+                </label>
+              )}
+              {showInventoryTracking ? (
+                <>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={values.track_inventory}
+                      onCheckedChange={(v) =>
+                        form.setValue("track_inventory", Boolean(v))
+                      }
+                    />
+                    {t("Track inventory")}
+                  </label>
+                  {showExpiryTracking ? (
+                    <label className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={values.expiry_tracking_enabled}
+                        onCheckedChange={(v) =>
+                          form.setValue("expiry_tracking_enabled", v === true)
+                        }
+                      />
+                      {t("Track expiry")}
+                    </label>
+                  ) : null}
+                </>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="rounded-xl border border-border/60 px-3 py-2.5">
@@ -708,250 +853,321 @@ export function GuidedProductDetailsForm({
           className="flex w-full items-center justify-between text-start text-sm font-medium"
           onClick={() => setAdvancedOpen((current) => !current)}
         >
-          <span>إعدادات متقدمة</span>
-          {advancedOpen ? <ChevronDown className="size-4 shrink-0" /> : <ChevronRight className="size-4 shrink-0" />}
+          <span>{t("Advanced settings")}</span>
+          {advancedOpen ? (
+            <ChevronDown className="size-4 shrink-0" />
+          ) : (
+            <ChevronRight className="size-4 shrink-0" />
+          )}
         </button>
         {advancedOpen ? (
           <div className="mt-3 space-y-3 border-t border-border/50 pt-3">
-          {showInventoryTracking ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label>طريقة التتبع</Label>
-                <Select value={values.inventory_tracking_mode} onValueChange={(v) => form.setValue("inventory_tracking_mode", (v ?? "standard") as ProductFormValues["inventory_tracking_mode"], { shouldValidate: true })}>
-                  <SelectTrigger>
-                    <SelectValue>
-                      {(value) =>
-                        value
-                          ? INVENTORY_TRACKING_MODE_LABELS[
-                              value as ProductFormValues["inventory_tracking_mode"]
-                            ]
-                          : null
-                      }
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {trackingModes.map((mode) => (
-                      <SelectItem
-                        key={mode}
-                        value={mode}
-                        label={INVENTORY_TRACKING_MODE_LABELS[mode]}
-                      >
-                        {INVENTORY_TRACKING_MODE_LABELS[mode]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>ترتيب صرف المخزون</Label>
-                <Select value={values.inventory_rotation_method} onValueChange={(v) => form.setValue("inventory_rotation_method", (v ?? "FIFO") as ProductFormValues["inventory_rotation_method"], { shouldValidate: true })}>
-                  <SelectTrigger>
-                    <SelectValue>
-                      {(value) =>
-                        value
-                          ? INVENTORY_ROTATION_METHOD_LABELS[
-                              value as ProductFormValues["inventory_rotation_method"]
-                            ]
-                          : null
-                      }
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {rotationMethods.map((method) => (
-                      <SelectItem
-                        key={method}
-                        value={method}
-                        label={INVENTORY_ROTATION_METHOD_LABELS[method]}
-                      >
-                        {INVENTORY_ROTATION_METHOD_LABELS[method]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          ) : null}
-          {showExpiryTracking ? (
-            <>
-              <label className="flex items-center gap-2 rounded-xl border p-3">
-                <Checkbox checked={values.expiry_tracking_enabled} onCheckedChange={(v) => form.setValue("expiry_tracking_enabled", v === true)} />
-                <span className="text-sm">تتبّع تاريخ الصلاحية</span>
-              </label>
-              {values.expiry_tracking_enabled ? (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="grid gap-2">
-                    <Label>مدة الصلاحية</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      {...form.register("shelf_life_value", { valueAsNumber: true })}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>وحدة المدة</Label>
-                    <Select
-                      value={values.shelf_life_unit ?? "days"}
-                      onValueChange={(v) =>
-                        form.setValue(
-                          "shelf_life_unit",
-                          (v ?? "days") as ProductFormValues["shelf_life_unit"],
-                          { shouldValidate: true }
-                        )
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue>
-                          {(value) =>
-                            value
-                              ? SHELF_LIFE_UNIT_LABELS[
-                                  value as ProductFormValues["shelf_life_unit"]
-                                ]
-                              : null
-                          }
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SHELF_LIFE_UNITS.map((unit) => (
-                          <SelectItem
-                            key={unit}
-                            value={unit}
-                            label={SHELF_LIFE_UNIT_LABELS[unit]}
-                          >
-                            {SHELF_LIFE_UNIT_LABELS[unit]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+            {showInventoryTracking ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label>{t("Tracking method")}</Label>
+                  <Select
+                    value={values.inventory_tracking_mode}
+                    onValueChange={(v) =>
+                      form.setValue(
+                        "inventory_tracking_mode",
+                        (v ??
+                          "standard") as ProductFormValues["inventory_tracking_mode"],
+                        { shouldValidate: true },
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue>
+                        {(value) =>
+                          value
+                            ? t(
+                                INVENTORY_TRACKING_MODE_LABELS[
+                                  value as ProductFormValues["inventory_tracking_mode"]
+                                ],
+                              )
+                            : null
+                        }
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {trackingModes.map((mode) => (
+                        <SelectItem
+                          key={mode}
+                          value={mode}
+                          label={t(INVENTORY_TRACKING_MODE_LABELS[mode])}
+                        >
+                          {t(INVENTORY_TRACKING_MODE_LABELS[mode])}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              ) : null}
+                <div className="grid gap-2">
+                  <Label>{t("Stock issue order")}</Label>
+                  <Select
+                    value={values.inventory_rotation_method}
+                    onValueChange={(v) =>
+                      form.setValue(
+                        "inventory_rotation_method",
+                        (v ??
+                          "FIFO") as ProductFormValues["inventory_rotation_method"],
+                        { shouldValidate: true },
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue>
+                        {(value) =>
+                          value
+                            ? t(
+                                INVENTORY_ROTATION_METHOD_LABELS[
+                                  value as ProductFormValues["inventory_rotation_method"]
+                                ],
+                              )
+                            : null
+                        }
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {rotationMethods.map((method) => (
+                        <SelectItem
+                          key={method}
+                          value={method}
+                          label={t(INVENTORY_ROTATION_METHOD_LABELS[method])}
+                        >
+                          {t(INVENTORY_ROTATION_METHOD_LABELS[method])}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            ) : null}
+            {showExpiryTracking ? (
+              <>
+                <label className="flex items-center gap-2 rounded-xl border p-3">
+                  <Checkbox
+                    checked={values.expiry_tracking_enabled}
+                    onCheckedChange={(v) =>
+                      form.setValue("expiry_tracking_enabled", v === true)
+                    }
+                  />
+                  <span className="text-sm">{t("Track expiry date")}</span>
+                </label>
+                {values.expiry_tracking_enabled ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label>{t("Shelf life")}</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        {...form.register("shelf_life_value", {
+                          valueAsNumber: true,
+                        })}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>{t("Duration unit")}</Label>
+                      <Select
+                        value={values.shelf_life_unit ?? "days"}
+                        onValueChange={(v) =>
+                          form.setValue(
+                            "shelf_life_unit",
+                            (v ??
+                              "days") as ProductFormValues["shelf_life_unit"],
+                            { shouldValidate: true },
+                          )
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue>
+                            {(value) =>
+                              value
+                                ? t(
+                                    SHELF_LIFE_UNIT_LABELS[
+                                      value as ProductFormValues["shelf_life_unit"]
+                                    ],
+                                  )
+                                : null
+                            }
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SHELF_LIFE_UNITS.map((unit) => (
+                            <SelectItem
+                              key={unit}
+                              value={unit}
+                              label={t(SHELF_LIFE_UNIT_LABELS[unit])}
+                            >
+                              {t(SHELF_LIFE_UNIT_LABELS[unit])}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ) : null}
+                <div className="grid gap-2">
+                  <Label>{t("When expired")}</Label>
+                  <Select
+                    value={values.expiry_policy}
+                    onValueChange={(v) =>
+                      form.setValue(
+                        "expiry_policy",
+                        (v ??
+                          "block_sale") as ProductFormValues["expiry_policy"],
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue>
+                        {(value) =>
+                          value
+                            ? t(
+                                EXPIRY_POLICY_LABELS[
+                                  value as ProductFormValues["expiry_policy"]
+                                ],
+                              )
+                            : null
+                        }
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EXPIRY_POLICIES.map((policy) => (
+                        <SelectItem
+                          key={policy}
+                          value={policy}
+                          label={t(EXPIRY_POLICY_LABELS[policy])}
+                        >
+                          {t(EXPIRY_POLICY_LABELS[policy])}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            ) : null}
+            {showFractionalQuantity ? (
+              <label className="flex items-center gap-2 rounded-xl border p-2">
+                <Checkbox
+                  checked={values.allow_fractional_quantity}
+                  onCheckedChange={(v) =>
+                    form.setValue("allow_fractional_quantity", v === true)
+                  }
+                />
+                <span className="text-xs">
+                  {t("Allow fractional sales, such as half a kilogram")}
+                </span>
+              </label>
+            ) : null}
+            {showPriceByAmount || showWholesale || showSerialNumber ? (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {showPriceByAmount || showSerialNumber ? (
+                  <label className="flex items-center gap-2 rounded-xl border p-2">
+                    <Checkbox
+                      checked={values.allow_price_input}
+                      onCheckedChange={(v) =>
+                        form.setValue("allow_price_input", v === true)
+                      }
+                    />
+                    <span className="text-xs">
+                      {showPriceByAmount && showSerialNumber
+                        ? t("Serial number / price by amount")
+                        : showPriceByAmount
+                          ? t("Sell by amount, not weight only")
+                          : t("Serial number")}
+                    </span>
+                  </label>
+                ) : null}
+                {showWholesale ? (
+                  <label className="flex items-center gap-2 rounded-xl border p-2">
+                    <Checkbox
+                      checked={values.wholesale_enabled}
+                      onCheckedChange={(v) =>
+                        form.setValue("wholesale_enabled", v === true)
+                      }
+                    />
+                    <span className="text-xs">
+                      {t(
+                        "Wholesale — price is set in the Wholesale Prices tab",
+                      )}
+                    </span>
+                  </label>
+                ) : null}
+              </div>
+            ) : null}
+            <div className="grid gap-2 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label>عند انتهاء الصلاحية</Label>
-                <Select value={values.expiry_policy} onValueChange={(v) => form.setValue("expiry_policy", (v ?? "block_sale") as ProductFormValues["expiry_policy"])}>
+                <Label>
+                  {isSupermarket
+                    ? t("Other type (packaging / service)")
+                    : t("Product type (advanced)")}
+                </Label>
+                <Select
+                  value={values.product_type}
+                  onValueChange={(v) => {
+                    const nextType = (v ??
+                      "finished_product") as ProductFormValues["product_type"];
+                    form.setValue("product_type", nextType, {
+                      shouldValidate: true,
+                    });
+                    requestTemplateReapply(nextType, values.sales_unit_type);
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue>
                       {(value) =>
                         value
-                          ? EXPIRY_POLICY_LABELS[value as ProductFormValues["expiry_policy"]]
+                          ? t(
+                              labelProductType(
+                                value as ProductFormValues["product_type"],
+                              ),
+                            )
                           : null
                       }
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {EXPIRY_POLICIES.map((policy) => (
+                    {(isSupermarket
+                      ? PRODUCT_TYPES.filter(
+                          (t) => t !== "ingredient" && t !== "raw_material",
+                        )
+                      : PRODUCT_TYPES
+                    ).map((productType) => (
                       <SelectItem
-                        key={policy}
-                        value={policy}
-                        label={EXPIRY_POLICY_LABELS[policy]}
+                        key={productType}
+                        value={productType}
+                        label={t(labelProductType(productType))}
                       >
-                        {EXPIRY_POLICY_LABELS[policy]}
+                        {t(labelProductType(productType))}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-            </>
-          ) : null}
-          {showFractionalQuantity ? (
-            <label className="flex items-center gap-2 rounded-xl border p-2">
-              <Checkbox checked={values.allow_fractional_quantity} onCheckedChange={(v) => form.setValue("allow_fractional_quantity", v === true)} />
-              <span className="text-xs">السماح ببيع كسور (مثلاً نصف كيلو)</span>
-            </label>
-          ) : null}
-          {showPriceByAmount || showWholesale || showSerialNumber ? (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {showPriceByAmount || showSerialNumber ? (
-                <label className="flex items-center gap-2 rounded-xl border p-2">
-                  <Checkbox checked={values.allow_price_input} onCheckedChange={(v) => form.setValue("allow_price_input", v === true)} />
-                  <span className="text-xs">
-                    {showPriceByAmount && showSerialNumber
-                      ? "رقم تسلسلي / سعر حسب المبلغ"
-                      : showPriceByAmount
-                        ? "بيع بالمبلغ (مش بالوزن فقط)"
-                        : "رقم تسلسلي"}
-                  </span>
-                </label>
-              ) : null}
-              {showWholesale ? (
-                <label className="flex items-center gap-2 rounded-xl border p-2">
-                  <Checkbox
-                    checked={values.wholesale_enabled}
-                    onCheckedChange={(v) => form.setValue("wholesale_enabled", v === true)}
-                  />
-                  <span className="text-xs">جملة — السعر من تبويب «أسعار الجملة»</span>
-                </label>
-              ) : null}
-            </div>
-          ) : null}
-          <div className="grid gap-2 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label>{isSupermarket ? "نوع نادر (تعبئة / خدمة…)" : "نوع المنتج (متقدم)"}</Label>
-              <Select value={values.product_type} onValueChange={(v) => {
-                const nextType = (v ?? "finished_product") as ProductFormValues["product_type"];
-                form.setValue("product_type", nextType, { shouldValidate: true });
-                requestTemplateReapply(nextType, values.sales_unit_type);
-              }}>
-                <SelectTrigger>
-                  <SelectValue>
-                    {(value) =>
-                      value
-                        ? labelProductType(value as ProductFormValues["product_type"])
-                        : null
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {(isSupermarket
-                    ? PRODUCT_TYPES.filter((t) => t !== "ingredient" && t !== "raw_material")
-                    : PRODUCT_TYPES
-                  ).map((t) => (
-                    <SelectItem
-                      key={t}
-                      value={t}
-                      label={labelProductType(t)}
-                    >
-                      {labelProductType(t)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label>{isSupermarket ? "وحدة التخزين" : "وحدة الأساس (متقدم)"}</Label>
-              <Select value={values.base_unit} onValueChange={(v) => form.setValue("base_unit", (v ?? "piece") as ProductFormValues["base_unit"], { shouldValidate: true })}>
-                <SelectTrigger>
-                  <SelectValue>
-                    {(value) =>
-                      value ? formatUnit(value as ProductFormValues["base_unit"]) : null
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {MEASUREMENT_UNITS.map((u) => (
-                    <SelectItem key={u} value={u} label={formatUnit(u)}>{formatUnit(u)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          {isSupermarket ? (
-            <div className="grid gap-2 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label>وحدة البيع</Label>
+                <Label>
+                  {isSupermarket
+                    ? t("Storage unit")
+                    : t("Base unit (advanced)")}
+                </Label>
                 <Select
-                  value={values.sale_unit}
+                  value={values.base_unit}
                   onValueChange={(v) =>
                     form.setValue(
-                      "sale_unit",
-                      (v ?? "piece") as ProductFormValues["sale_unit"],
-                      { shouldValidate: true }
+                      "base_unit",
+                      (v ?? "piece") as ProductFormValues["base_unit"],
+                      { shouldValidate: true },
                     )
                   }
                 >
                   <SelectTrigger>
                     <SelectValue>
                       {(value) =>
-                        value ? formatUnit(value as ProductFormValues["sale_unit"]) : null
+                        value
+                          ? formatUnit(value as ProductFormValues["base_unit"])
+                          : null
                       }
                     </SelectValue>
                   </SelectTrigger>
@@ -964,65 +1180,125 @@ export function GuidedProductDetailsForm({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-2">
-                <Label>وحدة الشراء</Label>
-                <Select
-                  value={values.cost_unit}
-                  onValueChange={(v) => {
-                    const next = (v ?? "piece") as ProductFormValues["cost_unit"];
-                    form.setValue("cost_unit", next, { shouldValidate: true });
-                    if (next === baseUnit) {
-                      form.setValue("units_per_purchase_unit", 1, { shouldValidate: true });
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue>
-                      {(value) =>
-                        value ? formatUnit(value as ProductFormValues["cost_unit"]) : null
-                      }
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(["piece", "carton", "pack", "box", "bag", "kg"] as const).map((u) => (
-                      <SelectItem key={u} value={u} label={formatUnit(u)}>
-                        {formatUnit(u)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
-          ) : null}
+            {isSupermarket ? (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label>{t("Sales unit")}</Label>
+                  <Select
+                    value={values.sale_unit}
+                    onValueChange={(v) =>
+                      form.setValue(
+                        "sale_unit",
+                        (v ?? "piece") as ProductFormValues["sale_unit"],
+                        { shouldValidate: true },
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue>
+                        {(value) =>
+                          value
+                            ? formatUnit(
+                                value as ProductFormValues["sale_unit"],
+                              )
+                            : null
+                        }
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MEASUREMENT_UNITS.map((u) => (
+                        <SelectItem key={u} value={u} label={formatUnit(u)}>
+                          {formatUnit(u)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>{t("Purchase unit")}</Label>
+                  <Select
+                    value={values.cost_unit}
+                    onValueChange={(v) => {
+                      const next = (v ??
+                        "piece") as ProductFormValues["cost_unit"];
+                      form.setValue("cost_unit", next, {
+                        shouldValidate: true,
+                      });
+                      if (next === baseUnit) {
+                        form.setValue("units_per_purchase_unit", 1, {
+                          shouldValidate: true,
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue>
+                        {(value) =>
+                          value
+                            ? formatUnit(
+                                value as ProductFormValues["cost_unit"],
+                              )
+                            : null
+                        }
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(
+                        ["piece", "carton", "pack", "box", "bag", "kg"] as const
+                      ).map((u) => (
+                        <SelectItem key={u} value={u} label={formatUnit(u)}>
+                          {formatUnit(u)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>
 
       <div className="flex flex-col-reverse gap-2 border-t border-border/60 pt-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
         <Button type="button" variant="outline" onClick={onCancel}>
-          إلغاء
+          {t("Cancel")}
         </Button>
-        <Button type="button" variant="outline" disabled={step === 1} onClick={() => setStep((current) => Math.max(1, current - 1))}>
-          رجوع
+        <Button
+          type="button"
+          variant="outline"
+          disabled={step === 1}
+          onClick={() => setStep((current) => Math.max(1, current - 1))}
+        >
+          {t("Back")}
         </Button>
-        <Button type="button" variant="outline" disabled={step === 4} onClick={() => { void goToStep(Math.min(4, step + 1)); }}>
-          التالي
+        <Button
+          type="button"
+          variant="outline"
+          disabled={step === 4}
+          onClick={() => {
+            void goToStep(Math.min(4, step + 1));
+          }}
+        >
+          {t("Next")}
         </Button>
         <Button type="submit" disabled={form.formState.isSubmitting}>
-          {isEdit ? "حفظ التعديلات" : "إنشاء المنتج"}
+          {isEdit ? t("Save changes") : t("Create product")}
         </Button>
       </div>
       <ConfirmActionDialog
         open={reapplyDialogOpen}
         onOpenChange={setReapplyDialogOpen}
-        title="تغيير نوع المنتج؟"
-        description="بعض إعدادات المخزون والصلاحية هترجع للقيم الافتراضية للنوع الجديد. الاسم والأسعار مش هتتأثر."
-        confirmLabel="متابعة"
+        title={t("Change product type?")}
+        description={t(
+          "Some inventory and expiry settings will reset to the new type defaults. Name and prices will not change.",
+        )}
+        confirmLabel={t("Continue")}
         onConfirm={() => {
           if (!pendingTemplateReapply) return;
           onApplyActivityTemplate?.(
             pendingTemplateReapply.productType,
-            pendingTemplateReapply.salesUnitType
+            pendingTemplateReapply.salesUnitType,
           );
           setPendingTemplateReapply(null);
         }}

@@ -1,6 +1,7 @@
 import { PrintableDocument } from "@/modules/reports/components/printable-document";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import type { ReportBranding } from "@/modules/reports/core/report-context";
+import { LocalizedText } from "@/components/Velora/localized-text";
 
 export interface PurchaseInvoicePrintData {
   purchase: {
@@ -31,22 +32,22 @@ export function PurchaseInvoicePrintView({
   return (
     <PrintableDocument
       branding={branding}
-      title="فاتورة شراء"
+      title="Purchase invoice"
       subtitle={purchase.invoice_number}
       dateRange={formatDateTime(purchase.created_at)}
       generatedBy={userName}
       generatedAt={new Date().toISOString()}
     >
       <p className="mb-4 text-sm">
-        المورد: {purchase.supplierName} · المخزن: {purchase.warehouseName}
+        <LocalizedText text="Supplier" />: {purchase.supplierName} · <LocalizedText text="Warehouse" />: {purchase.warehouseName}
       </p>
       <table className="mb-4 w-full border-collapse text-sm">
         <thead>
           <tr className="border-b">
-            <th className="py-2 text-start">المنتج</th>
-            <th className="py-2 text-end">الكمية</th>
-            <th className="py-2 text-end">التكلفة</th>
-            <th className="py-2 text-end">الإجمالي</th>
+            <th className="py-2 text-start"><LocalizedText text="Product" /></th>
+            <th className="py-2 text-end"><LocalizedText text="Quantity" /></th>
+            <th className="py-2 text-end"><LocalizedText text="Cost" /></th>
+            <th className="py-2 text-end"><LocalizedText text="Total" /></th>
           </tr>
         </thead>
         <tbody>
@@ -65,7 +66,7 @@ export function PurchaseInvoicePrintView({
         </tbody>
       </table>
       <p className="text-end text-base font-bold">
-        الإجمالي: {formatCurrency(purchase.total, branding.currency)}
+        <LocalizedText text="Total" />: {formatCurrency(purchase.total, branding.currency)}
       </p>
     </PrintableDocument>
   );

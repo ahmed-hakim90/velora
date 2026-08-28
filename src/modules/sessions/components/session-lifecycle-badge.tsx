@@ -1,11 +1,12 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { SessionLifecycleState } from "@/lib/types";
+import { LocalizedText } from "@/components/Velora/localized-text";
 
 const LABELS: Record<SessionLifecycleState, string> = {
-  open: "مفتوحة",
-  warning: "قربت تنتهي",
-  expired_locked: "منتهية",
+  open: "Session open",
+  warning: "Ending soon",
+  expired_locked: "Expired session",
 };
 
 interface SessionLifecycleBadgeProps {
@@ -31,7 +32,7 @@ export function SessionLifecycleBadge({ lifecycle, className }: SessionLifecycle
         className
       )}
     >
-      {LABELS[lifecycle]}
+      <LocalizedText text={LABELS[lifecycle]} />
     </Badge>
   );
 }

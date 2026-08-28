@@ -5,6 +5,7 @@ import {
   POS_OPERATOR_SHORTCUT_HINT,
 } from "@/lib/keyboard";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface OperatorShortcutHintProps {
   className?: string;
@@ -17,6 +18,7 @@ export function OperatorShortcutHint({
   className,
   variant = "document",
 }: OperatorShortcutHintProps) {
+  const { t } = useTranslation();
   const text =
     variant === "pos" ? POS_OPERATOR_SHORTCUT_HINT : OPERATOR_SHORTCUT_HINT;
   return (
@@ -27,7 +29,7 @@ export function OperatorShortcutHint({
       )}
       aria-hidden
     >
-      {text}
+      {t(text)}
     </p>
   );
 }

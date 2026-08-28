@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { ArrowRight, Banknote, CreditCard, Search, Wallet } from "lucide-react";
+import { ArrowRight, Banknote, CreditCard, Search, Wallet, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { EmptyStateBlock, LoadingStateBlock } from "@/components/Velora/state-blocks";
+import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from "@/components/Velora/state-blocks";
 import { formatCurrency } from "@/lib/format";
 import { PAYMENT_METHODS } from "@/lib/constants";
 import { roundMoney } from "@/lib/money";
@@ -26,6 +26,7 @@ import { playPosErrorSound, playPosSuccessSound } from "@/modules/pos/lib/pos-so
 import { usePosStore } from "@/stores/pos-store";
 import { cn } from "@/lib/utils";
 import { firstGrapheme } from "@/lib/first-grapheme";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 async function postPosCustomerPayment(input: {
   customerId: string;
@@ -41,7 +42,7 @@ async function postPosCustomerPayment(input: {
   });
   const data = (await res.json()) as { success?: boolean; error?: string };
   if (!res.ok || !data.success) {
-    return { success: false, error: data.error || "تعذر تسجيل التحصيل" };
+    return { success: false, error: data.error || "Could not record collection" };
   }
   return { success: true };
 }
@@ -53,28 +54,28 @@ const METHOD_META: {
 }[] = [
   {
     id: "cash",
-    label: "نقدي",
+    label: "Cash",
     icon: Banknote,
     className:
       "border-emerald-200 bg-emerald-50 text-emerald-800 data-[selected=true]:border-emerald-500 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200",
   },
   {
     id: "card",
-    label: "كارت",
+    label: "Card",
     icon: CreditCard,
     className:
       "border-sky-200 bg-sky-50 text-sky-800 data-[selected=true]:border-sky-500 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200",
   },
   {
     id: "wallet",
-    label: "محفظة",
+    label: "Wallet",
     icon: Wallet,
     className:
       "border-violet-200 bg-violet-50 text-violet-800 data-[selected=true]:border-violet-500 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200",
   },
   {
     id: "other",
-    label: "أخرى",
+    label: "Other",
     icon: Banknote,
     className:
       "border-slate-200 bg-slate-50 text-slate-800 data-[selected=true]:border-slate-500 dark:border-slate-500/30 dark:bg-slate-500/10 dark:text-slate-200",
@@ -108,12 +109,15 @@ function toCollectCustomer(customer: {
 }
 
 export function PosCollectFlowDialog({ open, onOpenChange }: PosCollectFlowDialogProps) {
+  const { t } = useTranslation();
   const cartCustomer = usePosStore((s) => s.customer);
   const setCartCustomer = usePosStore((s) => s.setCustomer);
   const [pending, startTransition] = useTransition();
   const [loadingList, startListTransition] = useTransition();
   const [query, setQuery] = useState("");
   const [outstanding, setOutstanding] = useState<CollectCustomer[]>([]);
+  const [listError, setListError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [selected, setSelected] = useState<CollectCustomer | null>(null);
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<Exclude<PaymentMethod, "credit">>("cash");
@@ -135,6 +139,7 @@ export function PosCollectFlowDialog({ open, onOpenChange }: PosCollectFlowDialo
     setWasOpen(open);
     if (open) {
       setQuery("");
+      setListError(null);
       const preselect =
         cartCustomer && cartCustomer.account_balance > 0
           ? toCollectCustomer(cartCustomer)
@@ -150,12 +155,17 @@ export function PosCollectFlowDialog({ open, onOpenChange }: PosCollectFlowDialo
     startListTransition(async () => {
       try {
         const rows = await listOutstandingCustomersAction();
-        if (!cancelled) setOutstanding(rows.map(toCollectCustomer));
+        if (!cancelled) {
+          setOutstanding(rows.map(toCollectCustomer));
+          setListError(null);
+        }
       } catch (error) {
         if (!cancelled) {
-          toast.error(
-            error instanceof Error ? error.message : "تعذر تحميل العملاء المستحقين"
+          const message = t(
+            error instanceof Error ? error.message : "Could not load customers with balances"
           );
+          toast.error(message);
+          setListError(message);
           setOutstanding([]);
         }
       }
@@ -164,7 +174,7 @@ export function PosCollectFlowDialog({ open, onOpenChange }: PosCollectFlowDialo
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [loadAttempt, open, t]);
 
   const list = useMemo(() => {
     const trimmed = query.trim().toLowerCase();
@@ -213,7 +223,7 @@ export function PosCollectFlowDialog({ open, onOpenChange }: PosCollectFlowDialo
           return;
         }
         const nextBalance = Math.max(0, roundMoney(owed - paidAmount));
-        toast.success(`تم تحصيل ${formatCurrency(paidAmount)} من ${selected.name}`);
+        toast.success(`${t("Collected")} ${formatCurrency(paidAmount)} ${t("from")} ${selected.name}`);
         playPosSuccessSound();
         if (cartCustomer?.id === selected.id) {
           setCartCustomer({ ...cartCustomer, account_balance: nextBalance });
@@ -221,27 +231,26 @@ export function PosCollectFlowDialog({ open, onOpenChange }: PosCollectFlowDialo
         handleOpenChange(false);
       } catch (error) {
         playPosErrorSound();
-        toast.error(error instanceof Error ? error.message : "تعذر تسجيل التحصيل");
+        toast.error(t(error instanceof Error ? error.message : "Could not record collection"));
       }
     });
   }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[92dvh] max-w-lg overflow-hidden rounded-2xl p-0 sm:max-w-lg">
-        <DialogHeader className="space-y-2 border-b border-border/70 px-4 py-4 text-start">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Banknote className="size-5" />
-          </div>
-          <DialogTitle>{selected ? "تحصيل من العميل" : "تحصيل مستحقات"}</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="max-h-[94dvh] max-w-lg overflow-hidden rounded-2xl p-0 max-sm:max-w-[calc(100%-0.5rem)] sm:max-w-lg">
+        <DialogHeader className="border-b border-border/70 px-3 py-2.5 pe-10 text-start sm:py-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Banknote className="size-4" /></div>
+            <div className="min-w-0"><DialogTitle className="text-base">{selected ? t("Collect from customer") : t("Collect balances")}</DialogTitle>
+          <DialogDescription className="truncate text-xs">
             {selected
-              ? `${selected.name} · المستحق ${formatCurrency(owed)}`
-              : "اختر عميلًا عليه مستحقات أو ابحث بالاسم أو رقم الهاتف"}
-          </DialogDescription>
+              ? `${selected.name} · ${t("Due")} ${formatCurrency(owed)}`
+              : t("Choose a customer with a balance or search by name or phone")}
+          </DialogDescription></div></div>
         </DialogHeader>
 
-        <div className="max-h-[min(70dvh,560px)] space-y-4 overflow-y-auto px-4 py-4">
+        <div className="max-h-[min(76dvh,620px)] space-y-2.5 overflow-y-auto px-3 py-3">
           {!selected ? (
             <>
               <div className="relative">
@@ -249,39 +258,60 @@ export function PosCollectFlowDialog({ open, onOpenChange }: PosCollectFlowDialo
                 <Input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="ابحث بالاسم أو رقم الهاتف…"
-                  aria-label="بحث عن عميل للتحصيل"
-                  className="h-11 rounded-xl ps-10"
+                  placeholder={t("Search by name or phone…")}
+                  aria-label={t("Search customer to collect")}
+                  className="h-11 rounded-xl ps-10 pe-11"
                   autoFocus
                 />
+                {query ? (
+                  <button
+                    type="button"
+                    className="absolute end-0 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                    onClick={() => setQuery("")}
+                    aria-label={t("Clear search")}
+                  >
+                    <X className="size-4" aria-hidden />
+                  </button>
+                ) : null}
               </div>
 
               {loadingList && list.length === 0 ? (
-                <LoadingStateBlock label="جاري التحميل…" className="border-0 shadow-none" />
+                <LoadingStateBlock label={t("Loading…")} className="border-0 shadow-none" />
+              ) : listError ? (
+                <ErrorStateBlock
+                  title={t("Could not load customer balances")}
+                  description={listError}
+                  retryLabel={t("Try again")}
+                  onRetry={() => {
+                    setListError(null);
+                    setLoadAttempt((current) => current + 1);
+                  }}
+                  className="border-0 px-3 py-4 shadow-none"
+                />
               ) : list.length === 0 ? (
                 <EmptyStateBlock
                   title={
                     query.trim()
-                      ? "لا يوجد عميل بمستحقات مطابقة للبحث"
-                      : "لا توجد مستحقات حاليًا"
+                      ? t("No customer balance matches your search")
+                      : t("No balances due")
                   }
                   description={
                     query.trim()
-                      ? "جرّب اسمًا أو رقم هاتف مختلف."
-                      : "لما يكون فيه عملاء عليهم مبالغ هتظهر هنا."
+                      ? t("Try a different name or phone number.")
+                      : t("Customers with balances will appear here.")
                   }
-                  className="border-0 bg-transparent py-6 shadow-none"
+                  className="border-0 bg-transparent py-4 shadow-none"
                 />
               ) : (
-                <ul className="space-y-2">
+                <ul className="space-y-1.5">
                   {list.map((customer) => (
                     <li key={customer.id}>
                       <button
                         type="button"
-                        className="flex w-full items-center gap-3 rounded-xl border border-border/70 bg-background px-3 py-3 text-start transition-colors hover:border-primary/30 hover:bg-primary/5"
+                        className="flex min-h-11 w-full items-center gap-2 rounded-lg border border-border/70 bg-background px-2.5 py-1.5 text-start transition-colors hover:border-primary/30 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
                         onClick={() => resetForm(customer)}
                       >
-                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold">
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-xs font-semibold">
                           {firstGrapheme(customer.name, "؟")}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -303,14 +333,14 @@ export function PosCollectFlowDialog({ open, onOpenChange }: PosCollectFlowDialo
             <>
               <button
                 type="button"
-                className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1.5 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
                 onClick={() => resetForm(null)}
               >
-                <ArrowRight className="size-4" />
-                تغيير العميل
+                <ArrowRight className="size-4 ltr:rotate-180" />
+                {t("Change customer")}
               </button>
 
-              <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-3 py-3">
+              <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1.5">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">
                   {firstGrapheme(selected.name, "؟")}
                 </div>
@@ -321,12 +351,12 @@ export function PosCollectFlowDialog({ open, onOpenChange }: PosCollectFlowDialo
                   </p>
                 </div>
                 <span className="shrink-0 rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-amber-800 dark:text-amber-200">
-                  مستحق {formatCurrency(owed)}
+                  {t("Due")} {formatCurrency(owed)}
                 </span>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="pos-collect-amount">المبلغ</Label>
+              <div className="grid grid-cols-[minmax(0,1fr)_8rem] items-center gap-2">
+                <Label className="text-xs" htmlFor="pos-collect-amount">{t("Amount")}</Label>
                 <Input
                   id="pos-collect-amount"
                   type="number"
@@ -334,44 +364,46 @@ export function PosCollectFlowDialog({ open, onOpenChange }: PosCollectFlowDialo
                   step="0.01"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="h-11 rounded-xl text-base"
+                  className="h-11 rounded-lg text-end text-sm font-semibold tabular-nums"
                   autoFocus
                 />
                 {value > owed + 0.001 ? (
-                  <p className="text-xs text-destructive">المبلغ أكبر من المستحق</p>
+                  <p className="col-span-2 text-xs text-destructive" role="alert">{t("Amount exceeds balance")}</p>
+                ) : amount.trim() && (!Number.isFinite(value) || value <= 0) ? (
+                  <p className="col-span-2 text-xs text-destructive" role="alert">{t("Enter a value greater than zero")}</p>
                 ) : null}
               </div>
-              <div className="space-y-2">
-                <Label>طريقة التحصيل</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t("Collection method")}</Label>
                 <div className="grid grid-cols-4 gap-1.5">
                   {METHOD_META.filter((m) => PAYMENT_METHODS.includes(m.id)).map(
                     ({ id, label, icon: Icon, className }) => (
                       <button
                         key={id}
                         type="button"
-                        aria-label={label}
+                        aria-label={t(label)}
                         data-selected={method === id}
                         onClick={() => setMethod(id)}
                         className={cn(
-                          "flex h-11 flex-col items-center justify-center gap-0 rounded-xl border text-xs font-semibold sm:h-12 sm:gap-0.5",
+                          "flex h-11 flex-col items-center justify-center gap-0 rounded-lg border px-1 text-[11px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 sm:flex-row sm:gap-1 sm:text-xs",
                           className
                         )}
                       >
                         <Icon className="size-4" aria-hidden />
-                        <span className="sr-only sm:not-sr-only">{label}</span>
+                        <span className="truncate">{t(label)}</span>
                       </button>
                     )
                   )}
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="pos-collect-ref">مرجع (اختياري)</Label>
+                <Label htmlFor="pos-collect-ref">{t("Reference (optional)")}</Label>
                 <Input
                   id="pos-collect-ref"
                   value={reference}
                   onChange={(e) => setReference(e.target.value)}
-                  className="rounded-xl"
-                  placeholder="رقم إيصال / ملاحظة"
+                  className="h-11 rounded-xl"
+                  placeholder={t("Receipt number / note")}
                 />
               </div>
             </>
@@ -379,22 +411,22 @@ export function PosCollectFlowDialog({ open, onOpenChange }: PosCollectFlowDialo
         </div>
 
         {selected ? (
-          <DialogFooter className="mx-0 mb-0 border-t border-border/70 px-4 py-3">
+          <DialogFooter className="mx-0 mb-0 border-t border-border/70 px-3 py-2.5">
             <Button
               type="button"
               variant="outline"
-              className="h-12 rounded-xl"
+              className="h-11 rounded-lg"
               onClick={() => handleOpenChange(false)}
             >
-              إلغاء
+              {t("Cancel")}
             </Button>
             <Button
               type="button"
-              className="h-12 rounded-xl font-semibold"
+              className="h-11 rounded-lg font-semibold"
               disabled={!canSubmit}
               onClick={handleCollect}
             >
-              {pending ? "جاري التحصيل…" : "تأكيد التحصيل"}
+              {pending ? t("Collecting…") : t("Confirm collection")}
             </Button>
           </DialogFooter>
         ) : null}

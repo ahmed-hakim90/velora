@@ -143,7 +143,7 @@ export async function updatePromotion(
   validatePromotionInput(input);
   const orgId = await getOrgId();
   const existing = await promoRepo.getPromotionRule(input.id);
-  if (!existing) throw new Error("العرض غير موجود");
+  if (!existing) throw new Error("Promotion not found");
   const rule = await promoRepo.upsertPromotionRule(input);
   await writeAuditLog({
     orgId,
@@ -187,40 +187,40 @@ export async function removePromotion(id: string, userId: string): Promise<void>
 }
 
 function validatePromotionInput(input: promoRepo.UpsertPromotionRuleInput) {
-  if (!input.name?.trim()) throw new Error("اسم العرض مطلوب");
+  if (!input.name?.trim()) throw new Error("Promotion name is required");
   const type = input.rule_type;
   const cfg = input.config ?? {};
 
   if (type === "percent_off_item" || type === "cart_percent") {
     const pct = Number(cfg.percent ?? NaN);
     if (!Number.isFinite(pct) || pct <= 0 || pct > 100) {
-      throw new Error("نسبة الخصم لازم تكون بين 1 و 100");
+      throw new Error("Discount percent must be between 1 and 100");
     }
   }
   if (type === "fixed_off_item" || type === "cart_fixed") {
     const amt = Number(cfg.amount ?? NaN);
-    if (!Number.isFinite(amt) || amt <= 0) throw new Error("مبلغ الخصم غير صالح");
+    if (!Number.isFinite(amt) || amt <= 0) throw new Error("Invalid discount amount");
   }
   if (type === "scheduled_sale_price") {
     const price = Number(cfg.sale_price ?? NaN);
-    if (!Number.isFinite(price) || price < 0) throw new Error("سعر العرض غير صالح");
+    if (!Number.isFinite(price) || price < 0) throw new Error("Invalid sale price");
     if (!input.starts_at || !input.ends_at) {
-      throw new Error("سعر العرض المجدول يحتاج تاريخ بداية ونهاية");
+      throw new Error("Scheduled sale price requires start and end dates");
     }
   }
   if (type === "bogo") {
     if (!(Number(cfg.buy_qty) > 0) || !(Number(cfg.get_qty) > 0)) {
-      throw new Error("اشتري واحصل يحتاج كميات صحيحة");
+      throw new Error("Buy-and-get requires valid quantities");
     }
   }
   if (type === "qty_threshold") {
-    if (!(Number(cfg.min_qty) > 0)) throw new Error("حد الكمية غير صالح");
+    if (!(Number(cfg.min_qty) > 0)) throw new Error("Invalid quantity threshold");
     if (cfg.percent == null && cfg.amount == null) {
-      throw new Error("حدد نسبة أو مبلغ لخصم الكمية");
+      throw new Error("Set a percentage or amount for the quantity discount");
     }
   }
   if (input.scope_type === "product" || input.scope_type === "category") {
-    if (!input.scope_ids?.length) throw new Error("اختر منتجات أو فئات للعرض");
+    if (!input.scope_ids?.length) throw new Error("Select products or categories for the promotion");
   }
 }
 

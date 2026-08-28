@@ -9,6 +9,7 @@ import { updateFeatureFlagsAction } from "@/modules/system/actions/system.action
 import { ADVANCED_FEATURE_FLAGS, type FeatureFlag } from "@/lib/constants";
 import { ReportScheduleCard } from "@/modules/reports/components/report-schedule-card";
 import type { ReportScheduleSettings } from "@/modules/reports/lib/report-schedule";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 const featureFlagLabels: Partial<Record<FeatureFlag, string>> = {
   barcode_scanner: "قارئ الباركود",
@@ -57,11 +58,13 @@ export function SystemFeaturesTab({
   reportSchedule = null,
   canManageSchedule = false,
 }: SystemFeaturesTabProps) {
+  const { t } = useTranslation();
   const [pending, startTransition] = useTransition();
-  const [flags, setFlags] = useState<Partial<Record<FeatureFlag, boolean>>>(() =>
-    Object.fromEntries(
-      ADVANCED_FEATURE_FLAGS.map((flag) => [flag, featureFlags[flag]])
-    )
+  const [flags, setFlags] = useState<Partial<Record<FeatureFlag, boolean>>>(
+    () =>
+      Object.fromEntries(
+        ADVANCED_FEATURE_FLAGS.map((flag) => [flag, featureFlags[flag]]),
+      ),
   );
   const recipesLocked =
     activityType === "supermarket" || activityType === "pharmacy";
@@ -72,7 +75,7 @@ export function SystemFeaturesTab({
 
   return (
     <div className="flex flex-col gap-4">
-      <OperationalCard title="خصائص النظام">
+      <OperationalCard title={t("System features")}>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {ADVANCED_FEATURE_FLAGS.map((flag) => {
             const locked = recipesLocked && flag === "recipes";
@@ -95,16 +98,20 @@ export function SystemFeaturesTab({
                   className="mt-0.5"
                 />
                 <span className="min-w-0">
-                  <span className="block text-sm">{featureFlagLabels[flag] ?? flag}</span>
+                  <span className="block text-sm">
+                    {t(featureFlagLabels[flag] ?? flag)}
+                  </span>
                   {locked ? (
                     <span className="mt-0.5 block text-xs text-muted-foreground">
                       {activityType === "pharmacy"
-                        ? "مقفول لصيدلية (كتالوج بسيط بدون وصفات)"
-                        : "مقفول لسوبر ماركت"}
+                        ? t(
+                            "Disabled for pharmacies (simple catalog without recipes)",
+                          )
+                        : t("Disabled for supermarkets")}
                     </span>
                   ) : hint ? (
                     <span className="mt-0.5 block text-xs text-muted-foreground">
-                      {hint}
+                      {t(hint)}
                     </span>
                   ) : null}
                 </span>
@@ -119,17 +126,17 @@ export function SystemFeaturesTab({
             startTransition(async () => {
               try {
                 const patch = Object.fromEntries(
-                  ADVANCED_FEATURE_FLAGS.map((flag) => [flag, flags[flag]])
+                  ADVANCED_FEATURE_FLAGS.map((flag) => [flag, flags[flag]]),
                 ) as Partial<Record<FeatureFlag, boolean>>;
                 await updateFeatureFlagsAction(patch);
-                toast.success("تم حفظ خصائص النظام");
+                toast.success(t("System features saved"));
               } catch {
-                toast.error("فشل الحفظ");
+                toast.error(t("Could not save"));
               }
             })
           }
         >
-          حفظ خصائص النظام
+          {t("Save system features")}
         </Button>
       </OperationalCard>
 

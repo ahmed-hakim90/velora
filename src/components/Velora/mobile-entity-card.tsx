@@ -47,11 +47,16 @@ export function MobileEntityCard({
         {badge ? <div className="shrink-0">{badge}</div> : null}
       </div>
       {fields && fields.length > 0 ? (
-        <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+        <dl className="grid grid-cols-2 gap-2 text-xs">
           {fields.map((field) => (
-            <div key={field.label} className="contents">
-              <dt className="text-muted-foreground">{field.label}</dt>
-              <dd className="min-w-0 font-medium text-foreground">{field.value}</dd>
+            <div
+              key={field.label}
+              className="min-w-0 rounded-[var(--mds-radius-sm)] bg-muted/35 px-2 py-1.5"
+            >
+              <dt className="truncate text-[11px] text-muted-foreground">{field.label}</dt>
+              <dd className="mt-0.5 min-w-0 break-words font-medium text-foreground">
+                {field.value}
+              </dd>
             </div>
           ))}
         </dl>

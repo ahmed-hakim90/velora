@@ -1,4 +1,4 @@
-/** Meridian design tokens — CSS vars in globals.css are the runtime source of truth. */
+/** Meridian 2.0 design tokens — CSS vars in globals.css are the runtime source of truth. */
 export const designTokens = {
   colors: {
     primary: "#0E7490",
@@ -8,7 +8,7 @@ export const designTokens = {
     warning: "#D97706",
     danger: "#DC2626",
     info: "#2563EB",
-    background: "#F1F5F9",
+    background: "#F6F8FA",
     surface: "#FFFFFF",
     darkBackground: "#0B1020",
     darkSurface: "#111827",
@@ -20,6 +20,9 @@ export const designTokens = {
     4: "16px",
     6: "24px",
     8: "32px",
+    10: "40px",
+    12: "48px",
+    16: "64px",
   },
   radius: {
     sm: "6px",

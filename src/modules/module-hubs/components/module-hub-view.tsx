@@ -30,8 +30,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/Velora/page-header";
-import { OperationalCard } from "@/components/Velora/operational-card";
 import { EmptyStateBlock } from "@/components/Velora/state-blocks";
+import { EntityList, PageShell } from "@/components/Velora/page-patterns";
 import { HubAnalyticsSection } from "@/modules/module-hubs/components/hub-analytics-section";
 import type { ModuleHubDefinition, ModuleHubLink } from "@/modules/module-hubs/lib/module-hub-catalog";
 import type { HubAnalyticsPayload } from "@/modules/module-hubs/lib/hub-analytics-types";
@@ -75,14 +75,12 @@ interface ModuleHubViewProps {
 
 export function ModuleHubView({ hub, links, analytics }: ModuleHubViewProps) {
   return (
-    <div className="flex flex-col gap-3" dir="rtl">
+    <PageShell dir="rtl">
       <PageHeader
         breadcrumb={<span>{hub.breadcrumb}</span>}
         title={hub.title}
         description={hub.description}
       />
-
-      {analytics ? <HubAnalyticsSection analytics={analytics} /> : null}
 
       {links.length === 0 ? (
         <EmptyStateBlock
@@ -94,31 +92,33 @@ export function ModuleHubView({ hub, links, analytics }: ModuleHubViewProps) {
           <h2 className="text-sm font-semibold text-muted-foreground">
             اختَر الشاشة
           </h2>
-          <div className="grid gap-[var(--mds-space-4)] sm:grid-cols-2 xl:grid-cols-3">
+          <EntityList className="grid sm:grid-cols-2">
             {links.map((link) => {
               const Icon = HUB_ICONS[link.icon] ?? ClipboardList;
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="group block h-full rounded-[var(--mds-radius-lg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="group block min-h-28 border-b border-border outline-none transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 sm:border-s"
                 >
-                  <OperationalCard
-                    title={link.label}
-                    description={link.description}
-                    className="h-full cursor-pointer transition-shadow group-hover:shadow-[var(--mds-elevation-2)] group-focus-visible:shadow-[var(--mds-elevation-2)]"
-                  >
-                    <div className="flex items-center gap-[var(--mds-space-3)] text-primary">
-                      <Icon className="size-5 shrink-0" aria-hidden />
-                      <span className="text-sm font-medium">{hub.ctaLabel}</span>
+                  <div className="flex h-full items-center gap-4 p-4">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--mds-radius-md)] bg-[var(--mds-color-harbor-50)] text-primary">
+                      <Icon className="size-5" aria-hidden />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold">{link.label}</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">{link.description}</p>
+                      <span className="mt-2 inline-flex text-xs font-semibold text-primary">{hub.ctaLabel}</span>
                     </div>
-                  </OperationalCard>
+                  </div>
                 </Link>
               );
             })}
-          </div>
+          </EntityList>
         </section>
       )}
-    </div>
+
+      {analytics ? <HubAnalyticsSection analytics={analytics} /> : null}
+    </PageShell>
   );
 }

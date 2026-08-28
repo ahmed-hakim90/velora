@@ -52,12 +52,13 @@
 }
 
 :root {
-  /* Meridian tokens */
-  --mds-color-bg-canvas: #f1f5f9;
+  /* Meridian 2.0 tokens */
+  --mds-color-bg-canvas: #f6f8fa;
   --mds-color-bg-surface: #ffffff;
-  --mds-color-bg-surface-muted: #f8fafc;
+  --mds-color-bg-surface-muted: #f2f5f7;
+  --mds-color-bg-surface-raised: #ffffff;
   --mds-color-bg-overlay: rgb(2 6 23 / 0.48);
-  --mds-color-border-default: #cbd5e1;
+  --mds-color-border-default: #d8e0e6;
   --mds-color-border-strong: #94a3b8;
   --mds-color-border-focus: #0e7490;
   --mds-color-text-primary: #0f172a;
@@ -72,6 +73,12 @@
   --mds-color-feedback-warning: #d97706;
   --mds-color-feedback-danger: #dc2626;
   --mds-color-feedback-info: #2563eb;
+  --mds-color-feedback-success-subtle: #f0fdf4;
+  --mds-color-feedback-warning-subtle: #fffbeb;
+  --mds-color-feedback-danger-subtle: #fef2f2;
+  --mds-color-feedback-info-subtle: #eff6ff;
+  --mds-color-feedback-warning-border: #fcd34d;
+  --mds-color-feedback-danger-border: #fca5a5;
   --mds-color-selection-bg: #ecfeff;
   --mds-color-selection-border: #0e7490;
   --mds-color-harbor-50: #ecfeff;
@@ -85,6 +92,7 @@
   --mds-space-8: 32px;
   --mds-space-10: 40px;
   --mds-space-12: 48px;
+  --mds-space-16: 64px;
   --mds-radius-sm: 6px;
   --mds-radius-md: 10px;
   --mds-radius-lg: 14px;
@@ -100,9 +108,9 @@
   --mds-motion-fast: 120ms;
   --mds-motion-normal: 200ms;
   --mds-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
-  --mds-elevation-1: 0 1px 2px rgb(15 23 42 / 0.06);
-  --mds-elevation-2: 0 4px 12px rgb(15 23 42 / 0.08);
-  --mds-elevation-3: 0 12px 28px rgb(15 23 42 / 0.12);
+  --mds-elevation-1: 0 1px 2px rgb(15 23 42 / 0.045);
+  --mds-elevation-2: 0 6px 18px rgb(15 23 42 / 0.07);
+  --mds-elevation-3: 0 18px 40px rgb(15 23 42 / 0.1);
 
   /* shadcn bridge → Meridian */
   --background: var(--mds-color-bg-canvas);
@@ -167,6 +175,12 @@
   --mds-color-feedback-warning: #fbbf24;
   --mds-color-feedback-danger: #f87171;
   --mds-color-feedback-info: #60a5fa;
+  --mds-color-feedback-success-subtle: rgb(74 222 128 / 0.1);
+  --mds-color-feedback-warning-subtle: rgb(251 191 36 / 0.1);
+  --mds-color-feedback-danger-subtle: rgb(248 113 113 / 0.1);
+  --mds-color-feedback-info-subtle: rgb(96 165 250 / 0.1);
+  --mds-color-feedback-warning-border: rgb(251 191 36 / 0.45);
+  --mds-color-feedback-danger-border: rgb(248 113 113 / 0.45);
   --mds-color-selection-bg: rgb(34 211 238 / 0.12);
   --mds-color-selection-border: #22d3ee;
   --mds-color-harbor-50: rgb(34 211 238 / 0.1);
@@ -217,9 +231,18 @@
   body {
     @apply bg-background text-foreground;
     font-size: var(--mds-font-size-body);
+    min-height: 100svh;
+    min-height: 100dvh;
   }
   html {
     @apply font-sans;
+    min-height: 100%;
+    min-height: 100dvh;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--mds-color-border-focus);
+    outline-offset: 2px;
   }
 
   html[dir="rtl"] body {
@@ -230,6 +253,27 @@
   html[dir="rtl"] textarea,
   html[dir="rtl"] select {
     text-align: right;
+  }
+}
+
+/*
+ * Use the live visual viewport everywhere on mobile. `dvh` follows browser URL
+ * chrome as it expands/collapses, while `svh` is the safe fallback on older
+ * engines. Physical notch/home-indicator insets remain handled by env().
+ */
+.app-viewport-root {
+  min-height: 100svh;
+  min-height: 100dvh;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
@@ -245,7 +289,7 @@
 @media print {
   @page {
     size: A4;
-    margin: 12mm;
+    margin: 12mm 12mm 14mm;
   }
 
   body {
@@ -261,6 +305,113 @@
   .print\:hidden {
     display: none !important;
   }
+}
+
+/* Velora shared print shell — screen preview and A4 output use the same geometry. */
+.velora-print-page {
+  position: relative;
+  width: min(100%, 210mm);
+  min-height: 297mm;
+  margin-inline: auto;
+  padding: 12mm 12mm 14mm;
+  overflow: hidden;
+  background: #fff;
+  color: var(--print-text);
+  font-family: Arial, var(--font-cairo), sans-serif;
+  font-size: 11px;
+  line-height: 1.55;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.print-header { display: flex; justify-content: space-between; gap: 28px; padding-block-end: 22px; border-block-end: 2px solid var(--print-accent); }
+.print-company, .print-identity { min-width: 0; flex: 1; }
+.print-logo { width: auto; max-width: 128px; height: 42px; object-fit: contain; object-position: right center; }
+.print-wordmark { font-size: 25px; line-height: 1; font-weight: 900; letter-spacing: -.04em; color: var(--print-primary); }
+.print-wordmark span { color: var(--print-accent); }
+.print-company__details { margin-block-start: 14px; color: var(--print-muted); font-size: 10px; }
+.print-company__details p, .print-identity p, .print-party p { margin: 0; }
+.print-identity { text-align: end; }
+.print-identity h1 { margin: 0 0 7px; color: var(--print-primary); font-size: 28px; font-weight: 800; line-height: 1.15; letter-spacing: .03em; text-transform: uppercase; }
+.print-document-number { color: var(--print-primary); font-size: 13px; font-weight: 800; }
+.print-parties { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 48px; padding-block: 24px 20px; }
+.print-eyebrow { margin-block-end: 9px !important; color: var(--print-muted); font-size: 9px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.print-party h2 { margin: 0 0 5px; color: var(--print-primary); font-size: 14px; font-weight: 800; }
+.print-party { color: var(--print-muted); }
+.print-party--secondary strong { display: inline-block; min-width: 84px; color: var(--print-primary); }
+.print-metadata { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0 0 22px; border-inline-start: 4px solid var(--print-accent); background: #f8fafc; }
+.print-metadata__item { padding: 11px 14px; }
+.print-metadata__item dt { font-size: 8px; text-transform: uppercase; }
+.print-metadata__item dd { margin: 4px 0 0; color: var(--print-primary); font-size: 11px; font-weight: 800; }
+.print-lines { width: 100%; border-collapse: collapse; table-layout: auto; font-variant-numeric: tabular-nums; }
+.print-lines thead { background: var(--print-primary); color: #fff; }
+.print-lines th { padding: 11px 8px; font-size: 8px; font-weight: 800; text-align: start; text-transform: uppercase; }
+.print-lines td { padding: 11px 8px; border-block-end: 1px solid var(--print-border); text-align: start; vertical-align: middle; }
+.print-lines th:not(:nth-child(2)), .print-lines td:not(:nth-child(2)) { text-align: end; white-space: nowrap; }
+.print-lines .print-line-index { width: 34px; color: #91a2bd; text-align: start !important; }
+.print-lines td strong { color: var(--print-primary); font-weight: 800; }
+.print-lines td small { display: block; margin-block-start: 2px; color: #91a2bd; font-size: 9px; }
+.print-closing { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 39%); gap: 40px; padding-block-start: 22px; }
+.print-notes-inline { color: var(--print-muted); }
+.print-totals { font-size: 11px; font-variant-numeric: tabular-nums; }
+.print-totals > p { display: flex; justify-content: space-between; gap: 24px; margin: 0; padding: 4px 0; }
+.print-totals > p span { color: var(--print-muted); }
+.print-grand-total { margin-block-start: 8px !important; padding: 10px 12px !important; border-radius: 4px; background: var(--print-primary); color: #fff; font-size: 15px; }
+.print-grand-total span { color: #fff !important; }
+.print-totals small { display: block; margin-block-start: 7px; color: var(--print-muted); }
+.print-bank { margin-block-start: 16px; padding-block: 10px; border-block: 1px solid var(--print-border); color: var(--print-muted); }
+.print-signatures { display: grid; grid-template-columns: repeat(2, 180px); gap: 36px; margin-block-start: 28px; color: var(--print-muted); font-size: 9px; }
+.print-signatures span { display: block; height: 28px; margin-block-end: 5px; border-block-end: 1px solid var(--print-border); }
+.print-qr { display: flex; justify-content: end; margin-block-start: 12px; }
+.print-footer { display: flex; justify-content: space-between; gap: 18px; margin-block-start: 34px; padding-block-start: 13px; border-block-start: 1px solid var(--print-border); color: #91a2bd; font-size: 8px; }
+.receipt-party { padding-block: 28px 20px; }
+.receipt-party h2 { margin: 0; color: var(--print-primary); font-size: 16px; }
+.receipt-amount { padding: 18px 20px; border-block: 1px solid var(--print-border); background: #f8fafc; text-align: center; }
+.receipt-amount strong { display: block; color: var(--print-primary); font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.receipt-amount > p:last-child { margin: 5px 0 0; color: var(--print-muted); }
+.receipt-details { padding-block: 24px 18px; border-block-end: 1px solid var(--print-border); }
+.receipt-details dl { margin: 0; }
+.receipt-details dl > div { display: grid; grid-template-columns: minmax(130px, 34%) 1fr; gap: 24px; padding-block: 6px; }
+.receipt-details dt { color: var(--print-muted); }
+.receipt-details dd { margin: 0; color: var(--print-primary); font-weight: 700; }
+.receipt-paid { width: fit-content; margin: 16px 0 0; padding: 4px 10px; border: 1px solid var(--print-primary); color: var(--print-primary); font-size: 10px; font-weight: 800; letter-spacing: .06em; }
+.receipt-notes { margin-block-start: 22px; color: var(--print-muted); }
+.receipt-items { margin-block-start: 22px; }
+.receipt-summary { width: min(100%, 330px); margin-block-start: 18px; margin-inline-start: auto; font-variant-numeric: tabular-nums; }
+.receipt-summary p { display: flex; justify-content: space-between; gap: 20px; margin: 0; padding: 4px 0; }
+.receipt-summary p span { color: var(--print-muted); }
+.receipt-summary__strong { margin-block-start: 5px !important; padding-block-start: 9px !important; border-block-start: 1px solid var(--print-primary); color: var(--print-primary); font-size: 13px; }
+.print-watermark { position: absolute; inset: 43% 0 auto; z-index: 0; color: var(--print-primary); font-size: 60px; font-weight: 900; text-align: center; opacity: .055; transform: rotate(-18deg); pointer-events: none; }
+.velora-print-page > div { position: relative; z-index: 1; }
+[data-print-variant="minimal"] { padding: 10mm 12mm 12mm; font-size: 10px; }
+[data-print-variant="minimal"] .print-header { padding-block-end: 14px; border-color: var(--print-primary); }
+[data-print-variant="minimal"] .print-identity h1 { font-size: 20px; }
+[data-print-variant="minimal"] .print-company__details { margin-block-start: 8px; }
+[data-print-variant="minimal"] .print-parties { padding-block: 16px; }
+[data-print-variant="minimal"] .print-metadata { border: 1px solid var(--print-border); background: transparent; }
+[data-print-variant="minimal"] .print-metadata__item + .print-metadata__item { border-inline-start: 1px solid var(--print-border); }
+[data-print-variant="minimal"] .print-lines thead { background: var(--print-table-head); color: var(--print-muted); }
+[data-print-variant="minimal"] .print-lines td { padding-block: 7px; }
+[data-print-variant="minimal"] .print-grand-total { border-block-start: 1px solid var(--print-primary); border-radius: 0; background: transparent; color: var(--print-primary); }
+[data-print-variant="minimal"] .print-grand-total span { color: var(--print-primary) !important; }
+[data-print-variant="corporate"] .print-header { margin: -12mm -12mm 0; padding: 12mm; border: 0; background: var(--print-primary); color: #fff; }
+[data-print-variant="corporate"] .print-identity h1, [data-print-variant="corporate"] .print-document-number, [data-print-variant="corporate"] .print-company__details { color: #fff; }
+[data-print-variant="corporate"] .print-wordmark { color: #fff; }
+
+@media (max-width: 700px) {
+  .velora-print-page { min-height: auto; padding: 24px 18px; }
+  .print-header, .print-closing { gap: 20px; }
+  .print-identity h1 { font-size: 21px; }
+  .print-parties { gap: 24px; }
+  .print-metadata { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .print-lines { font-size: 9px; }
+  .print-lines th, .print-lines td { padding-inline: 5px; }
+}
+
+@media print {
+  .velora-print-page { width: auto; min-height: auto; margin: 0; padding: 0 !important; }
+  [data-print-variant="corporate"] .print-header { margin: -12mm -12mm 0; }
+  .print-lines tr, .print-metadata, .print-signatures, .print-totals { break-inside: avoid; }
+  .print-lines thead { display: table-header-group; }
 }
 
 @media print {

@@ -12,20 +12,20 @@ export const PURCHASE_CONTAINER_STATUSES = [
 export type PurchaseContainerStatus = (typeof PURCHASE_CONTAINER_STATUSES)[number];
 
 export const PURCHASE_CONTAINER_STATUS_LABELS: Record<PurchaseContainerStatus, string> = {
-  planned: "مخططة",
-  shipped: "اتشحنت",
-  at_port: "في المينا",
-  inland: "في الطريق للمخزن",
-  received: "مستلمة",
-  cancelled: "ملغاة",
+  planned: "Planned",
+  shipped: "Shipped",
+  at_port: "At port",
+  inland: "On the way to warehouse",
+  received: "Received",
+  cancelled: "Cancelled",
 };
 
 export const CUSTOMS_CERTIFICATE_STATUSES = ["open", "closed"] as const;
 export type CustomsCertificateStatus = (typeof CUSTOMS_CERTIFICATE_STATUSES)[number];
 
 export const CUSTOMS_CERTIFICATE_STATUS_LABELS: Record<CustomsCertificateStatus, string> = {
-  open: "مفتوحة",
-  closed: "مقفولة",
+  open: "Open",
+  closed: "Closed",
 };
 
 export const CUSTOMS_CERTIFICATE_COST_TYPES = [
@@ -40,12 +40,12 @@ export const CUSTOMS_CERTIFICATE_COST_TYPES = [
 export type CustomsCertificateCostType = (typeof CUSTOMS_CERTIFICATE_COST_TYPES)[number];
 
 export const CUSTOMS_CERTIFICATE_COST_TYPE_LABELS: Record<CustomsCertificateCostType, string> = {
-  customs: "جمارك",
-  port: "مصاريف مينا",
-  demurrage: "أرضيات",
-  inland: "نقل داخلي",
-  agent: "مخلص",
-  other: "أخرى",
+  customs: "Customs",
+  port: "Port fees",
+  demurrage: "Demurrage",
+  inland: "Inland transport",
+  agent: "Customs agent",
+  other: "Other",
 };
 
 export const IMPORT_DOCUMENT_CURRENCIES = ["USD", "EUR", "EGP"] as const;

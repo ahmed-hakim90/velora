@@ -21,6 +21,7 @@ import {
   updateCafeIngredientAction,
 } from "@/modules/products/actions/product.actions";
 import { toast } from "sonner";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 type CafeIngredientDialogProps = {
   open: boolean;
@@ -37,6 +38,7 @@ export function CafeIngredientDialog({
   ingredient,
   onSaved,
 }: CafeIngredientDialogProps) {
+  const { t } = useTranslation();
   const [pending, startTransition] = useTransition();
   const isEdit = Boolean(ingredient);
   const [form, setForm] = useState(() => ({
@@ -53,11 +55,11 @@ export function CafeIngredientDialog({
   function handleSave() {
     const name = form.name.trim();
     if (!name) {
-      toast.error("اسم المكوّن مطلوب");
+      toast.error(t("Ingredient name is required."));
       return;
     }
     if (!form.category_id) {
-      toast.error("اختار تصنيف أولاً");
+      toast.error(t("Choose a category first."));
       return;
     }
 
@@ -71,16 +73,16 @@ export function CafeIngredientDialog({
         };
         if (ingredient) {
           await updateCafeIngredientAction(ingredient.id, payload);
-          toast.success("تم تحديث المكوّن");
+          toast.success(t("Ingredient updated."));
         } else {
           await createCafeIngredientAction(payload);
-          toast.success("تمت إضافة المكوّن");
+          toast.success(t("Ingredient added."));
         }
         reset();
         onOpenChange(false);
         onSaved?.();
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "تعذر حفظ المكوّن");
+        toast.error(error instanceof Error ? t(error.message) : t("Could not save ingredient."));
       }
     });
   }
@@ -95,27 +97,27 @@ export function CafeIngredientDialog({
     >
       <StandardModalContent
         size="md"
-        title={isEdit ? "تعديل مكوّن" : "مكوّن جديد"}
+        title={isEdit ? t("Edit ingredient") : t("New ingredient")}
         description={
           isEdit
-            ? "حدّث التصنيف والوحدة وتكلفة الوحدة."
-            : "أضف مكوّن كافي قابل لإعادة الاستخدام."
+            ? t("Update the category, unit, and unit cost.")
+            : t("Add a reusable ingredient.")
         }
       >
         <div className="grid gap-4">
           <div className="space-y-2">
-            <Label htmlFor="ingredient_name">اسم المكوّن</Label>
+            <Label htmlFor="ingredient_name">{t("Ingredient name")}</Label>
             <Input
               id="ingredient_name"
               value={form.name}
-              placeholder="لبن، سكر، بن إسبريسو…"
+              placeholder={t("Milk, sugar, espresso…")}
               onChange={(event) =>
                 setForm((current) => ({ ...current, name: event.target.value }))
               }
             />
           </div>
           <div className="space-y-2">
-            <Label>التصنيف</Label>
+            <Label>{t("Category")}</Label>
             <Select
               value={form.category_id}
               onValueChange={(value) =>
@@ -123,7 +125,7 @@ export function CafeIngredientDialog({
               }
             >
               <SelectTrigger>
-                <SelectValue placeholder="اختار تصنيف المكوّن">
+                <SelectValue placeholder={t("Choose ingredient category")}>
                   {(value) =>
                     categories.find((category) => category.id === value)?.name ?? null
                   }
@@ -140,7 +142,7 @@ export function CafeIngredientDialog({
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>الوحدة</Label>
+              <Label>{t("Unit")}</Label>
               <Select
                 value={form.unit}
                 onValueChange={(value) =>
@@ -165,7 +167,7 @@ export function CafeIngredientDialog({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="ingredient_cost">تكلفة الوحدة</Label>
+              <Label htmlFor="ingredient_cost">{t("Unit cost")}</Label>
               <Input
                 id="ingredient_cost"
                 type="number"
@@ -181,10 +183,10 @@ export function CafeIngredientDialog({
           </div>
           <DialogFooter className="gap-2 px-0 pb-0">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              إلغاء
+              {t("Cancel")}
             </Button>
             <Button type="button" disabled={pending} onClick={handleSave}>
-              {pending ? "جاري الحفظ…" : isEdit ? "حفظ المكوّن" : "إضافة مكوّن"}
+              {pending ? t("Saving…") : isEdit ? t("Save ingredient") : t("Add ingredient")}
             </Button>
           </DialogFooter>
         </div>

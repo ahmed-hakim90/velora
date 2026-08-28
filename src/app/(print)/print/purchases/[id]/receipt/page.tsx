@@ -8,10 +8,14 @@ import { ReceiptPrintServer } from "@/modules/pos/components/receipt-print-serve
 
 export default async function PrintPurchaseReceiptPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ lang?: string }>;
 }) {
   const { id } = await params;
+  const { lang } = await searchParams;
+  const language = lang === "en" ? "en" : "ar";
   const auth = await requirePageAuth(`/print/purchases/${id}/receipt`);
   if (!auth.ok) {
     return <AccessDenied title={auth.denial.title} description={auth.denial.description} />;
@@ -35,7 +39,7 @@ export default async function PrintPurchaseReceiptPage({
 
   return (
     <ReceiptPrintServer
-      documentLabel="ريسيت مشتريات"
+      documentLabel="Purchase receipt"
       orderNumber={purchase.invoice_number}
       createdAt={purchase.created_at}
       items={items}
@@ -43,11 +47,12 @@ export default async function PrintPurchaseReceiptPage({
       discount={0}
       tax={purchase.tax ?? 0}
       total={purchase.total}
-      partyLabel="المورد"
+      partyLabel="Supplier"
       partyName={purchase.supplierName}
-      metaLines={purchase.warehouseName ? [`المخزن: ${purchase.warehouseName}`] : undefined}
+      metaLines={purchase.warehouseName ? [`${language === "ar" ? "المخزن" : "Warehouse"}: ${purchase.warehouseName}`] : undefined}
       isDraft={purchase.status === "draft"}
       branding={branding}
+      language={language}
     />
   );
 }

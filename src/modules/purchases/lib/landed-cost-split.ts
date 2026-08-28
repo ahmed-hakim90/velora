@@ -8,10 +8,10 @@ import { roundMoney } from "@/lib/money";
  * customs on the certificate.
  */
 export const EXTRA_COST_INVOICE_HINT =
-  "التكلفة الإضافية من المورد على الفاتورة التجارية (شحن ظاهر على الفاتورة). الجمارك والمينا والمخلص على الشهادة الجمركية — متسجلش نفس المصروف مرتين.";
+  "Supplier extra cost on the commercial invoice. Record customs, port, and agent fees on the customs certificate without duplicating costs.";
 
 export const CERTIFICATE_COST_HINT =
-  "المصروف هنا بيترسمل على المخزون فوق تكلفة الفاتورة. لو الشحن مكتوب على فاتورة المورد، سيبه في «تكلفة إضافية» هناك ومتكررهوش هنا.";
+  "Costs entered here are capitalized into inventory. If shipping is on the supplier invoice, keep it there and do not enter it again here.";
 
 export function sumLinkedInvoiceExtraCost(
   invoices: { extra_cost: number }[]

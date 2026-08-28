@@ -58,8 +58,11 @@ export function normalizeWhatsAppPhone(phone: string | null | undefined): string
   return digits;
 }
 
-export function buildWhatsAppReceiptUrl(payload: ReceiptPayload): string | null {
-  const phone = normalizeWhatsAppPhone(payload.customer?.phone);
+export function buildWhatsAppReceiptUrl(
+  payload: ReceiptPayload,
+  phoneOverride?: string | null
+): string | null {
+  const phone = normalizeWhatsAppPhone(phoneOverride ?? payload.customer?.phone);
   if (!phone) return null;
 
   return `https://wa.me/${phone}?text=${encodeURIComponent(formatReceiptForWhatsApp(payload))}`;

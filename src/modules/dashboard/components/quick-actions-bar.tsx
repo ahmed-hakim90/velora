@@ -15,26 +15,27 @@ import { CompactAction, CompactActions } from "@/components/Velora/compact-actio
 import type { SupplierListSummary } from "@/lib/types";
 import { getSuppliersPageDataAction } from "@/modules/suppliers/actions/supplier.actions";
 import { RecordPaymentDialog } from "@/modules/suppliers/components/record-payment-dialog";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 const linkActions = [
   {
     href: "/pos",
-    label: "نقطة البيع",
+    label: "POS",
     icon: ShoppingCart,
   },
   {
     href: "/sessions",
-    label: "الجلسات",
+    label: "Sessions",
     icon: Clock,
   },
   {
     href: "/orders",
-    label: "الطلبات",
+    label: "Orders",
     icon: Receipt,
   },
   {
     href: "/expenses",
-    label: "المصروفات",
+    label: "Expenses",
     icon: Wallet,
   },
 ];
@@ -45,6 +46,7 @@ export function QuickActionsBar({
   enableWholesaleSales?: boolean;
 }) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [showPayment, setShowPayment] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [summaries, setSummaries] = useState<SupplierListSummary[]>([]);
@@ -59,19 +61,19 @@ export function QuickActionsBar({
         const data = await getSuppliersPageDataAction();
         if (!data.canManagePayments) {
           setShowPayment(false);
-          toast.error("تسجيل دفعة المورد متاح للمالك أو المدير فقط");
+          toast.error(t("Supplier payments are for owners and managers only"));
           return;
         }
         if (data.summaries.length === 0) {
           setShowPayment(false);
-          toast.error("أضف موردًا أولاً من صفحة الموردين");
+          toast.error(t("Add a supplier first"));
           return;
         }
         setSummaries(data.summaries);
         setCurrency(data.currency);
       } catch (e) {
         setShowPayment(false);
-        toast.error(e instanceof Error ? e.message : "تعذر تحميل الموردين");
+        toast.error(e instanceof Error ? e.message : t("Could not load suppliers"));
       } finally {
         setPaymentLoading(false);
       }
@@ -86,24 +88,24 @@ export function QuickActionsBar({
     <>
       <CompactActions className="justify-start">
         {linkActions.map(({ href, label, icon }) => (
-          <CompactAction key={href} label={label} icon={icon} href={href} />
+          <CompactAction key={href} label={t(label)} icon={icon} href={href} />
         ))}
         {enableWholesaleSales ? (
           <>
             <CompactAction
-              label="فاتورة بيع"
+              label={t("Sales invoice")}
               icon={FilePlus2}
               onClick={openNewSalesInvoice}
             />
             <CompactAction
-              label="عرض سعر"
+              label={t("Quotation")}
               icon={Receipt}
               href="/quotations?create=1"
             />
           </>
         ) : null}
         <CompactAction
-          label="دفعة مورد"
+          label={t("Supplier payment")}
           icon={Banknote}
           onClick={openSupplierPayment}
         />

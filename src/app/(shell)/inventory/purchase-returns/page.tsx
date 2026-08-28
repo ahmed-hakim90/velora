@@ -8,9 +8,9 @@ export default async function PurchaseReturnsRoute() {
       {...data}
       documentKind="purchase_return"
       basePath="/inventory/purchase-returns"
-      title="مرتجعات المشتريات"
-      description="أنشئ المرتجع من فاتورة مستلمة ثم رحّله عشان ينزل المخزون ورصيد المورد"
-      createLabel="مرتجع مشتريات"
+      title="Purchase returns"
+      description="Create a return from a received invoice, then post it to update stock and supplier balance"
+      createLabel="Purchase return"
       allowCreate={false}
     />
   );

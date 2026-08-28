@@ -16,6 +16,7 @@ import { amountFromQuantity, quantityFromAmount } from "@/lib/units";
 import {
   parseScaleSettings,
 } from "@/modules/pos/lib/scale-device-hook";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface Props {
   open: boolean;
@@ -32,10 +33,10 @@ interface Props {
   }) => void;
 }
 
-function formatWeightPreview(quantityKg: number, unit: string): string {
+function formatWeightPreview(quantityKg: number, unit: string, kgLabel: string, gramLabel: string): string {
   if (unit === "kg" || unit === "gram") {
     const grams = Math.round(quantityKg * 1000);
-    return `${quantityKg.toFixed(3)} كجم ≈ ${grams} جرام`;
+    return `${quantityKg.toFixed(3)} ${kgLabel} ≈ ${grams} ${gramLabel}`;
   }
   return `${quantityKg.toFixed(3)} ${unit}`;
 }
@@ -48,6 +49,7 @@ export function WeightAmountModal({
   scaleSettings,
   onConfirm,
 }: Props) {
+  const { t } = useTranslation();
   const allowAmount = product?.supports_amount_sale === true;
   const [mode, setMode] = useState<"by_weight" | "by_amount">("by_weight");
   const [weight, setWeight] = useState("");
@@ -81,7 +83,15 @@ export function WeightAmountModal({
     const match = KG_WEIGHT_PRESETS.find((preset) => Math.abs(preset.kg - quantity) < 0.0005);
     return match?.kg ?? null;
   }, [showKgPresets, quantity]);
-  const total = amountFromQuantity(quantity, unitPrice);
+  const validQuantity = Number.isFinite(quantity) && quantity > 0;
+  const validUnitPrice = Number.isFinite(unitPrice) && unitPrice > 0;
+  const hasEntry = mode === "by_weight" ? weight.trim() !== "" : amount.trim() !== "";
+  const validationMessage = !validUnitPrice
+    ? t("This product needs a valid price before it can be sold")
+    : hasEntry && !validQuantity
+      ? t("Enter a value greater than zero")
+      : null;
+  const total = amountFromQuantity(validQuantity ? quantity : 0, validUnitPrice ? unitPrice : 0);
 
   function applyWeightPreset(kg: number) {
     setMode("by_weight");
@@ -90,11 +100,11 @@ export function WeightAmountModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[min(92dvh,100%)] overflow-y-auto rounded-2xl max-sm:max-w-[calc(100%-0.75rem)] sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{product?.name ?? "بيع بالوزن"}</DialogTitle>
+      <DialogContent className="max-h-[min(94dvh,100%)] overflow-y-auto rounded-2xl p-2.5 max-sm:max-w-[calc(100%-0.5rem)] sm:max-w-md sm:p-4">
+        <DialogHeader className="pe-7">
+          <DialogTitle className="truncate text-base sm:text-lg">{product?.name ?? t("Sell by weight")}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-2 sm:space-y-2.5">
           <div className="inline-flex w-full rounded-xl border p-1">
             <Button
               size="sm"
@@ -102,7 +112,7 @@ export function WeightAmountModal({
               className="h-11 flex-1 rounded-lg"
               onClick={() => setMode("by_weight")}
             >
-              بالوزن
+              {t("By weight")}
             </Button>
             {allowAmount ? (
               <Button
@@ -111,24 +121,24 @@ export function WeightAmountModal({
                 className="h-11 flex-1 rounded-lg"
                 onClick={() => setMode("by_amount")}
               >
-                بالمبلغ
+                {t("By amount")}
               </Button>
             ) : null}
           </div>
-          <p className="text-sm text-muted-foreground">
-            سعر الوحدة: {formatCurrency(unitPrice)} / {unit}
+          <p className="text-xs text-muted-foreground">
+            {t("Price per unit")}: {formatCurrency(unitPrice)} / {t(unit)}
           </p>
           {scaleConfig.enabled && mode === "by_weight" ? (
             <p className="text-xs text-muted-foreground">
-              أدخل الوزن يدويًا. قراءة USB من الميزان لسه غير مفعّلة على الجهاز ده.
+              {t("Enter weight manually. USB scale reading is not enabled on this device.")}
             </p>
           ) : null}
           {mode === "by_weight" ? (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {showKgPresets ? (
                 <div className="space-y-2">
-                  <Label>اختيار سريع</Label>
-                  <div className="grid grid-cols-3 gap-2 max-[390px]:grid-cols-3 sm:grid-cols-5">
+                  <Label>{t("Quick select")}</Label>
+                  <div className="grid grid-cols-5 gap-1.5 max-[390px]:grid-cols-3">
                     {KG_WEIGHT_PRESETS.map((preset) => {
                       const selected = selectedPresetKg === preset.kg;
                       return (
@@ -137,7 +147,7 @@ export function WeightAmountModal({
                           type="button"
                           variant={selected ? "default" : "outline"}
                           className={cn(
-                            "h-12 rounded-xl px-1 text-sm font-semibold tabular-nums max-[390px]:h-11",
+                            "h-11 rounded-lg px-1 text-xs font-semibold tabular-nums",
                             selected && "shadow-sm"
                           )}
                           onClick={() => applyWeightPreset(preset.kg)}
@@ -150,9 +160,9 @@ export function WeightAmountModal({
                   </div>
                 </div>
               ) : null}
-              <div className="space-y-2">
-                <Label htmlFor="pos-weight-input">
-                  {showKgPresets ? "وزن تاني (كجم)" : `الوزن (${unit})`}
+              <div className="grid grid-cols-[minmax(0,1fr)_8rem] items-center gap-2">
+                <Label className="text-xs" htmlFor="pos-weight-input">
+                  {showKgPresets ? t("Other weight (kg)") : `${t("Weight")} (${t(unit)})`}
                 </Label>
                 <Input
                   id="pos-weight-input"
@@ -161,16 +171,18 @@ export function WeightAmountModal({
                   min="0"
                   value={weight}
                   onChange={(e) => setWeight(e.target.value)}
-                  className="h-12 rounded-xl text-base"
+                  className="h-11 rounded-lg text-end text-sm font-semibold tabular-nums"
                   inputMode="decimal"
+                  aria-invalid={Boolean(validationMessage)}
+                  aria-describedby={validationMessage ? "pos-weight-validation" : undefined}
                   autoFocus={!showKgPresets}
-                  placeholder={showKgPresets ? "مثال: 0.350" : undefined}
+                  placeholder={showKgPresets ? t("Example: 0.350") : undefined}
                 />
               </div>
             </div>
           ) : (
-            <div className="space-y-2">
-              <Label htmlFor="pos-amount-input">المبلغ اللي العميل عايزه</Label>
+            <div className="grid grid-cols-[minmax(0,1fr)_8rem] items-center gap-2">
+              <Label className="text-xs" htmlFor="pos-amount-input">{t("Customer requested amount")}</Label>
               <Input
                 id="pos-amount-input"
                 type="number"
@@ -178,24 +190,31 @@ export function WeightAmountModal({
                 min="0"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="h-12 rounded-xl text-base"
+                className="h-11 rounded-lg text-end text-sm font-semibold tabular-nums"
                 inputMode="decimal"
+                aria-invalid={Boolean(validationMessage)}
+                aria-describedby={validationMessage ? "pos-weight-validation" : undefined}
                 autoFocus
               />
             </div>
           )}
-          <p className="text-sm text-muted-foreground">
-            الكمية: {quantity > 0 ? formatWeightPreview(quantity, unit) : "—"}
+          {validationMessage ? (
+            <p id="pos-weight-validation" className="text-xs text-destructive" role="alert">
+              {validationMessage}
+            </p>
+          ) : null}
+          <p className="text-xs text-muted-foreground">
+            {t("Quantity")}: {validQuantity ? formatWeightPreview(quantity, unit, t("kg"), t("gram")) : "—"}
           </p>
-          <div className="rounded-xl border border-border/60 bg-muted/40 px-4 py-3">
-            <p className="text-xs text-muted-foreground">الإجمالي</p>
-            <p className="text-2xl font-bold tabular-nums tracking-tight text-foreground">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/40 px-3 py-2">
+            <p className="text-xs text-muted-foreground">{t("Total")}</p>
+            <p className="text-xl font-bold tabular-nums tracking-tight text-foreground">
               {formatCurrency(total)}
             </p>
           </div>
           <Button
-            className="h-14 w-full rounded-2xl text-base font-semibold"
-            disabled={quantity <= 0}
+            className="h-12 w-full rounded-xl text-sm font-semibold"
+            disabled={!validQuantity || !validUnitPrice}
             onClick={() =>
               onConfirm({
                 quantity,
@@ -205,7 +224,7 @@ export function WeightAmountModal({
               })
             }
           >
-            إضافة للسلة
+            {t("Add to cart")}
           </Button>
         </div>
       </DialogContent>

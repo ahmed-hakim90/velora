@@ -11,6 +11,7 @@ import {
   type LabelPrintJob,
 } from "@/modules/reports/labels/print-job";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface LabelDocumentProps {
   job: LabelPrintJob;
@@ -90,12 +91,14 @@ function LabelCell({
 }
 
 export function LabelDocument({ job, className, preview = false }: LabelDocumentProps) {
+  const { language } = useTranslation();
   const labels = useMemo(() => expandLabelPrintItems(job), [job]);
   const { settings, currency } = job;
 
   return (
     <div
       data-print-root
+      dir={language === "ar" ? "rtl" : "ltr"}
       data-print-layout={settings.preset === "a4_labels" ? "labels-a4" : "labels-thermal"}
       data-label-width={settings.labelWidthMm}
       data-label-height={settings.labelHeightMm}

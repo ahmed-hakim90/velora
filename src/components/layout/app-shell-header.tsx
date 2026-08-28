@@ -103,7 +103,7 @@ export function AppShellHeader({
   const selectedId = activeStoreId ?? stores[0]?.id;
   const cta = posCta(posReadinessState);
   const posHref = cta.href ?? "/pos";
-  const roleLabel = ROLE_LABELS_AR[userRole];
+  const roleLabel = t(ROLE_LABELS_AR[userRole]);
   const activeStoreName = stores.find((s) => s.id === selectedId)?.name;
 
   useEffect(() => {
@@ -117,7 +117,7 @@ export function AppShellHeader({
       : t("Press Ctrl+K to open quickly");
 
   const handleMenuClick = () => {
-    if (typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches) {
+    if (typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches) {
       toggleSidebar();
       return;
     }
@@ -134,7 +134,7 @@ export function AppShellHeader({
               type="button"
               variant="ghost"
               size="icon-sm"
-              className="size-10 shrink-0 touch-manipulation md:size-8"
+              className="size-11 shrink-0 touch-manipulation md:size-8"
               aria-label={t("Open menu")}
               aria-expanded={mobileNavOpen || !sidebarCollapsed}
               aria-controls="mobile-nav-sheet"
@@ -151,6 +151,39 @@ export function AppShellHeader({
                 <SheetHeader className="sr-only">
                   <SheetTitle>{t("Navigation")}</SheetTitle>
                 </SheetHeader>
+                {stores.length > 0 ? (
+                  <div className="border-b border-border/70 p-2 sm:hidden">
+                    <div className="flex items-center gap-2 rounded-lg bg-muted/40 p-1.5">
+                      <Store className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                      <Select
+                        value={selectedId}
+                        onValueChange={(storeId) => {
+                          if (!storeId) return;
+                          startTransition(async () => {
+                            await setActiveStoreAction(storeId);
+                          });
+                        }}
+                      >
+                        <SelectTrigger
+                          className="h-11 min-w-0 flex-1 rounded-lg bg-background"
+                          disabled={pending}
+                          aria-label={t("Select store")}
+                        >
+                          <SelectValue placeholder={t("Select store")}>
+                            {(value) => selectLabelById(stores, value, (store) => store.name)}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {stores.map((store) => (
+                            <SelectItem key={store.id} value={store.id} label={store.name}>
+                              {store.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ) : null}
                 <AppSidebar
                   userRole={userRole}
                   featureFlags={featureFlags}
@@ -159,15 +192,16 @@ export function AppShellHeader({
                   enableKitchenDisplay={enableKitchenDisplay}
                   permissions={permissions}
                   forceExpanded
-                  className="h-full w-full border-e-0 shadow-none"
+                  className="min-h-0 w-full flex-1 border-e-0 shadow-none"
                 />
               </SheetContent>
             </Sheet>
 
             <Link
               href="/account"
-              className="flex min-w-0 items-center gap-[var(--mds-space-2)] rounded-[var(--mds-radius-md)] outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              aria-label={t("Account")}
+              className="flex min-h-11 min-w-0 items-center gap-1.5 rounded-[var(--mds-radius-md)] outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:gap-[var(--mds-space-2)]"
+              aria-label={`${t("Account")}: ${userName}`}
+              title={`${userName}${activeStoreName ? ` · ${activeStoreName}` : ""}`}
             >
               <span
                 className="flex size-8 shrink-0 select-none items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary md:size-7 dark:bg-primary/15"
@@ -176,7 +210,7 @@ export function AppShellHeader({
                 {firstGrapheme(userName, "?")}
               </span>
 
-              <div className="min-w-0">
+              <div className="min-w-0 max-[479px]:hidden">
                 <p className="truncate text-sm font-semibold leading-tight text-foreground">
                   {userName}
                 </p>
@@ -200,7 +234,7 @@ export function AppShellHeader({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="hidden gap-[var(--mds-space-2)] text-muted-foreground sm:inline-flex"
+                    className="hidden gap-[var(--mds-space-2)] text-muted-foreground md:inline-flex"
                     onClick={openPalette}
                     aria-label={t("Open command palette")}
                     aria-keyshortcuts="Meta+K Control+K"
@@ -226,7 +260,7 @@ export function AppShellHeader({
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    className="size-10 touch-manipulation sm:hidden"
+                    className="size-11 touch-manipulation md:hidden"
                     onClick={openPalette}
                     aria-label={t("Open command palette")}
                     aria-keyshortcuts="Meta+K Control+K"
@@ -238,14 +272,14 @@ export function AppShellHeader({
               <TooltipContent side="bottom">{paletteTooltip}</TooltipContent>
             </Tooltip>
 
-            <div className="hidden sm:block">
+            <div className="hidden md:block">
               <ThemeToggle darkModeEnabled={featureFlags?.dark_mode !== false} />
             </div>
 
             {stores.length > 0 && (
               <>
                 <span className="hidden h-5 w-px bg-border sm:block" aria-hidden />
-                <div className="flex items-center gap-[var(--mds-space-1)]">
+                <div className="hidden items-center gap-[var(--mds-space-1)] sm:flex">
                   <Store className="hidden size-3.5 shrink-0 text-muted-foreground sm:block" aria-hidden />
                   <Select
                     value={selectedId}
@@ -257,7 +291,7 @@ export function AppShellHeader({
                     }}
                   >
                     <SelectTrigger
-                      className="h-9 max-w-[7.5rem] rounded-[var(--mds-radius-md)] touch-manipulation sm:h-8 sm:max-w-[13rem]"
+                      className="h-11 max-w-[7.5rem] rounded-[var(--mds-radius-md)] touch-manipulation sm:max-w-32 md:h-8 md:max-w-[13rem]"
                       disabled={pending}
                       aria-label={t("Select store")}
                     >
@@ -281,15 +315,16 @@ export function AppShellHeader({
 
             <Link
               href={posHref}
+              aria-label={t(cta.label)}
               className={cn(
                 buttonVariants({ size: "sm" }),
-                "h-9 min-w-9 touch-manipulation rounded-[var(--mds-radius-md)] px-2.5 shadow-[var(--mds-elevation-1)] sm:h-8 sm:px-3",
+                "size-11 min-w-11 touch-manipulation rounded-[var(--mds-radius-md)] px-0 shadow-[var(--mds-elevation-1)] md:h-8 md:w-auto md:min-w-9 md:px-3",
                 cta.className
               )}
             >
               <ShoppingCart className="size-4" />
-              <span className="hidden sm:inline">{cta.label}</span>
-              <span className="sm:hidden">{cta.short}</span>
+              <span className="hidden md:inline">{t(cta.label)}</span>
+              <span className="sr-only md:hidden">{t(cta.short)}</span>
             </Link>
           </div>
         </div>

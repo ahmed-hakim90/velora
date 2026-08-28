@@ -99,14 +99,14 @@ const EXTRA_DESTINATIONS: ExtraDestination[] = [
   {
     group: "Purchasing",
     href: "/inventory/containers",
-    label: "الحاويات",
+    label: "Containers",
     icon: "Package",
     keywords: ["حاوية", "حاويات", "شحن", "استيراد"],
   },
   {
     group: "Purchasing",
     href: "/inventory/customs-certificates",
-    label: "الشهادات الجمركية",
+    label: "Customs Certificates",
     icon: "FileBadge",
     keywords: ["شهادة", "جمارك", "مينا", "استيراد"],
   },
@@ -162,7 +162,7 @@ function hubAccessHref(href: string): string {
 function pushItem(
   grouped: Map<string, CommandPaletteItem[]>,
   group: string,
-  item: CommandPaletteItem
+  item: CommandPaletteItem,
 ) {
   const items = grouped.get(group) ?? [];
   items.push(item);
@@ -173,11 +173,11 @@ export function getCommandPaletteGroups(
   role: UserRole,
   permissions: Set<PermissionKey>,
   flags?: Partial<Record<FeatureFlag, boolean>>,
-  options?: NavAccessOptions
+  options?: NavAccessOptions,
 ): CommandPaletteGroup[] {
   const navGroups = filterNavByAccess(role, permissions, flags, options);
   const existingHrefs = new Set<string>(
-    navGroups.flatMap((group) => group.items.map((item) => item.href))
+    navGroups.flatMap((group) => group.items.map((item) => item.href)),
   );
   const grouped = new Map<string, CommandPaletteItem[]>();
 
@@ -189,14 +189,22 @@ export function getCommandPaletteGroups(
         label: item.label,
         icon: item.icon,
         keywords: NAV_KEYWORDS[item.href] ?? [],
-      }))
+      })),
     );
   }
 
   for (const link of allReportHubLinks()) {
     if (existingHrefs.has(link.href)) continue;
     if (link.requiresCreditSales && flags?.credit_sales === false) continue;
-    if (!navItemAllowed(hubAccessHref(link.href), role, permissions, flags, options)) {
+    if (
+      !navItemAllowed(
+        hubAccessHref(link.href),
+        role,
+        permissions,
+        flags,
+        options,
+      )
+    ) {
       continue;
     }
     pushItem(grouped, "Reports", {
@@ -210,8 +218,17 @@ export function getCommandPaletteGroups(
   for (const extra of EXTRA_DESTINATIONS) {
     if (existingHrefs.has(extra.href)) continue;
     if (extra.requiresCreditSales && flags?.credit_sales === false) continue;
-    if (extra.requiresWholesale && options?.enableWholesaleSales !== true) continue;
-    if (!navItemAllowed(extra.accessHref ?? extra.href, role, permissions, flags, options)) {
+    if (extra.requiresWholesale && options?.enableWholesaleSales !== true)
+      continue;
+    if (
+      !navItemAllowed(
+        extra.accessHref ?? extra.href,
+        role,
+        permissions,
+        flags,
+        options,
+      )
+    ) {
       continue;
     }
     pushItem(grouped, extra.group, {
@@ -225,7 +242,7 @@ export function getCommandPaletteGroups(
   if (navItemAllowed("/settings", role, permissions, flags, options)) {
     const tabs = getVisibleSettingsTabs(
       permissions,
-      role === "owner" || (permissions.size === 0 && role === "manager")
+      role === "owner" || (permissions.size === 0 && role === "manager"),
     );
     for (const tab of tabs) {
       const href = `/settings?tab=${tab.id}`;
@@ -233,9 +250,16 @@ export function getCommandPaletteGroups(
       if (tab.id === "print") continue;
       pushItem(grouped, "Administration", {
         href,
-        label: `إعدادات · ${tab.label}`,
+        label: `Settings · ${tab.label}`,
         icon: "Settings",
-        keywords: [...tab.searchTerms, tab.label, tab.group, "Settings", "إعدادات", "محرك الطباعة"],
+        keywords: [
+          ...tab.searchTerms,
+          tab.label,
+          tab.group,
+          "Settings",
+          "إعدادات",
+          "محرك الطباعة",
+        ],
       });
     }
   }

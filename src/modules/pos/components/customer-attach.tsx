@@ -10,6 +10,7 @@ import { usePosStore } from "@/stores/pos-store";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { formatCurrency } from "@/lib/format";
 import { firstGrapheme } from "@/lib/first-grapheme";
+import { validatePosCustomerDraft } from "@/modules/pos/lib/customer-input-validation";
 
 const SEARCH_DEBOUNCE_MS = 250;
 
@@ -32,7 +33,7 @@ async function searchCustomersApi(query: string): Promise<PosCustomerSearchResul
     error?: string;
   };
   if (!res.ok) {
-    throw new Error(data.error || "فشل البحث عن العملاء");
+    throw new Error(data.error || "Could not search customers");
   }
   return data.customers ?? [];
 }
@@ -52,7 +53,7 @@ async function createCustomerApi(input: {
     error?: string;
   };
   if (!res.ok || !data.customer) {
-    throw new Error(data.error || "فشل إضافة العميل");
+    throw new Error(data.error || "Could not add customer");
   }
   return data.customer;
 }
@@ -64,7 +65,7 @@ async function fetchLoyaltyBalanceApi(customerId: string): Promise<number> {
   });
   const data = (await res.json()) as { balance?: number; error?: string };
   if (!res.ok) {
-    throw new Error(data.error || "فشل جلب نقاط الولاء");
+    throw new Error(data.error || "Could not load loyalty points");
   }
   return data.balance ?? 0;
 }
@@ -87,8 +88,11 @@ export function CustomerAttach({
   const [createOpen, setCreateOpen] = useState(false);
   const [createName, setCreateName] = useState("");
   const [createPhone, setCreatePhone] = useState("");
+  const [createErrors, setCreateErrors] = useState<{ name?: string; phone?: string; form?: string }>({});
   const [expandedInternal, setExpandedInternal] = useState(false);
   const [results, setResults] = useState<PosCustomerSearchResult[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searching, setSearching] = useState(false);
   const [loyaltyLoading, setLoyaltyLoading] = useState(false);
   const [pending, startTransition] = useTransition();
   const searchSeqRef = useRef(0);
@@ -96,6 +100,7 @@ export function CustomerAttach({
 
   const controlled = expandedProp !== undefined;
   const expanded = controlled ? expandedProp : expandedInternal;
+  const hasSearchQuery = phone.trim().length >= 3;
 
   useEffect(() => {
     return () => {
@@ -107,9 +112,12 @@ export function CustomerAttach({
     if (!next) {
       setPhone("");
       setResults([]);
+      setSearchError(null);
+      setSearching(false);
       setCreateOpen(false);
       setCreateName("");
       setCreatePhone("");
+      setCreateErrors({});
       searchSeqRef.current += 1;
       if (debounceRef.current) clearTimeout(debounceRef.current);
     }
@@ -123,7 +131,7 @@ export function CustomerAttach({
     setPhone("");
     setResults([]);
     if (c.account_balance > 0) {
-      toast.info(`${c.name}: مستحق ${formatCurrency(c.account_balance)}`);
+      toast.info(`${c.name}: ${t("Due")} ${formatCurrency(c.account_balance)}`);
     }
     if (!loyaltyEnabled) {
       setCustomerLoyaltyBalance(null);
@@ -135,7 +143,7 @@ export function CustomerAttach({
       setCustomerLoyaltyBalance(c.loyalty_balance);
       setLoyaltyLoading(false);
       if (c.loyalty_balance > 0) {
-        toast.info(`${c.name}: ${c.loyalty_balance} نقطة جاهزة للاستبدال`);
+        toast.info(`${c.name}: ${c.loyalty_balance} ${t("points available")}`);
       }
       return;
     }
@@ -147,7 +155,7 @@ export function CustomerAttach({
         const balance = await fetchLoyaltyBalanceApi(c.id);
         setCustomerLoyaltyBalance(balance);
         if (balance > 0) {
-          toast.info(`${c.name}: ${balance} نقطة جاهزة للاستبدال`);
+          toast.info(`${c.name}: ${balance} ${t("points available")}`);
         }
       } catch {
         setCustomerLoyaltyBalance(0);
@@ -158,116 +166,138 @@ export function CustomerAttach({
   }
 
   function handlePhoneChange(value: string) {
+    const query = value.trim();
     setPhone(value);
+    setSearchError(null);
+    setResults([]);
+    const seq = ++searchSeqRef.current;
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    if (value.length < 3) {
-      searchSeqRef.current += 1;
-      setResults([]);
+    if (query.length < 3) {
+      setSearching(false);
       return;
     }
+    setSearching(true);
 
     debounceRef.current = setTimeout(() => {
-      const seq = ++searchSeqRef.current;
-      const query = value;
-      startTransition(async () => {
+      void (async () => {
         try {
           const found = await searchCustomersApi(query);
           if (seq !== searchSeqRef.current) return;
           setResults(found);
+          setSearchError(null);
         } catch (error) {
           if (seq !== searchSeqRef.current) return;
           setResults([]);
-          toast.error(error instanceof Error ? error.message : "فشل البحث عن العملاء");
+          const message = t(error instanceof Error ? error.message : "Could not search customers");
+          setSearchError(message);
+        } finally {
+          if (seq === searchSeqRef.current) setSearching(false);
         }
-      });
+      })();
     }, SEARCH_DEBOUNCE_MS);
   }
 
   function openCreateForm() {
+    searchSeqRef.current += 1;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setSearching(false);
     const hint = splitQueryHint(phone);
-    setCreateName(hint.name || "زائر");
+    setCreateName(hint.name || t("Guest"));
     setCreatePhone(hint.phone);
+    setCreateErrors({});
     setCreateOpen(true);
   }
 
   function handleCreate() {
     const name = createName.trim();
     const phoneValue = createPhone.trim();
-    if (!name) {
-      toast.error("اكتب اسم العميل");
+    const validation = validatePosCustomerDraft(name, phoneValue);
+    const nextErrors: typeof createErrors = {
+      name:
+        validation.name === "required"
+          ? t("Enter customer name")
+          : validation.name === "too_short"
+            ? t("Customer name must be at least two characters")
+            : undefined,
+      phone:
+        validation.phone === "required"
+          ? t("Enter phone number")
+          : validation.phone === "invalid"
+            ? t("Enter a valid phone number")
+            : undefined,
+    };
+    if (nextErrors.name || nextErrors.phone) {
+      setCreateErrors(nextErrors);
       return;
     }
-    if (!phoneValue) {
-      toast.error("اكتب رقم الهاتف");
-      return;
-    }
+    setCreateErrors({});
     startTransition(async () => {
       try {
         const created = await createCustomerApi({
           name,
           phone: phoneValue,
         });
-        toast.success(`تم إضافة ${created.name}`);
+        toast.success(`${t("Added")} ${created.name}`);
         attachCustomer(created);
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "فشل إضافة العميل");
+        setCreateErrors({ form: t(error instanceof Error ? error.message : "Could not add customer") });
       }
     });
   }
 
   if (!customer && !expanded) {
     return (
-      <div className="border-b px-3 py-2.5 max-[390px]:px-2 max-[390px]:py-2 sm:px-4">
+      <div className="border-b px-2 py-1 sm:px-3 sm:py-1.5">
         <button
           type="button"
-          className="flex w-full items-center gap-3 rounded-xl border border-dashed border-border/80 bg-muted/20 px-3 py-2.5 text-start transition-colors hover:border-primary/40 hover:bg-primary/5 max-[390px]:gap-2 max-[390px]:px-2.5 max-[390px]:py-2"
+          className="flex min-h-11 w-full items-center gap-2 rounded-lg border border-dashed border-border/80 bg-muted/20 px-2.5 py-1.5 text-start transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
           onClick={() => setExpanded(true)}
-          aria-label="إضافة عميل للفاتورة"
+          aria-label={t("Add customer to invoice")}
           aria-keyshortcuts="F6"
-          title="إضافة عميل (F6)"
+          title={`${t("Add customer")} (F6)`}
         >
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground max-[390px]:size-9">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
             <UserRound className="size-4" aria-hidden />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-foreground">إضافة عميل</p>
-            <p className="truncate text-xs text-muted-foreground max-[390px]:text-[11px]">
-              بحث بالاسم أو الهاتف · مطلوب للبيع الآجل
+            <p className="text-sm font-semibold text-foreground">{t("Add customer")}</p>
+            <p className="truncate text-[11px] text-muted-foreground">
+              {t("Search by name or phone · required for credit sales")}
             </p>
           </div>
-          <UserPlus className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          <UserPlus className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
         </button>
       </div>
     );
   }
 
   return (
-    <div className="border-b px-3 py-2.5 max-[390px]:px-2 max-[390px]:py-2 sm:px-4">
+    <div className="border-b px-2 py-1 sm:px-3 sm:py-1.5">
       {customer ? (
-        <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 max-[390px]:gap-2 max-[390px]:px-2.5">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">
+        <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-0.5 sm:py-1.5">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-xs font-semibold text-primary">
             {customer.name.trim() ? firstGrapheme(customer.name) : <UserRound className="size-4" />}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-foreground">{customer.name}</p>
-            <p className="truncate text-xs text-muted-foreground" dir="ltr">
-              {customer.phone}
-            </p>
-            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <div className="mt-0.5 flex min-w-0 items-center gap-1 overflow-hidden">
+              <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground" dir="ltr">
+                {customer.phone}
+              </p>
               {customer.account_balance > 0 ? (
-                <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-200">
-                  مستحق {formatCurrency(customer.account_balance)}
+                <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:text-amber-200">
+                  {t("Due")} {formatCurrency(customer.account_balance)}
                 </span>
               ) : null}
               {loyaltyEnabled && loyaltyLoading ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                   <Star className="size-3 animate-pulse" />
-                  جاري جلب النقاط…
+                  {t("Loading points…")}
                 </span>
               ) : null}
               {loyaltyEnabled && !loyaltyLoading && loyaltyBalance !== null ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">
                   <Star className="size-3" />
                   {loyaltyBalance} {t("points")}
                 </span>
@@ -277,8 +307,8 @@ export function CustomerAttach({
           <Button
             variant="ghost"
             size="icon-xs"
-            className="size-11 shrink-0 rounded-xl"
-            aria-label="إزالة العميل"
+            className="size-11 shrink-0 rounded-lg"
+            aria-label={t("Remove customer")}
             onClick={() => {
               setCustomer(null);
               setLoyaltyLoading(false);
@@ -289,28 +319,48 @@ export function CustomerAttach({
         </div>
       ) : createOpen ? (
         <div className="space-y-2">
-          <Input
-            placeholder="اسم العميل"
-            aria-label="اسم العميل"
-            value={createName}
-            onChange={(e) => setCreateName(e.target.value)}
-            className="h-11 rounded-xl"
-            autoFocus
-          />
-          <Input
-            placeholder="رقم الهاتف"
-            aria-label="رقم الهاتف"
-            value={createPhone}
-            onChange={(e) => setCreatePhone(e.target.value)}
-            className="h-11 rounded-xl"
-            dir="ltr"
-            inputMode="tel"
-          />
-          <div className="flex gap-2">
+          <div className="grid grid-cols-1 gap-1.5 min-[360px]:grid-cols-2">
+            <div className="min-w-0">
+              <Input
+                placeholder={t("Customer name")}
+                aria-label={t("Customer name")}
+                value={createName}
+                onChange={(e) => {
+                  setCreateName(e.target.value);
+                  if (createErrors.name || createErrors.form) setCreateErrors((current) => ({ ...current, name: undefined, form: undefined }));
+                }}
+                className="h-11 rounded-lg px-2.5 text-sm"
+                aria-invalid={Boolean(createErrors.name)}
+                aria-describedby={createErrors.name ? "pos-create-customer-name-error" : undefined}
+                autoFocus
+              />
+              {createErrors.name ? <p id="pos-create-customer-name-error" className="mt-1 text-xs text-destructive" role="alert">{createErrors.name}</p> : null}
+            </div>
+            <div className="min-w-0">
+              <Input
+                placeholder={t("Phone number")}
+                aria-label={t("Phone number")}
+                value={createPhone}
+                onChange={(e) => {
+                  setCreatePhone(e.target.value);
+                  if (createErrors.phone || createErrors.form) setCreateErrors((current) => ({ ...current, phone: undefined, form: undefined }));
+                }}
+                className="h-11 rounded-lg px-2.5 text-start text-sm"
+                dir="ltr"
+                inputMode="tel"
+                autoComplete="tel"
+                aria-invalid={Boolean(createErrors.phone)}
+                aria-describedby={createErrors.phone ? "pos-create-customer-phone-error" : undefined}
+              />
+              {createErrors.phone ? <p id="pos-create-customer-phone-error" className="mt-1 text-xs text-destructive" role="alert">{createErrors.phone}</p> : null}
+            </div>
+          </div>
+          {createErrors.form ? <p className="rounded-lg border border-destructive/25 bg-destructive/5 px-2.5 py-2 text-xs text-destructive" role="alert">{createErrors.form}</p> : null}
+          <div className="flex gap-1.5">
             <Button
               variant="outline"
               size="sm"
-              className="h-11 flex-1 rounded-xl"
+              className="h-11 flex-1 rounded-lg text-xs"
               onClick={() => setCreateOpen(false)}
               disabled={pending}
             >
@@ -318,12 +368,12 @@ export function CustomerAttach({
             </Button>
             <Button
               size="sm"
-              className="h-11 flex-1 rounded-xl"
+              className="h-11 flex-1 rounded-lg text-xs"
               onClick={handleCreate}
               disabled={pending}
             >
               <UserPlus className="size-3.5" />
-              حفظ وربط
+              {t("Save and attach")}
             </Button>
           </div>
         </div>
@@ -332,24 +382,57 @@ export function CustomerAttach({
           <div className="relative">
             <Search className="absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="اسم أو رقم هاتف"
-              aria-label="بحث عن عميل"
+              placeholder={t("Name or phone number")}
+              aria-label={t("Search customers")}
               value={phone}
               onChange={(e) => handlePhoneChange(e.target.value)}
-              className="h-11 rounded-xl ps-8"
+              className="h-11 rounded-xl ps-8 pe-11 aria-invalid:ring-destructive/70"
+              aria-invalid={Boolean(searchError)}
+              aria-describedby={searchError ? "pos-customer-search-error" : undefined}
               autoFocus
             />
+            {phone ? (
+              <button
+                type="button"
+                className="absolute end-0 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                onClick={() => handlePhoneChange("")}
+                aria-label={t("Clear search")}
+              >
+                <X className="size-4" aria-hidden />
+              </button>
+            ) : null}
           </div>
-          {results.length > 0 ? (
-            <ul className="max-h-[min(40dvh,14rem)] space-y-1.5 overflow-y-auto overscroll-y-contain">
+          {searching && hasSearchQuery && !searchError && results.length === 0 ? (
+            <p className="px-1 py-2 text-center text-xs text-muted-foreground" role="status">
+              {t("Searching…")}
+            </p>
+          ) : searchError ? (
+            <div
+              id="pos-customer-search-error"
+              className="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-destructive/25 bg-destructive/5 py-0.5 ps-2.5 pe-0.5"
+              role="alert"
+            >
+              <p className="min-w-0 truncate text-xs text-destructive">{searchError}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-11 shrink-0 rounded-lg text-xs"
+                onClick={() => handlePhoneChange(phone)}
+              >
+                {t("Try again")}
+              </Button>
+            </div>
+          ) : results.length > 0 ? (
+            <ul className="max-h-[min(32dvh,11rem)] space-y-1 overflow-y-auto overscroll-y-contain">
               {results.map((c) => (
                 <li key={c.id}>
                   <button
                     type="button"
-                    className="flex min-h-14 w-full items-center gap-3 rounded-xl border border-border/70 bg-background px-3 py-2.5 text-start transition-colors hover:bg-muted/60 active:scale-[0.99]"
+                    className="flex min-h-11 w-full items-center gap-2 rounded-lg border border-border/70 bg-background px-2 py-1 text-start transition-colors hover:bg-muted/60 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
                     onClick={() => attachCustomer(c)}
                   >
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-xs font-semibold text-foreground">
                       {firstGrapheme(c.name, "؟")}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -375,9 +458,9 @@ export function CustomerAttach({
                 </li>
               ))}
             </ul>
-          ) : phone.length >= 3 ? (
+          ) : hasSearchQuery ? (
             <p className="px-1 py-2 text-center text-xs text-muted-foreground">
-              لا توجد نتائج
+              {t("No results")}
             </p>
           ) : null}
           <div className="flex gap-2">

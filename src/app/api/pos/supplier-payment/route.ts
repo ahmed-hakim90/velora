@@ -9,6 +9,7 @@ import {
 } from "@/lib/auth/guards";
 import { requirePosAccess, getActiveSessionForPos } from "@/lib/auth/pos-access";
 import { createSupplierPayment } from "@/modules/suppliers/services/supplier.service";
+import * as treasuryRepo from "@/lib/repositories/cash-treasury.repository";
 import type { PaymentMethod } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +28,8 @@ export async function POST(request: Request) {
       paymentMethod?: PaymentMethod;
       reference?: string;
       notes?: string;
+      cashSource?: "drawer" | "treasury";
+      treasuryId?: string;
     };
 
     if (!body.supplierId) {
@@ -44,6 +47,12 @@ export async function POST(request: Request) {
     if (!body.paymentMethod) {
       return NextResponse.json(
         { success: false, error: "طريقة الدفع مطلوبة" },
+        { status: 400 }
+      );
+    }
+    if (body.paymentMethod === "cash" && body.cashSource === "treasury" && !body.treasuryId) {
+      return NextResponse.json(
+        { success: false, error: "اختار خزينة الفرع اللي هيتصرف منها المبلغ" },
         { status: 400 }
       );
     }
@@ -65,6 +74,18 @@ export async function POST(request: Request) {
       );
     }
 
+    const payFromTreasury =
+      body.paymentMethod === "cash" && body.cashSource === "treasury";
+    if (payFromTreasury) {
+      const treasury = await treasuryRepo.getTreasury(body.treasuryId!);
+      if (!treasury || treasury.kind !== "store" || treasury.store_id !== storeId) {
+        return NextResponse.json(
+          { success: false, error: "الخزينة المختارة لا تتبع الفرع الحالي" },
+          { status: 400 }
+        );
+      }
+    }
+
     await createSupplierPayment({
       supplierId: body.supplierId,
       amount: body.amount,
@@ -73,7 +94,8 @@ export async function POST(request: Request) {
       notes: body.notes,
       storeId,
       createdBy: user.id,
-      sessionId: session.id,
+      sessionId: payFromTreasury ? null : session.id,
+      treasuryId: payFromTreasury ? body.treasuryId : null,
     });
 
     after(() => {

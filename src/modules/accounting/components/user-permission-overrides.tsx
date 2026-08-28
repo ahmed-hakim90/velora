@@ -16,6 +16,8 @@ import type { AppUser, Permission } from "@/lib/types";
 import type { PermissionKey } from "@/lib/constants";
 import { selectLabelById } from "@/lib/select-label";
 import { updateUserPermissionGrantsAction } from "@/modules/accounting/actions/permission.actions";
+import { useTranslation } from "@/lib/i18n/use-translation";
+import { ROLE_LABELS } from "@/lib/constants";
 
 interface UserPermissionOverridesProps {
   users: AppUser[];
@@ -28,12 +30,15 @@ export function UserPermissionOverrides({
   permissions,
   initialGrants,
 }: UserPermissionOverridesProps) {
+  const { t } = useTranslation();
   const [pending, startTransition] = useTransition();
   const [userId, setUserId] = useState(users[0]?.id ?? "");
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
 
   const userGrants = initialGrants[userId] ?? [];
-  const grantMap = new Map(userGrants.map((g) => [g.permission_key, g.granted]));
+  const grantMap = new Map(
+    userGrants.map((g) => [g.permission_key, g.granted]),
+  );
 
   function isChecked(key: PermissionKey): boolean {
     if (key in overrides) return overrides[key];
@@ -46,17 +51,19 @@ export function UserPermissionOverrides({
 
   function save() {
     if (!userId) return;
-    const grants = Object.entries(overrides).map(([permission_key, granted]) => ({
-      permission_key: permission_key as PermissionKey,
-      granted,
-    }));
+    const grants = Object.entries(overrides).map(
+      ([permission_key, granted]) => ({
+        permission_key: permission_key as PermissionKey,
+        granted,
+      }),
+    );
     startTransition(async () => {
       try {
         await updateUserPermissionGrantsAction(userId, grants);
-        toast.success("User overrides saved");
+        toast.success(t("User permission overrides saved"));
         setOverrides({});
       } catch {
-        toast.error("Could not save overrides");
+        toast.error(t("Could not save permission overrides"));
       }
     });
   }
@@ -69,24 +76,39 @@ export function UserPermissionOverrides({
   const eligibleUsers = users.filter((u) => u.role !== "owner");
 
   return (
-    <OperationalCard title="User permission overrides" description="Grant or deny specific permissions per user (owner only)">
+    <OperationalCard
+      title={t("User permission overrides")}
+      description={t(
+        "Grant or deny specific permissions per user (owner only)",
+      )}
+    >
       <div className="mb-4 max-w-sm">
-        <Select value={userId} onValueChange={(v) => { setUserId(v ?? ""); setOverrides({}); }}>
+        <Select
+          value={userId}
+          onValueChange={(v) => {
+            setUserId(v ?? "");
+            setOverrides({});
+          }}
+        >
           <SelectTrigger>
-            <SelectValue placeholder="Select user">
+            <SelectValue placeholder={t("Select user")}>
               {(value) =>
                 selectLabelById(
                   eligibleUsers,
                   value,
-                  (u) => `${u.name} (${u.role})`
+                  (u) => `${u.name} (${t(ROLE_LABELS[u.role])})`,
                 )
               }
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {eligibleUsers.map((u) => (
-              <SelectItem key={u.id} value={u.id} label={`${u.name} (${u.role})`}>
-                {u.name} ({u.role})
+              <SelectItem
+                key={u.id}
+                value={u.id}
+                label={`${u.name} (${t(ROLE_LABELS[u.role])})`}
+              >
+                {u.name} ({t(ROLE_LABELS[u.role])})
               </SelectItem>
             ))}
           </SelectContent>
@@ -95,23 +117,29 @@ export function UserPermissionOverrides({
       <div className="space-y-4">
         {Object.entries(grouped).map(([group, perms]) => (
           <div key={group}>
-            <p className="mb-2 text-sm font-medium capitalize">{group}</p>
+            <p className="mb-2 text-sm font-medium capitalize">{t(group)}</p>
             <ul className="space-y-2">
               {perms.map((p) => (
                 <li key={p.key} className="flex items-center gap-2">
                   <Checkbox
                     checked={isChecked(p.key as PermissionKey)}
-                    onCheckedChange={(v) => toggle(p.key as PermissionKey, v === true)}
+                    onCheckedChange={(v) =>
+                      toggle(p.key as PermissionKey, v === true)
+                    }
                   />
-                  <span className="text-sm">{p.label}</span>
+                  <span className="text-sm">{t(p.label)}</span>
                 </li>
               ))}
             </ul>
           </div>
         ))}
       </div>
-      <Button className="mt-4 rounded-xl" disabled={pending || Object.keys(overrides).length === 0} onClick={save}>
-        Save overrides
+      <Button
+        className="mt-4 rounded-xl"
+        disabled={pending || Object.keys(overrides).length === 0}
+        onClick={save}
+      >
+        {t("Save overrides")}
       </Button>
     </OperationalCard>
   );

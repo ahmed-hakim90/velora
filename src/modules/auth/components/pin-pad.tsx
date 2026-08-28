@@ -5,6 +5,7 @@ import { Delete, CircleDot } from "lucide-react";
 import { verifyPinAction } from "@/modules/auth/actions/verify-pin.action";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 const PIN_LENGTH = 4;
 
@@ -23,6 +24,7 @@ interface PinPadProps {
 }
 
 export function PinPad({ onSuccess, verifyPin, disabled = false, className }: PinPadProps) {
+  const { t } = useTranslation();
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -55,12 +57,12 @@ export function PinPad({ onSuccess, verifyPin, disabled = false, className }: Pi
           setError(null);
           onSuccess?.(result.cashierId ?? "");
         } else {
-          setError(result.error ?? "رقم PIN غير صحيح.");
+          setError(t(result.error ?? "Invalid PIN."));
           setPin("");
         }
       });
     },
-    [onSuccess, verifyPin]
+    [onSuccess, t, verifyPin]
   );
 
   const handleDigit = (digit: string) => {
@@ -75,8 +77,8 @@ export function PinPad({ onSuccess, verifyPin, disabled = false, className }: Pi
   const digits = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "back"];
 
   return (
-    <div className={cn("mx-auto w-full max-w-sm space-y-6", className)}>
-      <div className="flex justify-center gap-3">
+    <div className={cn("mx-auto w-full max-w-sm space-y-4 sm:space-y-6", className)}>
+      <div className="flex justify-center gap-2.5 sm:gap-3">
         {Array.from({ length: PIN_LENGTH }).map((_, i) => (
           <div
             key={i}
@@ -96,7 +98,7 @@ export function PinPad({ onSuccess, verifyPin, disabled = false, className }: Pi
         <p className="text-center text-sm text-destructive">{error}</p>
       ) : (
         <p className="text-center text-sm text-muted-foreground">
-          {pending ? "جاري التحقق…" : "أدخل رقم PIN المكوّن من 4 أرقام"}
+          {pending ? t("Verifying…") : t("Enter your 4-digit PIN")}
         </p>
       )}
 
@@ -110,9 +112,9 @@ export function PinPad({ onSuccess, verifyPin, disabled = false, className }: Pi
                 variant="ghost"
                 disabled={busy}
                 onClick={clearPin}
-                className="h-14 rounded-[var(--radius-button)] text-sm font-medium sm:h-16"
+                className="h-12 rounded-[var(--radius-button)] text-sm font-medium min-[391px]:h-14 sm:h-16"
               >
-                مسح
+                {t("Clear")}
               </Button>
             );
           }
@@ -124,8 +126,8 @@ export function PinPad({ onSuccess, verifyPin, disabled = false, className }: Pi
                 variant="ghost"
                 disabled={busy}
                 onClick={removeDigit}
-                className="h-14 rounded-[var(--radius-button)] sm:h-16"
-                aria-label="حذف"
+                className="h-12 rounded-[var(--radius-button)] min-[391px]:h-14 sm:h-16"
+                aria-label={t("Delete")}
               >
                 <Delete className="size-5" />
               </Button>
@@ -138,7 +140,7 @@ export function PinPad({ onSuccess, verifyPin, disabled = false, className }: Pi
               variant="outline"
               disabled={busy}
               onClick={() => handleDigit(key)}
-              className="h-14 rounded-[var(--radius-button)] text-2xl font-medium shadow-sm transition active:scale-95 sm:h-16"
+              className="h-12 rounded-[var(--radius-button)] text-xl font-medium shadow-sm transition active:scale-95 min-[391px]:h-14 min-[391px]:text-2xl sm:h-16"
             >
               {key}
             </Button>

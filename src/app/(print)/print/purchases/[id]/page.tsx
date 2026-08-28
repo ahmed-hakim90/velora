@@ -14,13 +14,18 @@ export default async function PrintPurchaseInvoicePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ embed?: string; hidePrices?: string }>;
+  searchParams: Promise<{ embed?: string; hidePrices?: string; lang?: string }>;
 }) {
   const { id } = await params;
   const query = await searchParams;
   const auth = await requirePageAuth(`/print/purchases/${id}`);
   if (!auth.ok) {
-    return <AccessDenied title={auth.denial.title} description={auth.denial.description} />;
+    return (
+      <AccessDenied
+        title={auth.denial.title}
+        description={auth.denial.description}
+      />
+    );
   }
   const user = auth.data;
   const purchase = await getPurchase(id);
@@ -30,9 +35,11 @@ export default async function PrintPurchaseInvoicePage({
     products.map((product) => [
       product.id,
       { name: product.name, sku: product.sku, unit: product.unit },
-    ])
+    ]),
   );
-  const { branding, settings } = await getCommercialPrintContext(purchase.store_id);
+  const { branding, settings } = await getCommercialPrintContext(
+    purchase.store_id,
+  );
   const document = mapPurchaseToCommercialDocument({ purchase, productMap });
   const template = resolvePrintTemplate(settings, document.kind);
   const qrDataUrl = template.fields.showQr
@@ -52,6 +59,7 @@ export default async function PrintPurchaseInvoicePage({
       generatedAt={new Date().toISOString()}
       qrDataUrl={qrDataUrl}
       hideMoney={hideMoney}
+      language={query.lang === "en" ? "en" : "ar"}
     />
   );
 }

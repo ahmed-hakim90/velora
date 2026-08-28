@@ -3,6 +3,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GlassPanel } from "./glass-panel";
+import { LocalizedText } from "@/components/Velora/localized-text";
 
 type MetricsOperationalCardProps = {
   title: string;
@@ -55,9 +56,9 @@ export function OperationalCard(props: OperationalCardProps) {
         {(title || action) && (
           <CardHeader className="flex flex-row items-start justify-between gap-3 pb-1.5">
             <div>
-              {title ? <CardTitle className="text-sm font-semibold">{title}</CardTitle> : null}
+              {title ? <CardTitle className="text-sm font-semibold"><LocalizedText text={title} /></CardTitle> : null}
               {description ? (
-                <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground"><LocalizedText text={description} /></p>
               ) : null}
             </div>
             {action}
@@ -92,11 +93,11 @@ export function OperationalCard(props: OperationalCardProps) {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              {title}
+              <LocalizedText text={title} />
             </p>
             <p className="mt-0.5 text-xl font-semibold tracking-tight tabular-nums">{value}</p>
             {subtitle ? (
-              <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground"><LocalizedText text={subtitle} /></p>
             ) : null}
           </div>
           {icon ? (

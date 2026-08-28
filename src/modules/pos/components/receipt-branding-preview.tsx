@@ -6,9 +6,16 @@ import {
   getReceiptSubtotal,
   type ReceiptPayload,
 } from "@/modules/pos/services/receipt-format.service";
+import { cn } from "@/lib/utils";
 
 /** Shared branded receipt body for modal + success preview (matches print/ESC/POS fields). */
-export function ReceiptBrandingPreview({ receipt }: { receipt: ReceiptPayload }) {
+export function ReceiptBrandingPreview({
+  receipt,
+  compact = false,
+}: {
+  receipt: ReceiptPayload;
+  compact?: boolean;
+}) {
   const { t } = useTranslation();
   const subtotal = getReceiptSubtotal(receipt);
   const { branding, customer, discount, lines, orderNumber, paymentMethod, payments, total } =
@@ -16,45 +23,60 @@ export function ReceiptBrandingPreview({ receipt }: { receipt: ReceiptPayload })
   const currency = branding.currency;
 
   return (
-    <div className="mx-auto w-full max-w-[72mm] rounded-xl border border-dashed border-border bg-muted/30 p-3 font-mono text-[11px] leading-snug text-foreground">
-      <p className="text-center font-bold">{branding.orgName || "Velora"}</p>
-      {branding.storeName ? <p className="text-center text-xs">{branding.storeName}</p> : null}
-      {branding.storeAddress ? (
-        <p className="text-center text-xs whitespace-pre-wrap">{branding.storeAddress}</p>
+    <div
+      className={cn(
+        "mx-auto w-full max-w-[72mm] rounded-lg border border-dashed border-border bg-muted/25 font-mono text-[10px] leading-snug text-foreground",
+        compact ? "p-2" : "p-2.5"
+      )}
+    >
+      {!compact ? (
+        <>
+          <p className="text-center font-bold">{branding.orgName || "Velora"}</p>
+          {branding.storeName ? <p className="text-center text-xs">{branding.storeName}</p> : null}
+          {branding.storeAddress ? (
+            <p className="whitespace-pre-wrap break-words text-center text-xs">{branding.storeAddress}</p>
+          ) : null}
+          {branding.storePhone ? (
+            <p className="text-center text-xs" dir="ltr">
+              {branding.storePhone}
+            </p>
+          ) : null}
+          {branding.receiptHeader ? (
+            <p className="mt-1.5 whitespace-pre-wrap break-words text-center text-[11px]">{branding.receiptHeader}</p>
+          ) : null}
+          <p className="mt-1.5 text-center text-[11px]">
+            {t("Order #")} {orderNumber}
+          </p>
+          {customer ? (
+            <p className="text-center text-xs">
+              {t("Customer")}: {customer.name}
+            </p>
+          ) : null}
+          <hr className="my-2 border-dashed" />
+        </>
       ) : null}
-      {branding.storePhone ? (
-        <p className="text-center text-xs" dir="ltr">
-          {branding.storePhone}
-        </p>
-      ) : null}
-      {branding.receiptHeader ? (
-        <p className="mt-2 whitespace-pre-wrap text-center text-xs">{branding.receiptHeader}</p>
-      ) : null}
-      <p className="mt-2 text-center text-xs">
-        {t("Order #")} {orderNumber}
-      </p>
-      {customer ? (
-        <p className="text-center text-xs">
-          {t("Customer")}: {customer.name}
-        </p>
-      ) : null}
-      <hr className="my-3 border-dashed" />
-      <ul className="space-y-2">
+      <ul className={compact ? "space-y-1" : "space-y-1.5"}>
         {lines.map((line) => (
           <li key={line.id}>
             <div className="flex justify-between gap-2">
-              <span className="min-w-0">
-                {line.name}
-                <br />
-                {line.quantity} {line.saleUnit ?? t("piece")} ×{" "}
-                {formatCurrency(line.unitPrice, currency)}
-              </span>
+              {compact ? (
+                <span className="min-w-0 truncate">
+                  {line.name} · {line.quantity} {line.saleUnit ?? t("piece")} × {formatCurrency(line.unitPrice, currency)}
+                </span>
+              ) : (
+                <span className="min-w-0 break-words">
+                  {line.name}
+                  <br />
+                  {line.quantity} {line.saleUnit ?? t("piece")} ×{" "}
+                  {formatCurrency(line.unitPrice, currency)}
+                </span>
+              )}
               <span className="shrink-0">{formatCurrency(line.lineTotal, currency)}</span>
             </div>
           </li>
         ))}
       </ul>
-      <hr className="my-3 border-dashed" />
+      <hr className={compact ? "my-1.5 border-dashed" : "my-2 border-dashed"} />
       <div className="flex justify-between">
         <span>{t("Subtotal")}</span>
         <span>{formatCurrency(subtotal, currency)}</span>
@@ -81,9 +103,11 @@ export function ReceiptBrandingPreview({ receipt }: { receipt: ReceiptPayload })
           ))}
         </div>
       ) : null}
-      <p className="mt-6 whitespace-pre-wrap text-center text-xs">
-        {branding.receiptFooter || t("Thank you!")}
-      </p>
+      {!compact ? (
+        <p className="mt-3 whitespace-pre-wrap break-words text-center text-[11px]">
+          {branding.receiptFooter || t("Thank you!")}
+        </p>
+      ) : null}
     </div>
   );
 }

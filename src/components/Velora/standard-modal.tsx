@@ -27,7 +27,7 @@ export function StandardModalContent({
   className,
 }: StandardModalContentProps) {
   return (
-    <DialogContent className={cn("max-h-[90vh] overflow-y-auto", SIZE_CLASS[size], className)}>
+    <DialogContent className={cn("max-h-[90dvh] overflow-y-auto", SIZE_CLASS[size], className)}>
       <DialogHeader className="gap-1">
         <DialogTitle>{title}</DialogTitle>
         {description ? <DialogDescription>{description}</DialogDescription> : null}

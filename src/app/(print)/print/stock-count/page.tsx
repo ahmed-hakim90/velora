@@ -10,9 +10,9 @@ function filterSummary(sheet: {
   categoryName: string | null;
   productName: string | null;
 }): string {
-  const parts = [`فرع: ${sheet.storeName}`, `مخزن: ${sheet.warehouseName}`];
-  if (sheet.categoryName) parts.push(`قسم: ${sheet.categoryName}`);
-  if (sheet.productName) parts.push(`منتج: ${sheet.productName}`);
+  const parts = [`Branch: ${sheet.storeName}`, `Warehouse: ${sheet.warehouseName}`];
+  if (sheet.categoryName) parts.push(`Category: ${sheet.categoryName}`);
+  if (sheet.productName) parts.push(`Product: ${sheet.productName}`);
   return parts.join(" · ");
 }
 
@@ -30,8 +30,8 @@ export default async function PrintStockCountSheetPage({
   if (!params.warehouseId) {
     return (
       <AccessDenied
-        title="ورقة الجرد"
-        description="اختَر مخزن من شاشة الجرد قبل الطباعة."
+        title="Stock Count Sheet"
+        description="Choose a warehouse before printing."
       />
     );
   }
@@ -59,8 +59,8 @@ export default async function PrintStockCountSheetPage({
 
   return (
     <StockCountPrintView
-      title="ورقة جرد المخزون"
-      subtitle="اكتب الكمية المعدودة في العمود الفاضي"
+      title="Stock Count Sheet"
+      subtitle="Enter the counted quantity in the blank column."
       filterSummary={filterSummary(data.sheet)}
       groups={data.sheet.groups}
       lines={data.sheet.lines}

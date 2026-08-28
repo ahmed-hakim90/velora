@@ -94,11 +94,11 @@ export const LABEL_PRESETS: Record<Exclude<LabelPresetId, "custom">, PresetDefau
 };
 
 export const LABEL_PRESET_OPTIONS: { id: LabelPresetId; label: string }[] = [
-  { id: "thermal_40x30", label: "حراري 40×30 مم" },
-  { id: "thermal_50x25", label: "حراري 50×25 مم" },
-  { id: "thermal_60x40", label: "حراري 60×40 مم" },
-  { id: "a4_labels", label: "ملصقات A4" },
-  { id: "custom", label: "مقاس مخصص" },
+  { id: "thermal_40x30", label: "Thermal 40×30 mm" },
+  { id: "thermal_50x25", label: "Thermal 50×25 mm" },
+  { id: "thermal_60x40", label: "Thermal 60×40 mm" },
+  { id: "a4_labels", label: "A4 labels" },
+  { id: "custom", label: "Custom size" },
 ];
 
 export const DEFAULT_LABEL_SETTINGS: LabelSettings = {

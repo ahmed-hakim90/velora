@@ -16,7 +16,7 @@ export type PriceListRow = {
   /** Cost of one purchase pack (carton/pack) or of the base unit when no packing. */
   packCost: number;
   packUnitLabel: string;
-  /** e.g. "24 قطعة" under the product name */
+  /** e.g. "24 pieces" under the product name */
   weightLine: string;
   hasPacking: boolean;
   /** Suggested selling price (before inventory override). */
@@ -91,14 +91,14 @@ export function computePackCost(
   return roundMoney(baseCost * productPurchaseFactor(product));
 }
 
-/** Catalog selling price for the product's sale unit (قطعة / كيلو…). */
+/** Catalog selling price for the product's sale unit (piece / kilogram…). */
 export function catalogUnitSalePrice(product: Product): number {
   return roundMoney(product.sale_price ?? product.base_price ?? 0);
 }
 
 /**
  * Selling price for the price list.
- * Prefer catalog سعر البيع; if missing, fall back to cost + margin on the purchase pack.
+ * Prefer the catalog sale price; if missing, fall back to cost + margin on the purchase pack.
  */
 export function suggestListSalePrice(
   product: Product,

@@ -5,15 +5,17 @@ import { LabelDocument } from "@/modules/reports/labels/label-document";
 import { loadLabelPrintJob } from "@/modules/reports/labels/print-payload";
 import { AutoPrintShell } from "@/components/print/auto-print-shell";
 import type { LabelPrintJob } from "@/modules/reports/labels/print-job";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 export function LabelPrintView() {
+  const { language } = useTranslation();
   const [job, setJob] = useState<LabelPrintJob | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const loaded = loadLabelPrintJob();
     if (!loaded || loaded.items.length === 0) {
-      setError("مفيش ملصقات جاهزة للطباعة. ارجع لاستوديو الملصقات واضغط «معاينة الطباعة» تاني.");
+      setError("No labels are ready. Go back to Barcode Labels and select Print preview again.");
       return;
     }
     setJob(loaded);
@@ -46,9 +48,9 @@ export function LabelPrintView() {
         loading={!job && !error}
         error={error}
         backHref="/labels"
-        backLabel="رجوع لاستوديو الملصقات"
+        backLabel="Back to Barcode Labels"
       >
-        {job ? <div dir="rtl"><LabelDocument job={job} /></div> : null}
+        {job ? <div dir={language === "ar" ? "rtl" : "ltr"}><LabelDocument job={job} /></div> : null}
       </AutoPrintShell>
     </>
   );

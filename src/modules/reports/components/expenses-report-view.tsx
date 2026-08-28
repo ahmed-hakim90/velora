@@ -14,6 +14,7 @@ import { downloadBase64Excel } from "@/modules/reports/export/excel-builder";
 import { reportFiltersToSearchParams, type ReportFilters } from "@/modules/reports/core/report-filters.schema";
 import type { ReportContext } from "@/modules/reports/core/report-context";
 import type { Store } from "@/lib/types";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface ExpensesReportViewProps {
   filters: ReportFilters;
@@ -39,14 +40,15 @@ export function ExpensesReportView({
   canExcel,
   canPdf,
 }: ExpensesReportViewProps) {
+  const { t } = useTranslation();
   const [pending, startTransition] = useTransition();
   const printQs = reportFiltersToSearchParams(filters);
   const printHref = `/print/reports/expenses${printQs ? `?${printQs}` : ""}`;
 
   return (
     <ReportPage
-      title="تقرير المصروفات"
-      description="تفصيل مراكز التكلفة والتصنيفات"
+      title="Expenses report"
+      description="Expenses by cost center and category"
       actions={
         <ExportButtonGroup
           printHref={canPrint ? printHref : undefined}
@@ -63,9 +65,9 @@ export function ExpensesReportView({
                   ) as Record<string, string>
                 );
                 downloadBase64Excel(result.base64, result.filename);
-                toast.success("تم تصدير Excel");
+                toast.success(t("Excel exported"));
               } catch {
-                toast.error("فشل التصدير");
+                toast.error(t("Export failed"));
               }
             });
           }}
@@ -75,10 +77,10 @@ export function ExpensesReportView({
     >
       <ReportKpiGrid
         columns={2}
-        items={[{ label: "إجمالي المصروفات", value: formatCurrency(total, currency), icon: <Wallet className="size-5" /> }]}
+        items={[{ label: t("Total expenses"), value: formatCurrency(total, currency), icon: <Wallet className="size-5" /> }]}
       />
       <div className="grid gap-[var(--mds-space-4)] lg:grid-cols-2">
-        <OperationalCard title="حسب مركز التكلفة">
+        <OperationalCard title={t("By cost center")}>
           <ul className="space-y-2 text-sm">
             {byCenter.map((row) => (
               <li key={row.name} className="flex justify-between">
@@ -88,7 +90,7 @@ export function ExpensesReportView({
             ))}
           </ul>
         </OperationalCard>
-        <OperationalCard title="حسب التصنيف">
+        <OperationalCard title={t("By category")}>
           <ul className="space-y-2 text-sm">
             {byCategory.map((row) => (
               <li key={row.name} className="flex justify-between">

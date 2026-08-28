@@ -4,6 +4,7 @@ import type {
   PrintTemplate,
   PrintTemplateStyle,
 } from "@/modules/print-engine/lib/print-engine-settings";
+import type { AppLanguage } from "@/lib/i18n/translations";
 
 export interface CommercialParty {
   name: string;
@@ -51,4 +52,5 @@ export interface CommercialDocumentViewProps {
   qrDataUrl?: string | null;
   /** Hide unit prices / money columns (e.g. PO or quotation for warehouse). */
   hideMoney?: boolean;
+  language?: AppLanguage;
 }

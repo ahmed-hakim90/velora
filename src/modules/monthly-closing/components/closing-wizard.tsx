@@ -4,8 +4,8 @@ import { useState, useTransition } from "react";
 import { CalendarCheck, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DateRangeFilter } from "@/components/Velora/date-range-filter";
 import {
   Select,
   SelectContent,
@@ -38,6 +38,13 @@ const STATUS_LABEL: Record<MonthlyClose["status"], string> = {
   reopened: "معاد فتحه",
 };
 
+function localDateValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function ClosingWizard({
   closings,
   stores,
@@ -50,10 +57,8 @@ export function ClosingWizard({
   const [draft, setDraft] = useState<MonthlyClose | null>(null);
   const [form, setForm] = useState({
     storeId: defaultStoreId,
-    periodStart: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-      .toISOString()
-      .slice(0, 10),
-    periodEnd: new Date().toISOString().slice(0, 10),
+    periodStart: localDateValue(new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
+    periodEnd: localDateValue(new Date()),
   });
 
   const generate = () => {
@@ -119,7 +124,7 @@ export function ClosingWizard({
         <div className="mb-4">
           <StatusPill label={STATUS_LABEL.draft} variant="draft" />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <div className="rounded-2xl bg-muted/50 p-4">
             <p className="text-sm text-muted-foreground">إجمالي المبيعات</p>
             <p className="text-2xl font-semibold">
@@ -265,25 +270,16 @@ export function ClosingWizard({
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>من</Label>
-              <Input
-                type="date"
-                value={form.periodStart}
-                onChange={(e) => setForm({ ...form, periodStart: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>إلى</Label>
-              <Input
-                type="date"
-                value={form.periodEnd}
-                onChange={(e) => setForm({ ...form, periodEnd: e.target.value })}
-              />
-            </div>
-          </div>
-          <Button onClick={generate} disabled={pending || !form.storeId}>
+          <DateRangeFilter
+            value={{ from: form.periodStart, to: form.periodEnd }}
+            onChange={(range) =>
+              setForm({ ...form, periodStart: range.from, periodEnd: range.to })
+            }
+          />
+          <Button
+            onClick={generate}
+            disabled={pending || !form.storeId || !form.periodStart || !form.periodEnd}
+          >
             <CalendarCheck className="size-4" />
             توليد الملخص
           </Button>

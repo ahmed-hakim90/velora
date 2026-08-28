@@ -16,6 +16,7 @@ import {
 import { printReceiptViaUsb } from "@/modules/pos/services/receipt-usb-printer.service";
 import { DocumentPrintPreviewModal } from "@/components/print/document-print-preview-modal";
 import { useState } from "react";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface ReceiptModalProps {
   open: boolean;
@@ -25,14 +26,15 @@ interface ReceiptModalProps {
 
 export function ReceiptModal({ open, onOpenChange, receipt }: ReceiptModalProps) {
   const [a4Open, setA4Open] = useState(false);
+  const { t, language } = useTranslation();
   if (!receipt) return null;
 
   async function handleUsbPrint() {
     try {
       await printReceiptViaUsb(receipt!);
-      toast.success("تم إرسال الإيصال لطابعة USB");
+      toast.success(t("Receipt sent to USB printer"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "تعذرت طباعة الإيصال");
+      toast.error(t(error instanceof Error ? error.message : "Could not print receipt"));
     }
   }
 
@@ -43,7 +45,7 @@ export function ReceiptModal({ open, onOpenChange, receipt }: ReceiptModalProps)
   function handleWhatsApp() {
     const url = buildWhatsAppReceiptUrl(receipt!);
     if (!url) {
-      toast.error("رقم هاتف العميل غير صالح لواتساب");
+      toast.error(t("Customer phone number is not valid for WhatsApp"));
       return;
     }
     window.open(url, "_blank", "noopener,noreferrer");
@@ -52,50 +54,50 @@ export function ReceiptModal({ open, onOpenChange, receipt }: ReceiptModalProps)
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[92dvh] max-w-md overflow-hidden rounded-2xl p-0">
+        <DialogContent className="max-h-[94dvh] max-w-md overflow-hidden rounded-2xl p-0 max-sm:max-w-[calc(100%-0.5rem)]">
           <DialogHeader className="border-b border-border/70 px-4 py-3">
             <DialogTitle className="flex items-center justify-between gap-2 pe-8">
-              <span>ريسيت {receipt.orderNumber}</span>
+              <span>{t("Receipt")} {receipt.orderNumber}</span>
             </DialogTitle>
           </DialogHeader>
 
-          <div className="max-h-[calc(92dvh-140px)] overflow-y-auto px-4 py-4">
+          <div className="max-h-[calc(94dvh-120px)] overflow-y-auto px-3 py-2.5">
             <ReceiptBrandingPreview receipt={receipt} />
           </div>
 
-          <div className="flex flex-wrap gap-2 border-t border-border/70 p-4">
-            <Button type="button" className="h-10 flex-1 rounded-xl" onClick={handleUsbPrint}>
+          <div className="grid grid-cols-3 gap-1.5 border-t border-border/70 p-2.5">
+            <Button type="button" className="h-11 rounded-lg px-2 text-xs" onClick={handleUsbPrint}>
               <Printer className="size-4" />
-              طباعة USB
+              {t("USB print")}
             </Button>
             <Button
               type="button"
               variant="outline"
-              className="h-10 flex-1 rounded-xl"
+              className="h-11 rounded-lg px-2 text-xs"
               onClick={handleWhatsApp}
               disabled={!receipt.customer?.phone}
             >
               <MessageCircle className="size-4" />
-              <span>واتساب</span>
+              <span>{t("WhatsApp")}</span>
             </Button>
             {receipt.orderId ? (
               <Button
                 type="button"
                 variant="outline"
-                className="h-10 flex-1 rounded-xl"
+                className="h-11 rounded-lg px-2 text-xs"
                 onClick={() => setA4Open(true)}
               >
                 <FileText className="size-4" />
-                فاتورة A4
+                {t("A4 invoice")}
               </Button>
             ) : null}
             <Button
               type="button"
               variant="ghost"
-              className="h-10 w-full rounded-xl sm:hidden"
+              className="col-span-3 h-11 rounded-lg text-xs sm:hidden"
               onClick={handleBrowserPrint}
             >
-              طباعة المتصفح
+              {t("Browser print")}
             </Button>
           </div>
         </DialogContent>
@@ -103,8 +105,8 @@ export function ReceiptModal({ open, onOpenChange, receipt }: ReceiptModalProps)
       <DocumentPrintPreviewModal
         open={a4Open}
         onOpenChange={setA4Open}
-        href={receipt.orderId ? `/print/orders/${receipt.orderId}?embed=1` : null}
-        title="فاتورة كاشير"
+        href={receipt.orderId ? `/print/orders/${receipt.orderId}?embed=1&lang=${language}` : null}
+        title={t("Cashier invoice")}
       />
       <ReceiptPrint receipt={receipt} />
     </>

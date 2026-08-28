@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/Velora/status-pill";
 import { formatCurrency } from "@/lib/format";
 import type { POSProduct, POSVariant } from "@/modules/pos/services/catalog.service";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface VariantPickerDialogProps {
   open: boolean;
@@ -28,16 +29,17 @@ export function VariantPickerDialog({
   onSelect,
   allowNegativeStock = false,
 }: VariantPickerDialogProps) {
+  const { t } = useTranslation();
   if (!product) return null;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-sm:max-w-[calc(100%-1rem)] sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{product.name}</DialogTitle>
-          <DialogDescription>اختر الحجم أو الخيار المناسب قبل الإضافة للسلة</DialogDescription>
+      <DialogContent className="max-h-[min(92dvh,100%)] overflow-hidden p-0 max-sm:max-w-[calc(100%-0.5rem)] sm:max-w-md">
+        <DialogHeader className="border-b border-border/60 px-3 py-2.5 text-start sm:px-4 sm:py-3">
+          <DialogTitle className="truncate pe-7 text-base sm:text-lg">{product.name}</DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm">{t("Choose a size or option before adding to cart")}</DialogDescription>
         </DialogHeader>
-        <div className="grid max-h-[min(60dvh,24rem)] gap-2.5 overflow-y-auto overscroll-y-contain pe-0.5">
+        <div className="grid max-h-[min(68dvh,28rem)] gap-1 overflow-y-auto overscroll-y-contain p-2 sm:gap-1.5 sm:p-3">
           {product.variants.map((variant) => {
             const isOutOfStock = variant.stockBadge === "out";
             const blockOutOfStock = isOutOfStock && !allowNegativeStock;
@@ -47,7 +49,7 @@ export function VariantPickerDialog({
                 key={variant.id}
                 variant="outline"
                 disabled={blockOutOfStock}
-                className="h-auto min-h-14 justify-between rounded-2xl border-border/70 bg-card px-4 py-3.5 text-start transition active:scale-[0.99] hover:border-primary/35 hover:bg-primary/5 disabled:opacity-50"
+                className="h-auto min-h-11 justify-between rounded-lg border-border/70 bg-card px-2.5 py-1.5 text-start transition active:scale-[0.99] hover:border-primary/35 hover:bg-primary/5 disabled:opacity-50 sm:px-3 sm:py-2"
                 onClick={() => {
                   onSelect(product, variant);
                   onClose();
@@ -56,16 +58,16 @@ export function VariantPickerDialog({
                 <span className="min-w-0">
                   <span className="block truncate font-semibold">{variant.name}</span>
                   {variant.stockBadge !== "untracked" ? (
-                    <span className="mt-1 block">
+                    <span className="mt-0.5 block">
                       <StatusPill
                         label={
                           variant.stockBadge === "out"
                             ? allowNegativeStock
-                              ? "نفد — يمكن البيع"
-                              : "غير متاح"
+                              ? t("Out of stock — sale allowed")
+                              : t("Unavailable")
                             : variant.stockBadge === "low"
-                              ? "كمية محدودة"
-                              : "متاح"
+                              ? t("Limited stock")
+                              : t("Available")
                         }
                         variant={
                           variant.stockBadge === "out"
@@ -78,7 +80,7 @@ export function VariantPickerDialog({
                     </span>
                   ) : null}
                 </span>
-                <span className="shrink-0 rounded-full bg-muted px-3 py-1 text-sm font-bold tabular-nums text-foreground">
+                <span className="shrink-0 rounded-lg bg-muted px-2 py-1 text-xs font-bold tabular-nums text-foreground">
                   {formatCurrency(variant.price)}
                 </span>
               </Button>

@@ -81,6 +81,18 @@ describe("receipt formatting", () => {
     expect(decodeURIComponent(url ?? "")).toContain("Order #ORD-1001");
   });
 
+  it("uses a one-time phone override without changing the receipt customer", () => {
+    const withoutPhone: ReceiptPayload = { ...receipt, customer: null };
+    const url = buildWhatsAppReceiptUrl(withoutPhone, "0109 876 5432");
+
+    expect(url).toMatch(/^https:\/\/wa\.me\/201098765432\?text=/);
+    expect(withoutPhone.customer).toBeNull();
+  });
+
+  it("rejects an invalid one-time WhatsApp phone", () => {
+    expect(buildWhatsAppReceiptUrl(receipt, "0000")).toBeNull();
+  });
+
   it("builds ESC/POS bytes with initialize and cut commands", () => {
     const bytes = buildEscPosReceiptBytes(receipt);
 

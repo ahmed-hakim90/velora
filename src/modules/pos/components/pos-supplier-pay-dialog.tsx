@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { ArrowRight, Banknote, CreditCard, Search, Truck, Wallet } from "lucide-react";
+import { ArrowRight, Banknote, CreditCard, Search, Truck, Wallet, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,15 +19,20 @@ import { PAYMENT_METHODS } from "@/lib/constants";
 import { roundMoney } from "@/lib/money";
 import type { PaymentMethod } from "@/lib/types";
 import { listSuppliersForPosPaymentAction } from "@/modules/suppliers/actions/supplier.actions";
+import { TreasuryPicker } from "@/modules/treasury/components/treasury-picker";
 import { playPosErrorSound, playPosSuccessSound } from "@/modules/pos/lib/pos-sounds";
 import { cn } from "@/lib/utils";
 import { firstGrapheme } from "@/lib/first-grapheme";
+import { useTranslation } from "@/lib/i18n/use-translation";
+import { ErrorStateBlock, LoadingStateBlock } from "@/components/Velora/state-blocks";
 
 async function postPosSupplierPayment(input: {
   supplierId: string;
   amount: number;
   paymentMethod: PaymentMethod;
   reference?: string;
+  cashSource?: "drawer" | "treasury";
+  treasuryId?: string;
 }): Promise<{ success: true } | { success: false; error: string }> {
   const res = await fetch("/api/pos/supplier-payment", {
     method: "POST",
@@ -37,7 +42,7 @@ async function postPosSupplierPayment(input: {
   });
   const data = (await res.json()) as { success?: boolean; error?: string };
   if (!res.ok || !data.success) {
-    return { success: false, error: data.error || "تعذر تسجيل دفعة المورد" };
+    return { success: false, error: data.error || "Could not record supplier payment" };
   }
   return { success: true };
 }
@@ -50,28 +55,28 @@ const METHOD_META: {
 }[] = [
   {
     id: "cash",
-    label: "نقدي",
+    label: "Cash",
     icon: Banknote,
     className:
       "border-emerald-200 bg-emerald-50 text-emerald-800 data-[selected=true]:border-emerald-500 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200",
   },
   {
     id: "card",
-    label: "كارت",
+    label: "Card",
     icon: CreditCard,
     className:
       "border-sky-200 bg-sky-50 text-sky-800 data-[selected=true]:border-sky-500 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200",
   },
   {
     id: "wallet",
-    label: "محفظة",
+    label: "Wallet",
     icon: Wallet,
     className:
       "border-violet-200 bg-violet-50 text-violet-800 data-[selected=true]:border-violet-500 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200",
   },
   {
     id: "other",
-    label: "أخرى",
+    label: "Other",
     icon: Banknote,
     className:
       "border-slate-200 bg-slate-50 text-slate-800 data-[selected=true]:border-slate-500 dark:border-slate-500/30 dark:bg-slate-500/10 dark:text-slate-200",
@@ -87,17 +92,23 @@ type PaySupplier = {
 interface PosSupplierPayDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  storeId?: string;
 }
 
-export function PosSupplierPayDialog({ open, onOpenChange }: PosSupplierPayDialogProps) {
+export function PosSupplierPayDialog({ open, onOpenChange, storeId }: PosSupplierPayDialogProps) {
+  const { t } = useTranslation();
   const [pending, startTransition] = useTransition();
   const [loadingList, startListTransition] = useTransition();
   const [query, setQuery] = useState("");
   const [suppliers, setSuppliers] = useState<PaySupplier[]>([]);
+  const [listError, setListError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [selected, setSelected] = useState<PaySupplier | null>(null);
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<Exclude<PaymentMethod, "credit">>("cash");
   const [reference, setReference] = useState("");
+  const [cashSource, setCashSource] = useState<"drawer" | "treasury">("drawer");
+  const [treasuryId, setTreasuryId] = useState("");
 
   function resetForm(supplier: PaySupplier | null = null) {
     setSelected(supplier);
@@ -108,6 +119,8 @@ export function PosSupplierPayDialog({ open, onOpenChange }: PosSupplierPayDialo
     );
     setMethod("cash");
     setReference("");
+    setCashSource("drawer");
+    setTreasuryId("");
   }
 
   const [wasOpen, setWasOpen] = useState(open);
@@ -115,6 +128,7 @@ export function PosSupplierPayDialog({ open, onOpenChange }: PosSupplierPayDialo
     setWasOpen(open);
     if (open) {
       setQuery("");
+      setListError(null);
       resetForm(null);
     }
   }
@@ -126,12 +140,15 @@ export function PosSupplierPayDialog({ open, onOpenChange }: PosSupplierPayDialo
     startListTransition(async () => {
       try {
         const rows = await listSuppliersForPosPaymentAction();
-        if (!cancelled) setSuppliers(rows);
+        if (!cancelled) {
+          setSuppliers(rows);
+          setListError(null);
+        }
       } catch (error) {
         if (!cancelled) {
-          toast.error(
-            error instanceof Error ? error.message : "تعذر تحميل الموردين"
-          );
+          const message = t(error instanceof Error ? error.message : "Could not load suppliers");
+          toast.error(message);
+          setListError(message);
           setSuppliers([]);
         }
       }
@@ -140,7 +157,7 @@ export function PosSupplierPayDialog({ open, onOpenChange }: PosSupplierPayDialo
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [loadAttempt, open, t]);
 
   const list = useMemo(() => {
     const trimmed = query.trim().toLowerCase();
@@ -151,7 +168,11 @@ export function PosSupplierPayDialog({ open, onOpenChange }: PosSupplierPayDialo
   const balanceDue = selected?.balanceDue ?? 0;
   const value = Number(amount);
   const canSubmit =
-    Boolean(selected) && Number.isFinite(value) && value > 0 && !pending;
+    Boolean(selected) &&
+    Number.isFinite(value) &&
+    value > 0 &&
+    (method !== "cash" || cashSource === "drawer" || Boolean(treasuryId)) &&
+    !pending;
 
   function handleOpenChange(next: boolean) {
     if (!next) {
@@ -171,38 +192,39 @@ export function PosSupplierPayDialog({ open, onOpenChange }: PosSupplierPayDialo
           amount: paidAmount,
           paymentMethod: method,
           reference: reference.trim() || undefined,
+          cashSource: method === "cash" ? cashSource : undefined,
+          treasuryId:
+            method === "cash" && cashSource === "treasury" ? treasuryId : undefined,
         });
         if (!result.success) {
           playPosErrorSound();
           toast.error(result.error);
           return;
         }
-        toast.success(`تم تسجيل دفعة ${formatCurrency(paidAmount)} لـ ${selected.name}`);
+        toast.success(`${t("Payment recorded")} ${formatCurrency(paidAmount)} · ${selected.name}`);
         playPosSuccessSound();
         handleOpenChange(false);
       } catch (error) {
         playPosErrorSound();
-        toast.error(error instanceof Error ? error.message : "تعذر تسجيل دفعة المورد");
+        toast.error(t(error instanceof Error ? error.message : "Could not record supplier payment"));
       }
     });
   }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[92dvh] max-w-lg overflow-hidden rounded-2xl p-0 sm:max-w-lg">
-        <DialogHeader className="space-y-2 border-b border-border/70 px-4 py-4 text-start">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-amber-500/15 text-amber-800 dark:text-amber-200">
-            <Truck className="size-5" />
-          </div>
-          <DialogTitle>{selected ? "دفعة للمورد" : "دفعات الموردين"}</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="max-h-[94dvh] max-w-lg overflow-hidden rounded-2xl p-0 max-sm:max-w-[calc(100%-0.5rem)] sm:max-w-lg">
+        <DialogHeader className="border-b border-border/70 px-3 py-2.5 pe-10 text-start sm:py-3">
+          <div className="flex items-center gap-2.5"><div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-800 dark:text-amber-200"><Truck className="size-4" /></div><div className="min-w-0">
+          <DialogTitle className="text-base">{selected ? t("Supplier payment") : t("Supplier payments")}</DialogTitle>
+          <DialogDescription className="truncate text-xs">
             {selected
-              ? `${selected.name} · الرصيد ${formatCurrency(balanceDue)}`
-              : "اختر موردًا و سجّل دفعة من أدراج الجلسة — تتظبط مع الفاتورة بعدين"}
-          </DialogDescription>
+              ? `${selected.name} · ${t("Balance")} ${formatCurrency(balanceDue)}`
+              : t("Choose a supplier and record a payment. It will reconcile with the invoice later.")}
+          </DialogDescription></div></div>
         </DialogHeader>
 
-        <div className="max-h-[min(70dvh,560px)] space-y-4 overflow-y-auto px-4 py-4">
+        <div className="max-h-[min(76dvh,620px)] space-y-2.5 overflow-y-auto px-3 py-3">
           {!selected ? (
             <>
               <div className="relative">
@@ -210,39 +232,60 @@ export function PosSupplierPayDialog({ open, onOpenChange }: PosSupplierPayDialo
                 <Input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="ابحث باسم المورد…"
-                  aria-label="بحث عن مورد"
-                  className="h-11 rounded-xl ps-10"
+                  placeholder={t("Search suppliers…")}
+                  aria-label={t("Search suppliers")}
+                  className="h-11 rounded-xl ps-10 pe-11"
                   autoFocus
                 />
+                {query ? (
+                  <button
+                    type="button"
+                    className="absolute end-0 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                    onClick={() => setQuery("")}
+                    aria-label={t("Clear search")}
+                  >
+                    <X className="size-4" aria-hidden />
+                  </button>
+                ) : null}
               </div>
 
               {loadingList && list.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">جاري التحميل…</p>
+                <LoadingStateBlock label={t("Loading…")} className="border-0 px-3 py-4 shadow-none" />
+              ) : listError ? (
+                <ErrorStateBlock
+                  title={t("Could not load suppliers")}
+                  description={listError}
+                  retryLabel={t("Try again")}
+                  onRetry={() => {
+                    setListError(null);
+                    setLoadAttempt((current) => current + 1);
+                  }}
+                  className="border-0 px-3 py-4 shadow-none"
+                />
               ) : list.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  {query.trim() ? "لا يوجد مورد مطابق للبحث" : "لا يوجد موردين"}
+                <p className="py-5 text-center text-xs text-muted-foreground">
+                  {query.trim() ? t("No supplier matches your search") : t("No suppliers")}
                 </p>
               ) : (
-                <ul className="space-y-2">
+                <ul className="space-y-1.5">
                   {list.map((supplier) => (
                     <li key={supplier.id}>
                       <button
                         type="button"
-                        className="flex w-full items-center gap-3 rounded-xl border border-border/70 bg-background px-3 py-3 text-start transition-colors hover:border-primary/30 hover:bg-primary/5"
+                        className="flex min-h-11 w-full items-center gap-2 rounded-lg border border-border/70 bg-background px-2.5 py-1.5 text-start transition-colors hover:border-primary/30 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
                         onClick={() => resetForm(supplier)}
                       >
-                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold">
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-xs font-semibold">
                           {firstGrapheme(supplier.name, "؟")}
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-semibold">{supplier.name}</p>
                           <p className="truncate text-xs text-muted-foreground">
                             {supplier.balanceDue > 0
-                              ? `مستحق ${formatCurrency(supplier.balanceDue)}`
+                              ? `${t("Due")} ${formatCurrency(supplier.balanceDue)}`
                               : supplier.balanceDue < 0
-                                ? `سلفة ${formatCurrency(Math.abs(supplier.balanceDue))}`
-                                : "رصيد صفر"}
+                                ? `${t("Advance")} ${formatCurrency(Math.abs(supplier.balanceDue))}`
+                                : t("Zero balance")}
                           </p>
                         </div>
                         <span
@@ -265,27 +308,27 @@ export function PosSupplierPayDialog({ open, onOpenChange }: PosSupplierPayDialo
             <>
               <button
                 type="button"
-                className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1.5 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
                 onClick={() => resetForm(null)}
               >
-                <ArrowRight className="size-4" />
-                تغيير المورد
+                <ArrowRight className="size-4 ltr:rotate-180" />
+                {t("Change supplier")}
               </button>
 
-              <div className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-3">
+              <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-2.5 py-1.5">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-sm font-semibold text-amber-800 dark:text-amber-200">
                   {firstGrapheme(selected.name, "؟")}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{selected.name}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    رصيد حالي {formatCurrency(balanceDue)}
+                    {t("Current balance")} {formatCurrency(balanceDue)}
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="pos-supplier-pay-amount">المبلغ</Label>
+              <div className="grid grid-cols-[minmax(0,1fr)_8rem] items-center gap-2">
+                <Label className="text-xs" htmlFor="pos-supplier-pay-amount">{t("Amount")}</Label>
                 <Input
                   id="pos-supplier-pay-amount"
                   type="number"
@@ -293,49 +336,94 @@ export function PosSupplierPayDialog({ open, onOpenChange }: PosSupplierPayDialo
                   step="0.01"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="h-11 rounded-xl text-base"
+                  className="h-11 rounded-lg text-end text-sm font-semibold tabular-nums"
                   autoFocus
                 />
-                <p className="text-xs text-muted-foreground">
-                  تقدر تدفع قبل الفاتورة — الرصيد يتظبط لما تستلم المشتريات
+                <p className="col-span-2 text-xs text-muted-foreground">
+                  {t("You can pay before the invoice; the balance updates when purchases are received.")}
                 </p>
+                {amount.trim() && (!Number.isFinite(value) || value <= 0) ? (
+                  <p className="col-span-2 text-xs text-destructive" role="alert">
+                    {t("Enter a value greater than zero")}
+                  </p>
+                ) : null}
               </div>
-              <div className="space-y-2">
-                <Label>طريقة الدفع</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t("Payment method")}</Label>
                 <div className="grid grid-cols-4 gap-1.5">
                   {METHOD_META.filter((m) => PAYMENT_METHODS.includes(m.id)).map(
                     ({ id, label, icon: Icon, className }) => (
                       <button
                         key={id}
                         type="button"
-                        aria-label={label}
+                        aria-label={t(label)}
                         data-selected={method === id}
                         onClick={() => setMethod(id)}
                         className={cn(
-                          "flex h-11 flex-col items-center justify-center gap-0 rounded-xl border text-xs font-semibold sm:h-12 sm:gap-0.5",
+                          "flex h-11 flex-col items-center justify-center gap-0 rounded-lg border px-1 text-[11px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 sm:flex-row sm:gap-1 sm:text-xs",
                           className
                         )}
                       >
                         <Icon className="size-4" aria-hidden />
-                        <span className="sr-only sm:not-sr-only">{label}</span>
+                        <span className="truncate">{t(label)}</span>
                       </button>
                     )
                   )}
                 </div>
                 {method === "cash" ? (
-                  <p className="text-xs text-muted-foreground">
-                    النقدي هينقص من أدراج الجلسة عند الإغلاق
-                  </p>
+                  <div className="space-y-1.5 rounded-lg border border-border/70 bg-muted/20 p-2.5">
+                    <Label className="text-xs">{t("Cash source")}</Label>
+                    <div className="grid grid-cols-2 gap-1.5" role="radiogroup" aria-label={t("Cash source")}>
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={cashSource === "drawer"}
+                        data-selected={cashSource === "drawer"}
+                        onClick={() => setCashSource("drawer")}
+                        className="min-h-11 rounded-lg border border-border bg-background px-2 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 data-[selected=true]:border-primary data-[selected=true]:bg-primary/10"
+                      >
+                        {t("Session drawer")}
+                      </button>
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={cashSource === "treasury"}
+                        disabled={!storeId}
+                        data-selected={cashSource === "treasury"}
+                        onClick={() => setCashSource("treasury")}
+                        className="min-h-11 rounded-lg border border-border bg-background px-2 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 data-[selected=true]:border-primary data-[selected=true]:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {t("Store treasury")}
+                      </button>
+                    </div>
+                    {cashSource === "drawer" ? (
+                      <p className="text-xs text-muted-foreground">
+                        {t("This will reduce the expected drawer balance at session close.")}
+                      </p>
+                    ) : storeId ? (
+                      <TreasuryPicker
+                        value={treasuryId}
+                        onChange={setTreasuryId}
+                        preferredStoreId={storeId}
+                        includeHq={false}
+                        label={t("Choose store treasury")}
+                      />
+                    ) : (
+                      <p className="text-xs text-destructive">
+                        {t("Could not identify the current store. Use the session drawer or reopen this screen.")}
+                      </p>
+                    )}
+                  </div>
                 ) : null}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="pos-supplier-pay-ref">مرجع (اختياري)</Label>
+                <Label htmlFor="pos-supplier-pay-ref">{t("Reference (optional)")}</Label>
                 <Input
                   id="pos-supplier-pay-ref"
                   value={reference}
                   onChange={(e) => setReference(e.target.value)}
-                  className="rounded-xl"
-                  placeholder="رقم إيصال / ملاحظة"
+                  className="h-11 rounded-xl"
+                  placeholder={t("Receipt number / note")}
                 />
               </div>
             </>
@@ -343,22 +431,22 @@ export function PosSupplierPayDialog({ open, onOpenChange }: PosSupplierPayDialo
         </div>
 
         {selected ? (
-          <DialogFooter className="mx-0 mb-0 border-t border-border/70 px-4 py-3">
+          <DialogFooter className="mx-0 mb-0 border-t border-border/70 px-3 py-2.5">
             <Button
               type="button"
               variant="outline"
-              className="h-12 rounded-xl"
+              className="h-11 rounded-lg"
               onClick={() => handleOpenChange(false)}
             >
-              إلغاء
+              {t("Cancel")}
             </Button>
             <Button
               type="button"
-              className="h-12 rounded-xl font-semibold"
+              className="h-11 rounded-lg font-semibold"
               disabled={!canSubmit}
               onClick={handlePay}
             >
-              {pending ? "جاري التسجيل…" : "تأكيد الدفعة"}
+              {pending ? t("Recording…") : t("Confirm payment")}
             </Button>
           </DialogFooter>
         ) : null}

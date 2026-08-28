@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/format";
+import { useTranslation } from "@/lib/i18n/use-translation";
 import {
   createVariantAction,
   deleteVariantAction,
@@ -31,6 +32,7 @@ export function VariantEditor({
   recipesEnabled = false,
   initialVariants = [],
 }: VariantEditorProps) {
+  const { t } = useTranslation();
   const [variants, setVariants] = useState<ProductVariant[]>(initialVariants);
   const [loading, setLoading] = useState(initialVariants.length === 0);
   const [addOpen, setAddOpen] = useState(false);
@@ -63,7 +65,7 @@ export function VariantEditor({
       .catch((error) => {
         if (!cancelled) {
           toast.error(
-            error instanceof Error ? error.message : "تعذر تحميل أحجام المنتج"
+            error instanceof Error ? error.message : t("Could not load product variants")
           );
         }
       })
@@ -73,12 +75,12 @@ export function VariantEditor({
     return () => {
       cancelled = true;
     };
-  }, [product.id]);
+  }, [product.id, t]);
 
   function handleCreate() {
     const price = Number(draft.price) || 0;
     if (!draft.name.trim() || price <= 0) {
-      toast.error("الاسم والسعر مطلوبان");
+      toast.error(t("Name and price are required"));
       return;
     }
     const sku = draft.sku.trim() || nextVariantSku();
@@ -148,7 +150,7 @@ export function VariantEditor({
         });
       } catch {
         if (snapshotRef.current) setVariants(snapshotRef.current);
-        toast.error("تعذر إنشاء الحجم");
+        toast.error(t("Could not create variant"));
       }
     })();
   }
@@ -164,7 +166,7 @@ export function VariantEditor({
         setVariants((prev) => prev.map((v) => (v.id === id ? updated : v)));
       } catch {
         if (snapshotRef.current) setVariants(snapshotRef.current);
-        toast.error("تعذر تحديث الحجم");
+        toast.error(t("Could not update variant"));
       }
     })();
   }
@@ -182,13 +184,13 @@ export function VariantEditor({
         await deleteVariantAction(id);
       } catch {
         if (snapshotRef.current) setVariants(snapshotRef.current);
-        toast.error("تعذر حذف الحجم");
+        toast.error(t("Could not delete variant"));
       }
     })();
   }
 
   if (loading) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">جاري تحميل الأحجام…</p>;
+    return <p className="py-8 text-center text-sm text-muted-foreground">{t("Loading variants…")}</p>;
   }
 
   return (
@@ -196,8 +198,8 @@ export function VariantEditor({
       <div className="rounded-xl border p-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-medium">الأحجام والأسعار</p>
-            <p className="text-xs text-muted-foreground">أضف حجمًا بسعر وباركود في صف واحد.</p>
+            <p className="text-sm font-medium">{t("Variants and prices")}</p>
+            <p className="text-xs text-muted-foreground">{t("Add a variant with its price and barcode.")}</p>
           </div>
           <Button
             type="button"
@@ -206,18 +208,18 @@ export function VariantEditor({
             onClick={() => setAddOpen((current) => !current)}
           >
             <Plus className="size-4" />
-            {addOpen ? "إغلاق" : "إضافة حجم"}
+            {addOpen ? t("Close") : t("Add variant")}
           </Button>
         </div>
 
         {addOpen ? (
         <div className="mt-3 grid gap-2 rounded-xl border border-dashed border-border/70 bg-muted/20 p-3 sm:grid-cols-2 sm:items-end lg:grid-cols-[1fr_1fr_minmax(0,7.5rem)_minmax(0,7.5rem)_minmax(0,9rem)_auto]">
           <div className="grid gap-1">
-            <Label className="text-xs">الاسم</Label>
+            <Label className="text-xs">{t("Name")}</Label>
             <Input
               value={draft.name}
               onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-              placeholder="صغير"
+              placeholder={t("Small")}
             />
           </div>
           <div className="grid gap-1">
@@ -229,14 +231,14 @@ export function VariantEditor({
             />
           </div>
           <div className="grid gap-1">
-            <Label className="text-xs">باركود</Label>
+            <Label className="text-xs">{t("Barcode")}</Label>
             <Input
               value={draft.barcode}
               onChange={(e) => setDraft((d) => ({ ...d, barcode: e.target.value }))}
             />
           </div>
           <div className="grid gap-1">
-            <Label className="text-xs">السعر ({currency})</Label>
+            <Label className="text-xs">{t("Price")} ({currency})</Label>
             <Input
               type="number"
               step="0.01"
@@ -245,7 +247,7 @@ export function VariantEditor({
             />
           </div>
           <div className="grid gap-1">
-            <Label className="text-xs">النوع</Label>
+            <Label className="text-xs">{t("Type")}</Label>
             <select
               className="h-9 rounded-xl border border-input bg-transparent px-3 text-sm"
               value={draft.variant_kind}
@@ -253,17 +255,17 @@ export function VariantEditor({
                 setDraft((d) => ({ ...d, variant_kind: e.target.value as ProductVariant["variant_kind"] }))
               }
             >
-              <option value="standard">قياسي</option>
-              <option value="weight_portion">وزن / حصة</option>
+              <option value="standard">{t("Standard")}</option>
+              <option value="weight_portion">{t("Weight / portion")}</option>
             </select>
           </div>
           <Button size="sm" onClick={handleCreate}>
-            <Plus className="size-4" /> حفظ
+            <Plus className="size-4" /> {t("Save")}
           </Button>
           {draft.variant_kind === "weight_portion" ? (
             <div className="grid gap-2 sm:col-span-full sm:grid-cols-4">
               <div className="grid gap-1">
-                <Label className="text-xs">الكمية</Label>
+                <Label className="text-xs">{t("Quantity")}</Label>
                 <Input
                   value={draft.quantity_value}
                   onChange={(e) => setDraft((d) => ({ ...d, quantity_value: e.target.value }))}
@@ -271,7 +273,7 @@ export function VariantEditor({
                 />
               </div>
               <div className="grid gap-1">
-                <Label className="text-xs">الوحدة</Label>
+                <Label className="text-xs">{t("Unit")}</Label>
                 <select
                   className="h-9 rounded-xl border border-input bg-transparent px-3 text-sm"
                   value={draft.quantity_unit}
@@ -287,7 +289,7 @@ export function VariantEditor({
                 </select>
               </div>
               <div className="grid gap-1">
-                <Label className="text-xs">طريقة السعر</Label>
+                <Label className="text-xs">{t("Pricing method")}</Label>
                 <select
                   className="h-9 rounded-xl border border-input bg-transparent px-3 text-sm"
                   value={draft.price_mode}
@@ -298,12 +300,12 @@ export function VariantEditor({
                     }))
                   }
                 >
-                  <option value="calculate_from_unit_price">حساب من سعر الوحدة</option>
-                  <option value="fixed_price">سعر ثابت</option>
+                  <option value="calculate_from_unit_price">{t("Calculate from unit price")}</option>
+                  <option value="fixed_price">{t("Fixed price")}</option>
                 </select>
               </div>
               <div className="grid gap-1">
-                <Label className="text-xs">سعر ثابت ({currency})</Label>
+                <Label className="text-xs">{t("Fixed price")} ({currency})</Label>
                 <Input
                   value={draft.fixed_price}
                   onChange={(e) => setDraft((d) => ({ ...d, fixed_price: e.target.value }))}
@@ -318,7 +320,7 @@ export function VariantEditor({
 
       {variants.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          مفيش متغيرات لسة. المنتجات بالمقاسات محتاجة اختيار مقاس في نقطة البيع.
+          {t("No variants yet. Products with variants require a selection at the POS.")}
         </p>
       ) : (
         <Tabs defaultValue={variants[0]?.id}>
@@ -333,7 +335,7 @@ export function VariantEditor({
             <TabsContent key={variant.id} value={variant.id} className="grid gap-4 pt-3">
               <div className="grid gap-2 rounded-xl border border-border/70 p-3 sm:grid-cols-2 sm:items-end lg:grid-cols-[1fr_minmax(0,7.5rem)_1fr_1fr_auto_auto]">
                 <div className="grid gap-1">
-                  <Label className="text-xs">الاسم</Label>
+                  <Label className="text-xs">{t("Name")}</Label>
                   <Input
                     defaultValue={variant.name}
                     key={`name-${variant.id}-${variant.name}`}
@@ -346,7 +348,7 @@ export function VariantEditor({
                   />
                 </div>
                 <div className="grid gap-1">
-                  <Label className="text-xs">السعر</Label>
+                  <Label className="text-xs">{t("Price")}</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -379,7 +381,7 @@ export function VariantEditor({
                   />
                 </div>
                 <div className="grid gap-1">
-                  <Label className="text-xs">باركود</Label>
+                  <Label className="text-xs">{t("Barcode")}</Label>
                   <Input
                     defaultValue={variant.barcode}
                     key={`barcode-${variant.id}-${variant.barcode}`}
@@ -397,22 +399,22 @@ export function VariantEditor({
                     disabled={variant.id.startsWith("temp-")}
                     onCheckedChange={(v) => handleUpdate(variant.id, { is_active: Boolean(v) })}
                   />
-                  نشط
+                  {t("Active")}
                 </label>
                 <Button
                   variant="destructive"
                   size="sm"
                   onClick={() => handleDelete(variant.id)}
                 >
-                  <Trash2 className="size-4" /> حذف
+                  <Trash2 className="size-4" /> {t("Delete")}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                سعر البيع: {formatCurrency(variant.price ?? product.base_price + variant.price_delta, currency)}
+                {t("Sale price")}: {formatCurrency(variant.price ?? product.base_price + variant.price_delta, currency)}
               </p>
               {recipesEnabled && !variant.id.startsWith("temp-") ? (
                 <div className="rounded-xl border p-3">
-                  <p className="mb-2 text-sm font-medium">وصفة {variant.name}</p>
+                  <p className="mb-2 text-sm font-medium">{t("Recipe")} {variant.name}</p>
                   <RecipeEditor
                     product={product}
                     currency={currency}

@@ -8,9 +8,9 @@ export default async function PurchaseOrdersRoute() {
       {...data}
       documentKind="purchase_order"
       basePath="/inventory/purchase-orders"
-      title="أوامر التوريد"
-      description="مسودة → إرسال → استلام جزئي بفواتير شراء متعددة"
-      createLabel="أمر توريد جديد"
+      title="Purchase orders"
+      description="Draft → Send → Partial receipt with multiple purchase invoices"
+      createLabel="New purchase order"
     />
   );
 }

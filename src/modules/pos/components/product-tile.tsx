@@ -1,18 +1,19 @@
 "use client";
 
 import Image from "next/image";
-import { Layers3, Plus } from "lucide-react";
+import { Layers3 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { resolveDisplayPriceRange } from "@/modules/products/lib/display-price-range";
 import type { POSProduct } from "@/modules/pos/services/catalog.service";
 import { firstGrapheme } from "@/lib/first-grapheme";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 const BADGE_LABELS = {
-  in_stock: "متوفر",
-  low: "قليل",
-  out: "نفد",
+  in_stock: "In stock",
+  low: "Low",
+  out: "Out",
   untracked: null,
 } as const;
 
@@ -36,6 +37,7 @@ export function ProductTile({
   showVariants = true,
   allowNegativeStock = false,
 }: ProductTileProps) {
+  const { t, language } = useTranslation();
   const badgeLabel = BADGE_LABELS[product.stockBadge];
   const outOfStock = product.stockBadge === "out";
   const blockOutOfStock = outOfStock && !allowNegativeStock;
@@ -47,22 +49,36 @@ export function ProductTile({
     variantPrices: showVariantPrice || product.hasVariants ? variantPrices : [],
     baseAmount: product.base_price,
     showRange: showVariantPrice,
-    rangeSeparator: "arabic",
+    rangeSeparator: language === "ar" ? "arabic" : "en-dash",
   });
+  const stockLabel = badgeLabel
+    ? product.stockBadge === "out" && allowNegativeStock
+      ? t("Out of stock — sale allowed")
+      : t(badgeLabel)
+    : null;
+  const accessibleLabel = [
+    product.name,
+    formatCurrency(displayPrice),
+    stockLabel,
+    showVariants && product.hasVariants
+      ? `${product.variants.length} ${t("Variants")}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <button
       type="button"
       onClick={onAdd}
       disabled={disabled || blockOutOfStock}
+      aria-label={accessibleLabel}
       className={cn(
-        "group relative flex min-h-[132px] flex-col overflow-hidden rounded-2xl bg-card text-left text-card-foreground shadow-sm ring-1 ring-border/60 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-primary/30 active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[158px]",
-        /* phones / ~5" handheld: dense tap tiles, less chrome */
-        "max-sm:min-h-[118px] max-sm:rounded-xl max-sm:shadow-none max-sm:hover:translate-y-0 max-sm:hover:shadow-none max-[390px]:min-h-[108px]"
+        "group relative flex min-h-[108px] flex-col overflow-hidden rounded-xl bg-card text-start text-card-foreground shadow-none ring-1 ring-border/65 transition duration-150 hover:ring-primary/35 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[124px] sm:rounded-[14px]"
       )}
     >
       <div
-        className="relative flex aspect-[5/3] min-h-[64px] w-full items-center justify-center overflow-hidden max-sm:aspect-[16/10] max-sm:min-h-[56px] max-[390px]:aspect-[16/9] max-[390px]:min-h-[52px]"
+        className="relative flex aspect-[16/9] min-h-[50px] w-full items-center justify-center overflow-hidden sm:min-h-[58px]"
         style={{
           background: `linear-gradient(145deg, ${product.categoryColor}22, ${product.categoryColor}44)`,
         }}
@@ -70,11 +86,11 @@ export function ProductTile({
         {product.image_url ? (
           <Image
             src={product.image_url}
-            alt={product.name}
+            alt=""
             fill
-            sizes="(min-width: 1280px) 14vw, (min-width: 640px) 25vw, 45vw"
+            sizes="(min-width: 1280px) 11vw, (min-width: 768px) 18vw, (min-width: 640px) 22vw, (min-width: 350px) 31vw, 48vw"
             unoptimized
-            className="object-cover transition duration-300 group-hover:scale-105 max-[390px]:group-hover:scale-100"
+            className="object-cover transition duration-200 group-hover:scale-[1.025] motion-reduce:transition-none"
           />
         ) : null}
         {product.image_url ? (
@@ -82,7 +98,7 @@ export function ProductTile({
         ) : null}
         <span
           className={cn(
-            "text-3xl font-bold opacity-30 transition group-hover:scale-105 max-[390px]:text-2xl",
+            "text-2xl font-bold opacity-30 transition group-hover:scale-105 motion-reduce:transition-none sm:text-3xl",
             product.image_url && "opacity-0"
           )}
           style={{ color: product.categoryColor }}
@@ -104,7 +120,7 @@ export function ProductTile({
                 "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200"
             )}
           >
-            {badgeLabel}
+            {badgeLabel ? t(badgeLabel) : null}
             {product.stockQuantity !== null && ` · ${product.stockQuantity}`}
           </Badge>
         )}
@@ -114,25 +130,21 @@ export function ProductTile({
             {product.variants.length}
           </span>
         ) : null}
-        <span className="absolute bottom-1.5 end-1.5 flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md transition-transform duration-200 group-hover:scale-110 group-disabled:opacity-0 sm:size-10 max-[390px]:bottom-1 max-[390px]:end-1 max-[390px]:size-8 max-[390px]:shadow-sm">
-          <Plus className="size-4 sm:size-4.5 max-[390px]:size-3.5" />
-          <span className="sr-only">إضافة</span>
-        </span>
       </div>
-      <div className="flex flex-1 flex-col gap-0.5 p-2 sm:gap-1 sm:p-2.5 max-[390px]:p-1.5">
-        <p className="line-clamp-2 text-[13px] font-semibold leading-snug text-card-foreground max-[390px]:text-xs max-[390px]:leading-tight sm:text-sm">
+      <div className="flex flex-1 flex-col gap-0.5 p-1.5 sm:p-2">
+        <p className="line-clamp-2 text-xs font-semibold leading-tight text-card-foreground sm:text-[13px]">
           {product.name}
         </p>
-        <p className="min-w-0 truncate text-[11px] text-muted-foreground max-sm:hidden">
+        <p className="min-w-0 truncate text-[10px] text-muted-foreground max-sm:hidden">
           {product.categoryName}
         </p>
-        <div className="mt-auto rounded-xl border border-border/50 bg-muted/40 px-2 py-1.5 max-sm:rounded-lg max-sm:border-0 max-sm:bg-transparent max-sm:px-0 max-sm:py-0.5">
+        <div className="mt-auto pt-0.5">
           {showVariantPrice ? (
             <p className="text-[10px] text-muted-foreground max-sm:hidden">
-              {priceRange ? "من" : "سعر"}
+              {priceRange ? t("From") : t("Price")}
             </p>
           ) : null}
-          <p className="text-[13px] font-bold tabular-nums text-foreground sm:text-[15px]">
+          <p className="truncate text-[12px] font-bold tabular-nums text-foreground sm:text-sm">
             {formatCurrency(displayPrice)}
             {priceRange ? (
               <span className="ms-0.5 text-[10px] font-normal text-muted-foreground">

@@ -52,7 +52,7 @@ export async function getPriceListStudioDataAction(input: {
 
     if (input.invoiceId) {
       const purchase = await getPurchase(input.invoiceId);
-      if (!purchase) throw new Error("فاتورة الشراء غير موجودة");
+      if (!purchase) throw new Error("Purchase invoice not found");
       const branding = await getReportBranding(purchase.store_id);
       const rows = buildRowsFromPurchaseLines({
         lines: purchase.lines,

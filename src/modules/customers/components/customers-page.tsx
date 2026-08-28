@@ -2,15 +2,13 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   BookOpen,
   Heart,
   Landmark,
   Plus,
   Search,
-  UserRound,
-  Users,
-  Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,16 +22,15 @@ import {
 } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/Velora/page-header";
 import { CompactAction } from "@/components/Velora/compact-actions";
-import { KpiCard } from "@/components/Velora/kpi-card";
-import { OperationalCard } from "@/components/Velora/operational-card";
 import { EmptyStateBlock } from "@/components/Velora/state-blocks";
+import { EntityList, FilterBar, PageShell } from "@/components/Velora/page-patterns";
 import { formatCurrency } from "@/lib/format";
-import { firstGrapheme } from "@/lib/first-grapheme";
 import type { Customer } from "@/lib/types";
 import type { AgingBuckets } from "@/modules/reports/lib/aging-buckets";
 import { AgingBucketsChart } from "@/modules/reports/components/aging-buckets-chart";
 import { ModuleAnalyticsQuickLinks } from "@/modules/reports/components/module-analytics-quick-links";
 import { createCustomerAction } from "@/modules/customers/actions/customer.actions";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface CustomersPageProps {
   customers: Customer[];
@@ -53,8 +50,11 @@ export function CustomersPage({
   glance = null,
   creditSalesEnabled = false,
 }: CustomersPageProps) {
+  const searchParams = useSearchParams();
+  const { t, language } = useTranslation();
+  const locale = language === "ar" ? "ar-EG" : "en-EG";
   const [customers, setCustomers] = useState(initial);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(searchParams.get("q") ?? "");
   const [showCreate, setShowCreate] = useState(false);
   const [pending, startTransition] = useTransition();
   const [form, setForm] = useState({ name: "", phone: "", email: "", address: "", tax_id: "" });
@@ -77,27 +77,27 @@ export function CustomersPage({
         setCustomers([customer, ...customers]);
         setShowCreate(false);
         setForm({ name: "", phone: "", email: "", address: "", tax_id: "" });
-        toast.success("تم إنشاء العميل");
+        toast.success(t("Customer created"));
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "فشل التنفيذ");
+        toast.error(e instanceof Error ? e.message : t("Action failed"));
       }
     });
   };
 
   return (
-    <div className="flex flex-col gap-3" dir="rtl">
+    <PageShell dir={language === "ar" ? "rtl" : "ltr"}>
       <PageHeader
         breadcrumb={
           <span>
             <Link href="/customers" className="text-primary hover:underline">
-              العملاء
+              {t("Customers")}
             </Link>
             <span className="mx-1 text-muted-foreground">/</span>
-            دليل العملاء
+            {t("Customer Directory")}
           </span>
         }
-        title="دليل العملاء"
-        description="العلاقات والسجل والولاء"
+        title="Customer Directory"
+        description="Profiles, history, and loyalty."
         action={
           <CompactAction
             label="إضافة عميل"
@@ -109,105 +109,50 @@ export function CustomersPage({
         }
       />
 
-      <div
-        className={
-          creditSalesEnabled
-            ? "grid gap-[var(--mds-space-4)] sm:grid-cols-2 lg:grid-cols-4"
-            : "grid gap-[var(--mds-space-4)] sm:grid-cols-2"
-        }
+      <section
+        aria-label={t("Customer summary")}
+        className="overflow-hidden rounded-[var(--mds-radius-lg)] border border-border bg-card"
       >
-        <KpiCard
-          label="إجمالي العملاء"
-          value={String(customers.length)}
-          icon={<Users className="size-5" />}
-        />
-        <KpiCard
-          label="نتائج البحث"
-          value={String(filtered.length)}
-          change={search.trim() ? "مطابقة للفلتر الحالي" : "كل العملاء"}
-          trend="neutral"
-        />
-        {creditSalesEnabled ? (
-          <>
-            <KpiCard
-              label="رصيد آجل"
-              value={formatCurrency(creditBalance, currency)}
-              change={
-                glance
-                  ? `${glance.partiesWithBalance} عميل عليهم رصيد`
-                  : "مجموع أرصدة العملاء"
-              }
-              trend="neutral"
-              icon={<Landmark className="size-5" />}
-            />
-            <KpiCard
-              label="تحصيل (30 يوم)"
-              value={formatCurrency(glance?.collected30d ?? 0, currency)}
-              icon={<Wallet className="size-5" />}
-            />
-          </>
-        ) : null}
-      </div>
+        <dl className={creditSalesEnabled ? "grid grid-cols-2 lg:grid-cols-4" : "grid grid-cols-2"}>
+          <div className={creditSalesEnabled ? "border-b border-border px-3 py-3 lg:border-b-0 sm:px-4 sm:py-4" : "px-3 py-3 sm:px-4 sm:py-4"}>
+            <dt className="text-xs font-medium text-muted-foreground">{t("Total customers")}</dt>
+            <dd className="mt-1 text-xl font-semibold tabular-nums">{customers.length}</dd>
+            <dd className="text-xs text-muted-foreground">{t("Registered customers")}</dd>
+          </div>
+          <div className={creditSalesEnabled ? "border-b border-s border-border px-3 py-3 lg:border-b-0 sm:px-4 sm:py-4" : "border-s border-border px-3 py-3 sm:px-4 sm:py-4"}>
+            <dt className="text-xs font-medium text-muted-foreground">{t("Search results")}</dt>
+            <dd className="mt-1 text-xl font-semibold tabular-nums">{filtered.length}</dd>
+            <dd className="text-xs text-muted-foreground">{t(search.trim() ? "Matches current filter" : "All customers")}</dd>
+          </div>
+          {creditSalesEnabled ? (
+            <>
+              <div className="px-3 py-3 lg:border-s sm:px-4 sm:py-4">
+                <dt className="text-xs font-medium text-muted-foreground">{t("Credit balance")}</dt>
+                <dd className="mt-1 break-words text-xl font-semibold tabular-nums">{formatCurrency(creditBalance, currency, locale)}</dd>
+                <dd className="text-xs text-muted-foreground">{glance ? `${glance.partiesWithBalance} ${t("with balance")}` : t("Total balances")}</dd>
+              </div>
+              <div className="border-s border-border px-3 py-3 sm:px-4 sm:py-4">
+                <dt className="text-xs font-medium text-muted-foreground">{t("Collected in 30 days")}</dt>
+                <dd className="mt-1 break-words text-xl font-semibold tabular-nums">{formatCurrency(glance?.collected30d ?? 0, currency, locale)}</dd>
+                <dd className="text-xs text-muted-foreground">{t("Customer payments")}</dd>
+              </div>
+            </>
+          ) : null}
+        </dl>
+      </section>
 
-      {creditSalesEnabled && glance ? (
-        <AgingBucketsChart
-          title="أعمار ذمم العملاء"
-          buckets={glance.agingBuckets}
-          currency={currency}
-          barColor="#D97706"
-        />
-      ) : null}
-
-      <ModuleAnalyticsQuickLinks
-        title="تحليل العملاء"
-        description="مديونية وكشف حساب وولاء"
-        links={[
-          ...(creditSalesEnabled
-            ? [
-                {
-                  href: "/reports/aging?side=customers",
-                  label: "مديونية العملاء",
-                  description: "أعمار الذمم والتحصيل",
-                  icon: Landmark,
-                },
-              ]
-            : []),
-          {
-            href: "/reports/statement?party=customer",
-            label: "كشف حساب عميل",
-            description: "حركات مفصّلة على فترة",
-            icon: BookOpen,
-          },
-          {
-            href: "/customers/loyalty",
-            label: "الولاء",
-            description: "نقاط صادرة ومستخدمة",
-            icon: Heart,
-          },
-        ]}
-      />
-
-      <div className="relative w-full max-w-md">
-        <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="ابحث بالاسم أو الهاتف..."
-          className="h-11 rounded-[var(--mds-radius-md)] ps-10 md:h-10"
-          aria-label="بحث العملاء"
-        />
-      </div>
+      <FilterBar><div className="relative w-full sm:max-w-md"><Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(e) => { const next = e.target.value; setSearch(next); const params = new URLSearchParams(searchParams.toString()); if (next.trim()) params.set("q", next); else params.delete("q"); const query = params.toString(); window.history.replaceState(null, "", query ? `/customers/directory?${query}` : "/customers/directory"); }} placeholder={t("Search by name or phone...")} className="ps-10" aria-label={t("Search customers")} /></div><p className="text-xs text-muted-foreground">{t("Search by name or phone")}</p></FilterBar>
 
       {filtered.length === 0 ? (
         <div className="flex flex-col gap-[var(--mds-space-4)]">
           <EmptyStateBlock
-            title={search.trim() ? "لا نتائج" : "لا يوجد عملاء"}
+            title={search.trim() ? "No results" : "No customers"}
             description={
               search.trim()
-                ? "جرّب اسمًا أو رقم هاتف مختلف."
+                ? "Try a different name or phone."
                 : creditSalesEnabled
-                  ? "أضف عميلًا للبدء في الولاء والبيع الآجل."
-                  : "أضف عميلًا للبدء في الولاء وسجل المبيعات."
+                  ? "Add a customer to start loyalty and credit sales."
+                  : "Add a customer to start loyalty and sales history."
             }
           />
           {!search.trim() ? (
@@ -216,56 +161,34 @@ export function CustomersPage({
                 className="shadow-[var(--mds-elevation-1)]"
                 onClick={() => setShowCreate(true)}
               >
-                إضافة عميل
+                {t("Add Customer")}
               </Button>
             </div>
           ) : null}
         </div>
       ) : (
-        <div className="grid gap-[var(--mds-space-4)] sm:grid-cols-2 lg:grid-cols-3">
+        <EntityList className="divide-y divide-border">
           {filtered.map((c) => (
-            <Link key={c.id} href={`/customers/${c.id}`} className="min-w-0">
-              <OperationalCard className="h-full transition-shadow hover:shadow-[var(--mds-elevation-2)]">
-                <div className="flex items-start gap-3">
-                  <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                    {c.name.trim() ? firstGrapheme(c.name) : <UserRound className="size-4" />}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="truncate font-semibold">{c.name}</h3>
-                      <p className="shrink-0 text-sm font-semibold tabular-nums">
-                        {formatCurrency(c.total_spent, currency)}
-                      </p>
-                    </div>
-                    <p className="truncate text-sm text-muted-foreground" dir="ltr">
-                      {c.phone}
-                    </p>
-                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                        {c.visit_count} زيارة
-                      </span>
-                      {c.account_balance > 0 ? (
-                        <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-200">
-                          مستحق {formatCurrency(c.account_balance, currency)}
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              </OperationalCard>
+            <Link key={c.id} href={`/customers/${c.id}?returnTo=${encodeURIComponent(searchParams.toString() ? `/customers/directory?${searchParams.toString()}` : "/customers/directory")}`} className="grid min-w-0 gap-3 p-4 outline-none transition-colors hover:bg-muted/30 focus-visible:bg-muted/30 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
+              <div className="min-w-0"><h3 className="truncate font-semibold">{c.name}</h3><p className="truncate text-sm text-muted-foreground" dir="ltr">{c.phone}</p></div>
+              <div className="sm:min-w-28"><p className="text-sm font-semibold tabular-nums">{formatCurrency(c.total_spent, currency, locale)}</p><p className="text-xs text-muted-foreground">{c.visit_count} {t("visits")}</p></div>
+              <div className="sm:min-w-32">{c.account_balance > 0 ? <span className="rounded-full bg-[var(--mds-color-feedback-warning-subtle)] px-2 py-1 text-xs font-medium text-[var(--mds-color-feedback-warning)]">{t("Due")} {formatCurrency(c.account_balance, currency, locale)}</span> : <span className="text-xs text-muted-foreground">{t("Nothing due")}</span>}</div>
             </Link>
           ))}
-        </div>
+        </EntityList>
       )}
+
+      {creditSalesEnabled && glance ? <AgingBucketsChart title={t("Customer aging")} buckets={glance.agingBuckets} currency={currency} barColor="var(--mds-color-feedback-warning)" /> : null}
+      <ModuleAnalyticsQuickLinks title="Customer analysis" description="Balances, statements, and loyalty" links={[...(creditSalesEnabled ? [{ href: "/reports/aging?side=customers", label: "Customer aging", description: "Aging and collection", icon: Landmark }] : []), { href: "/reports/statement?party=customer", label: "Customer statement", description: "Detailed activity by period", icon: BookOpen }, { href: "/customers/loyalty", label: "Loyalty", description: "Points earned and redeemed", icon: Heart }]} />
 
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="rounded-[var(--mds-radius-lg)]">
           <DialogHeader>
-            <DialogTitle>عميل جديد</DialogTitle>
+            <DialogTitle>{t("New Customer")}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-[var(--mds-space-4)]">
             <div className="space-y-[var(--mds-space-2)]">
-              <Label htmlFor="customer-name">الاسم</Label>
+              <Label htmlFor="customer-name">{t("Name")}</Label>
               <Input
                 id="customer-name"
                 value={form.name}
@@ -274,7 +197,7 @@ export function CustomersPage({
               />
             </div>
             <div className="space-y-[var(--mds-space-2)]">
-              <Label htmlFor="customer-phone">الهاتف</Label>
+              <Label htmlFor="customer-phone">{t("Phone")}</Label>
               <Input
                 id="customer-phone"
                 value={form.phone}
@@ -283,7 +206,7 @@ export function CustomersPage({
               />
             </div>
             <div className="space-y-[var(--mds-space-2)]">
-              <Label htmlFor="customer-email">البريد الإلكتروني</Label>
+              <Label htmlFor="customer-email">{t("Email")}</Label>
               <Input
                 id="customer-email"
                 type="email"
@@ -293,7 +216,7 @@ export function CustomersPage({
               />
             </div>
             <div className="space-y-[var(--mds-space-2)]">
-              <Label htmlFor="customer-address">العنوان</Label>
+              <Label htmlFor="customer-address">{t("Address")}</Label>
               <Input
                 id="customer-address"
                 value={form.address}
@@ -302,7 +225,7 @@ export function CustomersPage({
               />
             </div>
             <div className="space-y-[var(--mds-space-2)]">
-              <Label htmlFor="customer-tax">الرقم الضريبي</Label>
+              <Label htmlFor="customer-tax">{t("Tax ID")}</Label>
               <Input
                 id="customer-tax"
                 value={form.tax_id}
@@ -315,11 +238,11 @@ export function CustomersPage({
               onClick={create}
               disabled={pending || form.name.trim().length < 2 || form.phone.trim().length < 8}
             >
-              إنشاء
+              {t("Create")}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

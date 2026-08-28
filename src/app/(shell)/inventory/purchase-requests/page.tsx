@@ -8,9 +8,9 @@ export default async function PurchaseRequestsRoute() {
       {...data}
       documentKind="purchase_request"
       basePath="/inventory/purchase-requests"
-      title="طلبات الشراء"
-      description="مسودة → تقديم → اعتماد → تحويل لأمر توريد"
-      createLabel="طلب شراء جديد"
+      title="Purchase requests"
+      description="Draft → Submit → Approve → Convert to purchase order"
+      createLabel="New purchase request"
     />
   );
 }

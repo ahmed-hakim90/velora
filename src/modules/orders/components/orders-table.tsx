@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   createColumnHelper,
   flexRender,
@@ -21,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EmptyStateBlock } from "@/components/Velora/state-blocks";
+import { DateRangeFilter, type DateRangeValue } from "@/components/Velora/date-range-filter";
 import { MobileEntityCard } from "@/components/Velora/mobile-entity-card";
 import { ResponsiveListLayout } from "@/components/Velora/responsive-list-layout";
 import { formatCurrency } from "@/lib/format";
@@ -122,18 +124,27 @@ interface OrdersTableProps {
 }
 
 export function OrdersTable({ orders }: OrdersTableProps) {
-  const [query, setQuery] = useState("");
+  const searchParams = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get("q") ?? "");
+  const [dateRange, setDateRange] = useState<DateRangeValue>({
+    from: searchParams.get("from") ?? "",
+    to: searchParams.get("to") ?? "",
+  });
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return orders;
-    return orders.filter(
-      (order) =>
+    return orders.filter((order) => {
+      const date = order.created_at.slice(0, 10);
+      if (dateRange.from && date < dateRange.from) return false;
+      if (dateRange.to && date > dateRange.to) return false;
+      if (!q) return true;
+      return (
         order.order_number.toLowerCase().includes(q) ||
         order.storeName.toLowerCase().includes(q) ||
         order.status.toLowerCase().includes(q) ||
         (STATUS_LABELS[order.status] ?? "").includes(q)
-    );
-  }, [orders, query]);
+      );
+    });
+  }, [orders, query, dateRange]);
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
@@ -147,15 +158,18 @@ export function OrdersTable({ orders }: OrdersTableProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="relative w-full max-w-md">
-        <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="ابحث برقم الطلب أو الفرع…"
-          aria-label="بحث في الطلبات"
-          className="h-11 rounded-[var(--mds-radius-md)] border-border/70 bg-background ps-10 md:h-10"
-        />
+      <div className="flex flex-col gap-2 rounded-[var(--mds-radius-md)] border border-border bg-card p-2 xl:flex-row xl:items-center xl:justify-between">
+        <div className="relative w-full max-w-md">
+          <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => { const next = e.target.value; setQuery(next); const params = new URLSearchParams(searchParams.toString()); if (next.trim()) params.set("q", next); else params.delete("q"); const value = params.toString(); window.history.replaceState(null, "", value ? `/orders?${value}` : "/orders"); }}
+            placeholder="ابحث برقم الطلب أو الفرع…"
+            aria-label="بحث في الطلبات"
+            className="h-10 rounded-[var(--mds-radius-md)] border-border/70 bg-background ps-10"
+          />
+        </div>
+        <DateRangeFilter value={dateRange} onChange={(next) => { setDateRange(next); const params = new URLSearchParams(searchParams.toString()); if (next.from) params.set("from", next.from); else params.delete("from"); if (next.to) params.set("to", next.to); else params.delete("to"); const value = params.toString(); window.history.replaceState(null, "", value ? `/orders?${value}` : "/orders"); }} />
       </div>
       {rows.length === 0 ? (
         <EmptyStateBlock

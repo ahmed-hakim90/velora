@@ -14,6 +14,7 @@ import {
 import { languageOptions } from "@/lib/i18n/translations";
 import type { Organization } from "@/lib/types";
 import { useUiStore } from "@/stores/ui-store";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface BusinessSettingsTabProps {
   org: {
@@ -27,6 +28,7 @@ export function BusinessSettingsTab({ org }: BusinessSettingsTabProps) {
   const [pending, startTransition] = useTransition();
   const language = useUiStore((s) => s.language);
   const setLanguage = useUiStore((s) => s.setLanguage);
+  const { t } = useTranslation();
   const [logoUrl, setLogoUrl] = useState(org.organization.logo_url ?? "");
   const [form, setForm] = useState({
     name: org.organization.name,
@@ -38,20 +40,20 @@ export function BusinessSettingsTab({ org }: BusinessSettingsTabProps) {
 
   return (
     <div className="space-y-6">
-      <OperationalCard title="بيانات المتجر">
+      <OperationalCard title={t("Store details")}>
         <div className="grid max-w-lg gap-4">
           <div className="space-y-2">
-            <Label>اسم المتجر</Label>
+            <Label>{t("Business Name")}</Label>
             <Input
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
           </div>
           <div className="space-y-2">
-            <Label>الشعار</Label>
+            <Label>{t("Logo")}</Label>
             {logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt="شعار المتجر" className="mb-2 h-16 w-16 rounded-lg object-cover" />
+              <img src={logoUrl} alt={t("Store logo")} className="mb-2 h-16 w-16 rounded-lg object-cover" />
             )}
             <Input
               type="file"
@@ -65,30 +67,30 @@ export function BusinessSettingsTab({ org }: BusinessSettingsTabProps) {
                     fd.set("logo", file);
                     const url = await uploadOrganizationLogoAction(fd);
                     setLogoUrl(url);
-                    toast.success("تم رفع الشعار");
+                    toast.success(t("Logo uploaded"));
                   } catch (error) {
-                    toast.error(error instanceof Error ? error.message : "فشل الرفع");
+                    toast.error(error instanceof Error ? error.message : t("Upload failed"));
                   }
                 });
               }}
             />
           </div>
           <div className="space-y-2">
-            <Label>الهاتف</Label>
+            <Label>{t("Phone")}</Label>
             <Input
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
             />
           </div>
           <div className="space-y-2">
-            <Label>العنوان</Label>
+            <Label>{t("Address")}</Label>
             <Input
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
             />
           </div>
           <div className="space-y-2">
-            <Label>الدولة</Label>
+            <Label>{t("Country")}</Label>
             <Input
               value={form.country}
               onChange={(e) => setForm({ ...form, country: e.target.value })}
@@ -96,12 +98,12 @@ export function BusinessSettingsTab({ org }: BusinessSettingsTabProps) {
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>العملة</Label>
-              <Input value="EGP" readOnly disabled aria-label="العملة" />
-              <p className="text-xs text-muted-foreground">الجنيه المصري ثابت لكل النظام.</p>
+              <Label>{t("Currency")}</Label>
+              <Input value="EGP" readOnly disabled aria-label={t("Currency")} />
+              <p className="text-xs text-muted-foreground">{t("EGP is used across the system.")}</p>
             </div>
             <div className="space-y-2">
-              <Label>المنطقة الزمنية</Label>
+              <Label>{t("Timezone")}</Label>
               <Input
                 value={form.timezone}
                 onChange={(e) => setForm({ ...form, timezone: e.target.value })}
@@ -109,7 +111,7 @@ export function BusinessSettingsTab({ org }: BusinessSettingsTabProps) {
             </div>
           </div>
           <div className="space-y-2 border-t border-border/60 pt-4">
-            <Label>لغة النظام</Label>
+            <Label>{t("App language")}</Label>
             <div className="flex flex-wrap items-center gap-2">
               <Languages className="size-4 text-muted-foreground" />
               <div className="inline-flex rounded-md border border-border/70 bg-muted p-1">
@@ -141,14 +143,14 @@ export function BusinessSettingsTab({ org }: BusinessSettingsTabProps) {
                     phone: form.phone,
                     address: form.address,
                   });
-                  toast.success("تم حفظ إعدادات المتجر");
+                  toast.success(t("Store settings saved"));
                 } catch {
-                  toast.error("فشل الحفظ");
+                  toast.error(t("Failed to save"));
                 }
               })
             }
           >
-            حفظ إعدادات المتجر
+            {t("Save store settings")}
           </Button>
         </div>
       </OperationalCard>

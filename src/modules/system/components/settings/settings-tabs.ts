@@ -15,11 +15,11 @@ export const SETTINGS_TAB_IDS = [
 export type SettingsTabId = (typeof SETTINGS_TAB_IDS)[number];
 
 export const SETTINGS_GROUPS = [
-  "المتجر",
-  "الكاشير",
-  "المخزون",
-  "الأمان",
-  "متقدم",
+  "Business",
+  "Cashier",
+  "Inventory",
+  "Security",
+  "Advanced",
 ] as const;
 export type SettingsGroup = (typeof SETTINGS_GROUPS)[number];
 
@@ -32,16 +32,26 @@ export const SETTINGS_TABS: {
 }[] = [
   {
     id: "business",
-    label: "المتجر",
+    label: "Business",
     permissions: ["settings_manage"],
-    group: "المتجر",
-    searchTerms: ["store", "company", "branding", "logo", "currency", "متجر", "شركة", "شعار", "عملة"],
+    group: "Business",
+    searchTerms: [
+      "store",
+      "company",
+      "branding",
+      "logo",
+      "currency",
+      "متجر",
+      "شركة",
+      "شعار",
+      "عملة",
+    ],
   },
   {
     id: "activity",
-    label: "نوع النشاط",
+    label: "Business activity",
     permissions: ["settings_manage"],
-    group: "المتجر",
+    group: "Business",
     searchTerms: [
       "activity",
       "preset",
@@ -60,23 +70,32 @@ export const SETTINGS_TABS: {
   },
   {
     id: "branches",
-    label: "الفروع",
+    label: "Branches",
     permissions: ["settings_manage"],
-    group: "المتجر",
+    group: "Business",
     searchTerms: ["branches", "stores", "terminals", "فروع", "كاشير"],
   },
   {
     id: "pos",
-    label: "الكاشير",
+    label: "Cashier",
     permissions: ["settings_manage", "session_settings_manage"],
-    group: "الكاشير",
-    searchTerms: ["pos", "sessions", "receipts", "payments", "كاشير", "جلسات", "إيصالات", "دفع"],
+    group: "Cashier",
+    searchTerms: [
+      "pos",
+      "sessions",
+      "receipts",
+      "payments",
+      "كاشير",
+      "جلسات",
+      "إيصالات",
+      "دفع",
+    ],
   },
   {
     id: "print",
-    label: "محرك الطباعة",
+    label: "Print Engine",
     permissions: ["settings_manage"],
-    group: "المتجر",
+    group: "Business",
     searchTerms: [
       "print",
       "engine",
@@ -96,23 +115,41 @@ export const SETTINGS_TABS: {
   },
   {
     id: "expenses",
-    label: "المصروفات",
+    label: "Expenses",
     permissions: ["settings_manage", "cost_center_manage"],
-    group: "المخزون",
-    searchTerms: ["units", "transfers", "expenses", "categories", "وحدات", "تحويلات", "مصروفات", "تصنيفات"],
+    group: "Inventory",
+    searchTerms: [
+      "units",
+      "transfers",
+      "expenses",
+      "categories",
+      "وحدات",
+      "تحويلات",
+      "مصروفات",
+      "تصنيفات",
+    ],
   },
   {
     id: "users",
-    label: "المستخدمون",
+    label: "Users",
     permissions: ["user_manage"],
-    group: "الأمان",
-    searchTerms: ["users", "roles", "permissions", "security", "مستخدمين", "أدوار", "صلاحيات", "أمان"],
+    group: "Security",
+    searchTerms: [
+      "users",
+      "roles",
+      "permissions",
+      "security",
+      "مستخدمين",
+      "أدوار",
+      "صلاحيات",
+      "أمان",
+    ],
   },
   {
     id: "features",
-    label: "خصائص النظام",
+    label: "System features",
     permissions: ["settings_manage"],
-    group: "متقدم",
+    group: "Advanced",
     searchTerms: [
       "feature flags",
       "flags",
@@ -129,9 +166,9 @@ export const SETTINGS_TABS: {
   },
   {
     id: "audit",
-    label: "سجل المراجعة",
+    label: "Audit log",
     permissions: ["audit_view"],
-    group: "متقدم",
+    group: "Advanced",
     searchTerms: ["audit", "logs", "مراجعة", "سجلات"],
   },
 ];
@@ -139,7 +176,7 @@ export const SETTINGS_TABS: {
 export function tabVisible(
   tab: (typeof SETTINGS_TABS)[number],
   permissions: Set<PermissionKey>,
-  isOwner: boolean
+  isOwner: boolean,
 ): boolean {
   if (isOwner) return true;
   return tab.permissions.some((p) => permissions.has(p));
@@ -147,16 +184,26 @@ export function tabVisible(
 
 export function getVisibleSettingsTabs(
   permissions: Set<PermissionKey>,
-  isOwner: boolean
+  isOwner: boolean,
 ): (typeof SETTINGS_TABS)[number][] {
   return SETTINGS_TABS.filter((tab) => tabVisible(tab, permissions, isOwner));
 }
 
 export function groupSettingsTabs(
-  tabs: Array<Pick<(typeof SETTINGS_TABS)[number], "id" | "label" | "group" | "searchTerms">>
+  tabs: Array<
+    Pick<
+      (typeof SETTINGS_TABS)[number],
+      "id" | "label" | "group" | "searchTerms"
+    >
+  >,
 ): Array<{
   group: SettingsGroup;
-  tabs: Array<Pick<(typeof SETTINGS_TABS)[number], "id" | "label" | "group" | "searchTerms">>;
+  tabs: Array<
+    Pick<
+      (typeof SETTINGS_TABS)[number],
+      "id" | "label" | "group" | "searchTerms"
+    >
+  >;
 }> {
   return SETTINGS_GROUPS.map((group) => ({
     group,
@@ -167,7 +214,7 @@ export function groupSettingsTabs(
 export function resolveSettingsTab(
   requested: string | undefined,
   permissions: Set<PermissionKey>,
-  isOwner: boolean
+  isOwner: boolean,
 ): SettingsTabId {
   const visible = getVisibleSettingsTabs(permissions, isOwner);
   const fallback = visible[0]?.id ?? "business";

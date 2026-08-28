@@ -71,7 +71,14 @@ export function TreasuryPicker({
         disabled={disabled}
       >
         <SelectTrigger className="h-11 rounded-xl">
-          <SelectValue placeholder="اختار الخزينة" />
+          <SelectValue placeholder="اختار الخزينة">
+            {(selectedValue) =>
+              selectedValue
+                ? (options.find((treasury) => treasury.id === selectedValue)?.label ??
+                  "خزينة غير متاحة")
+                : null
+            }
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           {options.map((t) => (

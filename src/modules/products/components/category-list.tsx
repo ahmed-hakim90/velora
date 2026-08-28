@@ -3,6 +3,7 @@
 import { Layers } from "lucide-react";
 import type { Category } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface CategoryListProps {
   categories: Category[];
@@ -17,6 +18,7 @@ export function CategoryList({
   counts,
   onSelect,
 }: CategoryListProps) {
+  const { t } = useTranslation();
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
 
   return (
@@ -25,10 +27,10 @@ export function CategoryList({
         <div className="mb-2 flex items-center gap-2 px-0.5">
           <Layers className="size-3.5 text-muted-foreground" aria-hidden />
           <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80">
-            التصنيفات
+            {t("Categories")}
           </span>
         </div>
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [-webkit-overflow-scrolling:touch]">
+        <div className="scrollbar-none -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [-webkit-overflow-scrolling:touch]">
           <button
             type="button"
             onClick={() => onSelect(null)}
@@ -40,7 +42,7 @@ export function CategoryList({
             )}
             aria-current={selectedId === null ? "true" : undefined}
           >
-            <span>الكل</span>
+            <span>{t("All")}</span>
             <span className="tabular-nums text-xs text-muted-foreground">{total}</span>
           </button>
           {categories.map((category) => {
@@ -78,7 +80,7 @@ export function CategoryList({
         <div className="flex items-center gap-2 px-[var(--mds-space-2)] py-[var(--mds-space-2)]">
           <Layers className="size-3.5 text-muted-foreground" aria-hidden />
           <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80">
-            التصنيفات
+            {t("Categories")}
           </span>
         </div>
 
@@ -93,11 +95,11 @@ export function CategoryList({
           )}
           aria-current={selectedId === null ? "true" : undefined}
         >
-          <span>كل المنتجات</span>
+          <span>{t("All products")}</span>
           <span className="tabular-nums text-xs text-muted-foreground">{total}</span>
         </button>
 
-        <div className="max-h-[min(28rem,55vh)] space-y-0.5 overflow-y-auto pe-0.5">
+        <div className="max-h-[min(28rem,55dvh)] space-y-0.5 overflow-y-auto pe-0.5">
           {categories.map((category) => {
             const active = selectedId === category.id;
             return (

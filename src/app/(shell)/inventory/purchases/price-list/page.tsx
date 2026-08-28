@@ -31,14 +31,14 @@ export default async function PurchasePriceListPage({
   if (!result.ok) {
     return (
       <EmptyStateBlock
-        title="مقدرناش نفتح قائمة الأسعار"
+        title="Could not open the price list"
         description={result.error}
         action={
           <Link
             href="/inventory/purchases"
             className={cn(buttonVariants({ variant: "outline" }), "min-h-11")}
           >
-            رجوع للمشتريات
+            Back to purchases
           </Link>
         }
       />

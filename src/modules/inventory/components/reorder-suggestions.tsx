@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/format";
 import { createPurchaseDraftFromReorderAction } from "@/modules/purchases/actions/purchase.actions";
 import type { ReorderSuggestion } from "@/modules/inventory/services/reorder.service";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface ReorderSuggestionsProps {
   suggestions: ReorderSuggestion[];
@@ -17,12 +18,13 @@ interface ReorderSuggestionsProps {
 
 export function ReorderSuggestions({ suggestions }: ReorderSuggestionsProps) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [pending, startTransition] = useTransition();
 
   if (suggestions.length === 0) {
     return (
       <GlassPanel className="p-5 text-sm text-muted-foreground">
-        مفيش اقتراحات شراء دلوقتي — المخزون فوق حد إعادة الطلب.
+        {t("No purchase suggestions now. Stock is above the reorder point.")}
       </GlassPanel>
     );
   }
@@ -46,13 +48,13 @@ export function ReorderSuggestions({ suggestions }: ReorderSuggestionsProps) {
       const firstId = result.data.invoiceIds[0];
       if (result.data.count > 1) {
         toast.success(
-          `اتعملت ${result.data.count} مسودات شراء (مخزن × مورد حسب آخر شراء). راجع وعدّل قبل الاستلام.`
+          `${t("Created")} ${result.data.count} ${t("purchase drafts by warehouse and supplier. Review them before receiving.")}`
         );
       } else {
-        toast.success("اتعملت مسودة شراء من الاقتراحات — راجع وعدّل قبل الاستلام");
+        toast.success(t("Purchase draft created. Review it before receiving."));
       }
 
-      // Navigate immediately — awaiting refresh made "جاري الإنشاء…" linger.
+      // Navigate immediately so the pending state does not linger.
       if (firstId) {
         router.push(`/inventory/purchases?invoice=${firstId}&tab=drafts`);
       } else {
@@ -67,13 +69,13 @@ export function ReorderSuggestions({ suggestions }: ReorderSuggestionsProps) {
         <div>
           <div className="flex items-center gap-2">
             <ShoppingBasket className="size-4 text-primary" />
-            <h2 className="font-semibold">اقتراحات إعادة الطلب</h2>
+            <h2 className="font-semibold">{t("Reorder suggestions")}</h2>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            {suggestions.length} صنف · تقديري {formatCurrency(estimatedTotal)}
+            {suggestions.length} {t("items")} · {t("Estimated")} {formatCurrency(estimatedTotal)}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            إنشاء مسودة → راجع الكمية والتكلفة → احفظ واستلم لاحقًا
+            {t("Create a draft, review quantity and cost, then save and receive later.")}
           </p>
         </div>
         <Button
@@ -84,7 +86,7 @@ export function ReorderSuggestions({ suggestions }: ReorderSuggestionsProps) {
           disabled={pending}
           onClick={handleCreateDraft}
         >
-          {pending ? "جاري الإنشاء…" : "إنشاء مسودة شراء"}
+          {pending ? t("Creating…") : t("Create purchase draft")}
         </Button>
       </div>
 
@@ -98,16 +100,16 @@ export function ReorderSuggestions({ suggestions }: ReorderSuggestionsProps) {
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-medium">{suggestion.productName}</p>
                 <StatusPill
-                  label={suggestion.priority === "urgent" ? "عاجل" : "قريب"}
+                  label={suggestion.priority === "urgent" ? t("Urgent") : t("Soon")}
                   variant={suggestion.priority === "urgent" ? "danger" : "warning"}
                 />
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                {suggestion.warehouseName} · اقترح شراء {suggestion.suggestedQuantity}
+                {suggestion.warehouseName} · {t("Suggested purchase")} {suggestion.suggestedQuantity}
               </p>
               {suggestion.averageDailyUsage > 0 ? (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  استهلاك تقريبي: {suggestion.averageDailyUsage.toFixed(2)} / يوم
+                  {t("Estimated usage")}: {suggestion.averageDailyUsage.toFixed(2)} / {t("day")}
                 </p>
               ) : null}
             </div>
@@ -121,7 +123,7 @@ export function ReorderSuggestions({ suggestions }: ReorderSuggestionsProps) {
         ))}
         {suggestions.length > 6 ? (
           <p className="text-xs text-muted-foreground">
-            +{suggestions.length - 6} أصناف تانية في المسودة
+            +{suggestions.length - 6} {t("more items in the draft")}
           </p>
         ) : null}
       </div>

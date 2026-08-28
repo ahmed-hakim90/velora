@@ -22,7 +22,7 @@ export default async function PlatformLayout({
   if (!platformAdmin) {
     const tenantUser = await getCurrentUser();
     return (
-      <div className="mx-auto flex min-h-[60vh] max-w-lg items-center px-[var(--mds-space-4)] py-[var(--mds-space-12)]">
+      <div className="mx-auto flex min-h-[60dvh] max-w-lg items-center px-[var(--mds-space-4)] py-[var(--mds-space-12)]">
         <AccessDenied
           title="مفيش صلاحية"
           description={

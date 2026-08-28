@@ -106,7 +106,7 @@ function DialogFooter({
       className={cn(
         // Equal-width action row: primary + secondary fill the footer (RTL-safe).
         // Mobile stacks primary on top via flex-col-reverse.
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-stretch sm:gap-3 [&>*]:min-w-0 [&>*]:flex-1",
+        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-stretch sm:gap-3 sm:pb-4 [&>*]:min-w-0 [&>*]:flex-1",
         className
       )}
       {...props}

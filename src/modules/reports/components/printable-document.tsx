@@ -33,12 +33,13 @@ export function PrintableDocument({
   children,
   className,
 }: PrintableDocumentProps) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const isReceipt = layout === "receipt";
 
   return (
     <div
       data-print-root
+      dir={language === "ar" ? "rtl" : "ltr"}
       className={cn(
         "bg-white text-black",
         isReceipt ? "mx-auto max-w-xs p-4 font-mono text-sm" : "mx-auto max-w-[210mm] p-8 text-sm",

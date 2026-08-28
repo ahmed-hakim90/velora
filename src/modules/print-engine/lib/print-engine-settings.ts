@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 export const PRINT_ENGINE_LAYOUTS = [
+  "executive",
+  "corporate",
   "classic",
   "modern",
   "boxed",
@@ -12,6 +14,8 @@ export const PRINT_ENGINE_LAYOUTS = [
 export type PrintEngineLayout = (typeof PRINT_ENGINE_LAYOUTS)[number];
 
 export const PRINT_ENGINE_LAYOUT_LABELS: Record<PrintEngineLayout, string> = {
+  executive: "تنفيذي",
+  corporate: "مؤسسي",
   classic: "كلاسيكي",
   modern: "حديث",
   boxed: "إطار",
@@ -251,28 +255,35 @@ function styleTemplate(
 }
 
 export const DEFAULT_PRINT_TEMPLATES: PrintTemplate[] = [
-  styleTemplate("classic", "كلاسيكي", "classic"),
-  styleTemplate("modern", "حديث", "modern", {
+  styleTemplate("executive", "تنفيذي", "executive", {
     primary: "#0f172a",
-    accent: "#0e7490",
+    accent: "#3b82f6",
+    tableHeader: "#f8fafc",
+    text: "#0f172a",
+    muted: "#64748b",
+    border: "#dbe3ef",
+  }),
+  styleTemplate("minimal", "نظام مبسط", "minimal", {
+    primary: "#111827",
+    accent: "#64748b",
+    tableHeader: "#f3f4f6",
+    text: "#111827",
+    muted: "#64748b",
+    border: "#d1d5db",
+  }),
+  styleTemplate("corporate", "مؤسسي", "corporate", {
+    primary: "#0f172a",
+    accent: "#3b82f6",
     tableHeader: "#f1f5f9",
     text: "#0f172a",
     muted: "#64748b",
     border: "#cbd5e1",
   }),
-  styleTemplate("boxed", "إطار", "boxed", {
-    primary: "#134e4a",
-    accent: "#0e7490",
-    tableHeader: "#f0fdfa",
-    text: "#134e4a",
-    muted: "#5b716e",
-    border: "#134e4a",
-  }),
 ];
 
 export const DEFAULT_PRINT_ENGINE_SETTINGS: PrintEngineSettings = {
   templates: DEFAULT_PRINT_TEMPLATES,
-  defaultTemplateId: "classic",
+  defaultTemplateId: "executive",
   assignments: {},
 };
 

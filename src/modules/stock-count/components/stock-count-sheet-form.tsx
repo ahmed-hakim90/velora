@@ -19,6 +19,7 @@ import {
   StockCountScopeFields,
   type StockCountScopeValue,
 } from "./stock-count-scope-fields";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface StockCountSheetFormProps {
   stores: Store[];
@@ -35,6 +36,7 @@ export function StockCountSheetForm({
   products,
   defaultStoreId,
 }: StockCountSheetFormProps) {
+  const { t } = useTranslation();
   const [storeId, setStoreId] = useState(defaultStoreId);
   const [scope, setScope] = useState<StockCountScopeValue>(() => ({
     warehouseId:
@@ -62,13 +64,13 @@ export function StockCountSheetForm({
 
   return (
     <OperationalCard
-      title="طباعة ورقة جرد"
-      description="اطبع قائمة أصناف لفرع أو مخزن أو قسم أو منتج — عمود المعدود فاضي عشان تكتب على الورق"
+      title={t("Print count sheet")}
+      description={t("Print products for a branch, warehouse, category, or product. The counted column is blank for handwriting.")}
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {stores.length > 1 ? (
           <div className="space-y-1.5">
-            <Label htmlFor="count-sheet-store">الفرع</Label>
+            <Label htmlFor="count-sheet-store">{t("Branch")}</Label>
             <Select
               value={storeId}
               onValueChange={(value) => {
@@ -86,7 +88,7 @@ export function StockCountSheetForm({
               }}
             >
               <SelectTrigger id="count-sheet-store" className="h-11">
-                <SelectValue placeholder="الفرع">
+                <SelectValue placeholder={t("Branch")}>
                   {(value) => selectLabelById(stores, value, (s) => s.name)}
                 </SelectValue>
               </SelectTrigger>
@@ -114,7 +116,7 @@ export function StockCountSheetForm({
       <div className="mt-4">
         <CompactActions className="justify-start">
           <CompactAction
-            label="طباعة ورقة الجرد"
+            label={t("Print count sheet")}
             icon={Printer}
             variant="default"
             href={printHref}

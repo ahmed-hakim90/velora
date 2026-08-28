@@ -19,6 +19,7 @@ import type { Product, Warehouse } from "@/lib/types";
 import { recordWasteAction } from "@/modules/waste/actions/waste.actions";
 import { WASTE_REASONS } from "@/modules/waste/constants";
 import { selectLabelById, selectLabelByKey } from "@/lib/select-label";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface WasteFormProps {
   products: Product[];
@@ -27,6 +28,7 @@ interface WasteFormProps {
 }
 
 export function WasteForm({ products, warehouses, onComplete }: WasteFormProps) {
+  const { t } = useTranslation();
   const [pending, startTransition] = useTransition();
   const [productId, setProductId] = useState("");
   const [warehouseId, setWarehouseId] = useState(
@@ -39,28 +41,28 @@ export function WasteForm({ products, warehouses, onComplete }: WasteFormProps) 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!productId || !warehouseId) {
-      toast.error("اختار منتج ومخزن");
+      toast.error(t("Select a product and warehouse"));
       return;
     }
     startTransition(async () => {
       try {
         await recordWasteAction({ productId, warehouseId, quantity, reasonCode, notes });
-        toast.success("تم تسجيل الهالك");
+        toast.success(t("Waste recorded"));
         onComplete();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "تعذر التسجيل");
+        toast.error(err instanceof Error ? err.message : t("Could not record waste"));
       }
     });
   };
 
   return (
-    <OperationalCard title="تسجيل هالك" description="تالف وانسكاب وانتهاء صلاحية">
+    <OperationalCard title={t("Record waste")} description={t("Damage, spillage, and expiry")}>
       <form onSubmit={submit} className="grid max-w-lg gap-4">
         <div className="space-y-2">
-          <Label>المخزن</Label>
+          <Label>{t("Warehouse")}</Label>
           <Select value={warehouseId} onValueChange={(v) => setWarehouseId(v ?? "")}>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="اختار المخزن">
+              <SelectValue placeholder={t("Select warehouse")}>
                 {(value) => selectLabelById(warehouses, value, (w) => w.name)}
               </SelectValue>
             </SelectTrigger>
@@ -74,10 +76,10 @@ export function WasteForm({ products, warehouses, onComplete }: WasteFormProps) 
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>المنتج</Label>
+          <Label>{t("Product")}</Label>
           <Select value={productId} onValueChange={(v) => setProductId(v ?? "")}>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="اختار المنتج">
+              <SelectValue placeholder={t("Select product")}>
                 {(value) => selectLabelById(products, value, (p) => p.name)}
               </SelectValue>
             </SelectTrigger>
@@ -91,7 +93,7 @@ export function WasteForm({ products, warehouses, onComplete }: WasteFormProps) 
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>الكمية</Label>
+          <Label>{t("Quantity")}</Label>
           <Input
             type="number"
             min={1}
@@ -100,7 +102,7 @@ export function WasteForm({ products, warehouses, onComplete }: WasteFormProps) 
           />
         </div>
         <div className="space-y-2">
-          <Label>السبب</Label>
+          <Label>{t("Reason")}</Label>
           <Select
             value={reasonCode}
             onValueChange={(v) => {
@@ -114,30 +116,30 @@ export function WasteForm({ products, warehouses, onComplete }: WasteFormProps) 
                     WASTE_REASONS,
                     value,
                     (r) => r.code,
-                    (r) => r.label
+                    (r) => t(r.label)
                   )
                 }
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {WASTE_REASONS.map((r) => (
-                <SelectItem key={r.code} value={r.code} label={r.label}>
-                  {r.label}
+                <SelectItem key={r.code} value={r.code} label={t(r.label)}>
+                  {t(r.label)}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>ملاحظات</Label>
+          <Label>{t("Notes")}</Label>
           <Textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="تفاصيل اختيارية…"
+            placeholder={t("Optional details…")}
           />
         </div>
         <Button type="submit" disabled={pending} variant="destructive">
-          <Trash2 className="size-4" /> تسجيل الهالك
+          <Trash2 className="size-4" /> {t("Record waste")}
         </Button>
       </form>
     </OperationalCard>

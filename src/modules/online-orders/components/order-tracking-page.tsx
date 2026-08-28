@@ -21,7 +21,7 @@ export function OrderTrackingPage({ order }: { order: PublicTrackedOnlineOrder }
     <>
       <BrandFontStylesheet typography={order.typography} />
       <main
-        className="min-h-screen bg-[radial-gradient(circle_at_top,_hsl(var(--primary)/0.12),_transparent_35%),linear-gradient(180deg,_hsl(var(--background)),_hsl(var(--muted)/0.45))] px-4 py-8 text-foreground sm:px-6"
+        className="min-h-dvh bg-[radial-gradient(circle_at_top,_hsl(var(--primary)/0.12),_transparent_35%),linear-gradient(180deg,_hsl(var(--background)),_hsl(var(--muted)/0.45))] px-4 py-8 text-foreground sm:px-6"
         data-menu-theme="classic"
         style={brandTypographyCssVars(order.typography) as CSSProperties}
       >

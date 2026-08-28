@@ -55,6 +55,7 @@ import {
   type MenuThemeAccessRow,
 } from "@/modules/online-menu/lib/menu-theme-commerce";
 import { firstGrapheme } from "@/lib/first-grapheme";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 const ADD_STORE_TAB = "__new__";
 
@@ -63,7 +64,9 @@ type StoreSection = "details" | "online" | "warehouses";
 function storeEditDefaults(store: Store) {
   const hours = parseOnlineOrderingHours(store.settings);
   const seededHours =
-    Object.keys(hours.days).length > 0 ? hours : defaultOnlineOrderingHoursConfig();
+    Object.keys(hours.days).length > 0
+      ? hours
+      : defaultOnlineOrderingHoursConfig();
   const fulfillment = parseOnlineFulfillment(store.settings);
   return {
     name: store.name,
@@ -72,10 +75,13 @@ function storeEditDefaults(store: Store) {
     phone: store.phone,
     isActive: store.is_active,
     onlineMenuEnabled: store.settings.online_menu_enabled === true,
-    onlineMenuOrderingEnabled: store.settings.online_menu_ordering_enabled === true,
+    onlineMenuOrderingEnabled:
+      store.settings.online_menu_ordering_enabled === true,
     onlineMenuSlug: getOnlineMenuSlug(store),
     onlineMenuUnlisted: store.settings.online_menu_unlisted === true,
-    onlineMenuTheme: parseOnlineMenuTheme(store.settings as Record<string, unknown>),
+    onlineMenuTheme: parseOnlineMenuTheme(
+      store.settings as Record<string, unknown>,
+    ),
     brandTypography: parseBrandTypography(store.settings),
     brandOg: parseBrandOg(store.settings),
     onlineOrderingPaused: store.settings.online_ordering_paused === true,
@@ -103,9 +109,14 @@ function getOnlineMenuLogoUrl(store: Store): string {
   return typeof logoUrl === "string" ? logoUrl : "";
 }
 
-function buildOnlineMenuHref(slug: string, unlisted: boolean, token: string): string {
+function buildOnlineMenuHref(
+  slug: string,
+  unlisted: boolean,
+  token: string,
+): string {
   if (!slug) return "";
-  if (unlisted && token) return `/menu/${slug}?token=${encodeURIComponent(token)}`;
+  if (unlisted && token)
+    return `/menu/${slug}?token=${encodeURIComponent(token)}`;
   return `/menu/${slug}`;
 }
 
@@ -124,6 +135,7 @@ export function BranchSettingsTab({
   menuThemeRows,
   menuViewStatsByStore = {},
 }: BranchSettingsTabProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [storeForm, setStoreForm] = useState({
@@ -133,19 +145,21 @@ export function BranchSettingsTab({
     phone: "",
   });
   const [storeEdits, setStoreEdits] = useState(
-    Object.fromEntries(stores.map((s) => [s.id, storeEditDefaults(s)]))
+    Object.fromEntries(stores.map((s) => [s.id, storeEditDefaults(s)])),
   );
   const [storeLogoUrls, setStoreLogoUrls] = useState(
-    Object.fromEntries(stores.map((s) => [s.id, getOnlineMenuLogoUrl(s)]))
+    Object.fromEntries(stores.map((s) => [s.id, getOnlineMenuLogoUrl(s)])),
   );
   const [warehouseEdits, setWarehouseEdits] = useState(
     Object.fromEntries(
-      warehouses.map((w) => [w.id, { name: w.name, isActive: w.is_active }])
-    )
+      warehouses.map((w) => [w.id, { name: w.name, isActive: w.is_active }]),
+    ),
   );
-  const [warehouseAdds, setWarehouseAdds] = useState<Record<string, string>>({});
+  const [warehouseAdds, setWarehouseAdds] = useState<Record<string, string>>(
+    {},
+  );
   const [selectedStoreId, setSelectedStoreId] = useState(
-    () => stores[0]?.id ?? ADD_STORE_TAB
+    () => stores[0]?.id ?? ADD_STORE_TAB,
   );
   const [storeSection, setStoreSection] = useState<StoreSection>("details");
 
@@ -158,8 +172,12 @@ export function BranchSettingsTab({
   }, [stores, selectedStoreId]);
 
   useEffect(() => {
-    setStoreEdits(Object.fromEntries(stores.map((s) => [s.id, storeEditDefaults(s)])));
-    setStoreLogoUrls(Object.fromEntries(stores.map((s) => [s.id, getOnlineMenuLogoUrl(s)])));
+    setStoreEdits(
+      Object.fromEntries(stores.map((s) => [s.id, storeEditDefaults(s)])),
+    );
+    setStoreLogoUrls(
+      Object.fromEntries(stores.map((s) => [s.id, getOnlineMenuLogoUrl(s)])),
+    );
   }, [stores]);
 
   function refreshSettings() {
@@ -193,10 +211,12 @@ export function BranchSettingsTab({
             },
           },
         });
-        toast.success("تم تحديث الفرع");
+        toast.success(t("Store updated"));
         refreshSettings();
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "فشل تحديث الفرع");
+        toast.error(
+          t(error instanceof Error ? error.message : "Could not update store"),
+        );
       }
     });
   }
@@ -205,7 +225,7 @@ export function BranchSettingsTab({
     <div className="space-y-6">
       <PosSetupGuide activityType={activityType} />
 
-      <OperationalCard title="الفروع">
+      <OperationalCard title={t("Stores")}>
         <Tabs
           value={selectedStoreId}
           onValueChange={(value) => {
@@ -230,20 +250,22 @@ export function BranchSettingsTab({
                 </TabsTrigger>
               ))}
               <TabsTrigger value={ADD_STORE_TAB} className="h-9 shrink-0 px-3">
-                إضافة فرع
+                {t("Add store")}
               </TabsTrigger>
             </TabsList>
           </div>
 
           {stores.map((store) => {
-            const storeWarehouses = warehouses.filter((w) => w.store_id === store.id);
+            const storeWarehouses = warehouses.filter(
+              (w) => w.store_id === store.id,
+            );
             const edit = storeEdits[store.id] ?? storeEditDefaults(store);
             const onlineMenuSlug = edit.onlineMenuSlug;
             const onlineMenuToken = getOnlineMenuToken(store);
             const onlineMenuHref = buildOnlineMenuHref(
               onlineMenuSlug,
               edit.onlineMenuUnlisted,
-              onlineMenuToken
+              onlineMenuToken,
             );
             const onlineMenuLinkHref = onlineMenuHref
               ? appendOnlineMenuSourceParam(onlineMenuHref, "link")
@@ -251,7 +273,8 @@ export function BranchSettingsTab({
             const onlineMenuQrHref = onlineMenuHref
               ? appendOnlineMenuSourceParam(onlineMenuHref, "qr")
               : "";
-            const logoUrl = storeLogoUrls[store.id] ?? getOnlineMenuLogoUrl(store);
+            const logoUrl =
+              storeLogoUrls[store.id] ?? getOnlineMenuLogoUrl(store);
             const menuViewStats = menuViewStatsByStore[store.id];
 
             return (
@@ -263,7 +286,7 @@ export function BranchSettingsTab({
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={logoUrl}
-                          alt={`لوجو ${store.name}`}
+                          alt={`${t("Logo")} ${store.name}`}
                           className="size-12 shrink-0 rounded-[var(--mds-radius-lg)] border border-border/60 object-cover"
                         />
                       ) : (
@@ -272,15 +295,17 @@ export function BranchSettingsTab({
                         </div>
                       )}
                       <div className="min-w-0">
-                        <p className="truncate text-base font-semibold">{store.name}</p>
+                        <p className="truncate text-base font-semibold">
+                          {store.name}
+                        </p>
                         <p className="text-xs text-muted-foreground">
-                          {storeWarehouses.length} مخزن
+                          {storeWarehouses.length} {t("warehouses")}
                         </p>
                       </div>
                     </div>
                     {onlineMenuHref && edit.onlineMenuEnabled ? (
                       <CompactAction
-                        label="فتح منيو الأونلاين"
+                        label={t("Open online menu")}
                         icon={ExternalLink}
                         href={onlineMenuLinkHref || onlineMenuHref}
                       />
@@ -295,14 +320,23 @@ export function BranchSettingsTab({
                     className="gap-4"
                   >
                     <TabsList className="grid h-auto w-full grid-cols-2 gap-1 group-data-horizontal/tabs:h-auto sm:grid-cols-3">
-                      <TabsTrigger value="details" className="h-9 px-2 text-xs sm:px-3 sm:text-sm">
-                        بيانات الفرع
+                      <TabsTrigger
+                        value="details"
+                        className="h-9 px-2 text-xs sm:px-3 sm:text-sm"
+                      >
+                        {t("Store details")}
                       </TabsTrigger>
-                      <TabsTrigger value="online" className="h-9 px-2 text-xs sm:px-3 sm:text-sm">
-                        منيو الأونلاين
+                      <TabsTrigger
+                        value="online"
+                        className="h-9 px-2 text-xs sm:px-3 sm:text-sm"
+                      >
+                        {t("Online menu")}
                       </TabsTrigger>
-                      <TabsTrigger value="warehouses" className="h-9 px-2 text-xs sm:px-3 sm:text-sm">
-                        المخازن
+                      <TabsTrigger
+                        value="warehouses"
+                        className="h-9 px-2 text-xs sm:px-3 sm:text-sm"
+                      >
+                        {t("Warehouses")}
                       </TabsTrigger>
                     </TabsList>
 
@@ -313,7 +347,7 @@ export function BranchSettingsTab({
                             htmlFor={`store-logo-${store.id}`}
                             className="text-xs text-muted-foreground"
                           >
-                            لوجو الفرع للمنيو
+                            {t("Store menu logo")}
                           </Label>
                           <div className="flex flex-wrap items-center gap-2">
                             <Input
@@ -329,17 +363,20 @@ export function BranchSettingsTab({
                                   try {
                                     const formData = new FormData();
                                     formData.set("logo", file);
-                                    const url = await uploadStoreLogoAction(store.id, formData);
+                                    const url = await uploadStoreLogoAction(
+                                      store.id,
+                                      formData,
+                                    );
                                     setStoreLogoUrls((current) => ({
                                       ...current,
                                       [store.id]: url,
                                     }));
-                                    toast.success("تم رفع لوجو الفرع");
+                                    toast.success(t("Store logo uploaded"));
                                   } catch (error) {
                                     toast.error(
                                       error instanceof Error
                                         ? error.message
-                                        : "فشل رفع لوجو الفرع"
+                                        : t("Could not upload store logo"),
                                     );
                                   } finally {
                                     event.target.value = "";
@@ -353,21 +390,33 @@ export function BranchSettingsTab({
                               size="sm"
                               disabled={pending}
                               onClick={() =>
-                                document.getElementById(`store-logo-${store.id}`)?.click()
+                                document
+                                  .getElementById(`store-logo-${store.id}`)
+                                  ?.click()
                               }
                             >
-                              {pending ? "جاري الرفع..." : logoUrl ? "تغيير اللوجو" : "اختر صورة"}
+                              {pending
+                                ? t("Uploading…")
+                                : logoUrl
+                                  ? t("Change logo")
+                                  : t("Choose image")}
                             </Button>
                             <span className="text-xs text-muted-foreground">
-                              {logoUrl ? "لوجو مرفوع" : "لم يتم اختيار ملف"}
+                              {logoUrl
+                                ? t("Logo uploaded")
+                                : t("No file selected")}
                             </span>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            سيظهر هذا اللوجو في رأس منيو الأونلاين لهذا الفرع بدل لوجو المتجر العام.
+                            {t(
+                              "This logo appears in this store's online menu.",
+                            )}
                           </p>
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">اسم الفرع</Label>
+                          <Label className="text-xs text-muted-foreground">
+                            {t("Store name")}
+                          </Label>
                           <Input
                             value={edit.name}
                             onChange={(e) =>
@@ -379,7 +428,9 @@ export function BranchSettingsTab({
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">الكود</Label>
+                          <Label className="text-xs text-muted-foreground">
+                            {t("Code")}
+                          </Label>
                           <Input
                             value={edit.code}
                             onChange={(e) =>
@@ -391,19 +442,26 @@ export function BranchSettingsTab({
                           />
                         </div>
                         <div className="space-y-1 md:col-span-2">
-                          <Label className="text-xs text-muted-foreground">العنوان</Label>
+                          <Label className="text-xs text-muted-foreground">
+                            {t("Address")}
+                          </Label>
                           <Input
                             value={edit.address}
                             onChange={(e) =>
                               setStoreEdits({
                                 ...storeEdits,
-                                [store.id]: { ...edit, address: e.target.value },
+                                [store.id]: {
+                                  ...edit,
+                                  address: e.target.value,
+                                },
                               })
                             }
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">الهاتف</Label>
+                          <Label className="text-xs text-muted-foreground">
+                            {t("Phone")}
+                          </Label>
                           <Input
                             value={edit.phone}
                             onChange={(e) =>
@@ -425,7 +483,7 @@ export function BranchSettingsTab({
                             })
                           }
                         />
-                        فرع نشط
+                        {t("Active store")}
                       </label>
                       <Button
                         type="button"
@@ -434,7 +492,7 @@ export function BranchSettingsTab({
                         disabled={pending}
                         onClick={() => saveStore(store, edit)}
                       >
-                        حفظ الفرع
+                        {t("Save store")}
                       </Button>
                     </TabsContent>
 
@@ -443,25 +501,30 @@ export function BranchSettingsTab({
                         <div className="grid gap-3">
                           <p className="break-words rounded-lg bg-muted/70 px-3 py-2 text-xs text-muted-foreground">
                             {edit.onlineMenuUnlisted
-                              ? "رابط المنيو غير المُدرج: "
-                              : "رابط المنيو العام: "}
+                              ? t("Unlisted menu link: ")
+                              : t("Public menu link: ")}
                             <span className="font-mono text-foreground break-all">
                               {onlineMenuLinkHref || onlineMenuHref}
                             </span>
                           </p>
-                          {menuViewStats ? <MenuViewStatsCard stats={menuViewStats} /> : null}
+                          {menuViewStats ? (
+                            <MenuViewStatsCard stats={menuViewStats} />
+                          ) : null}
                           {!edit.onlineMenuUnlisted ? (
                             <BranchQrDownloadCard
                               storeName={store.name}
                               storeCode={store.code}
                               address={store.address}
                               phone={store.phone}
-                              onlineMenuHref={onlineMenuQrHref || onlineMenuHref}
+                              onlineMenuHref={
+                                onlineMenuQrHref || onlineMenuHref
+                              }
                             />
                           ) : (
                             <p className="text-xs text-muted-foreground">
-                              المنيو غير مُدرج — الوصول يحتاج التوكن في الرابط. رمز QR العام معطّل في
-                              هذا الوضع.
+                              {t(
+                                "The menu is unlisted. Access requires the token in the URL, so the public QR code is disabled.",
+                              )}
                             </p>
                           )}
                         </div>
@@ -472,7 +535,10 @@ export function BranchSettingsTab({
                         onChange={(typography) =>
                           setStoreEdits({
                             ...storeEdits,
-                            [store.id]: { ...edit, brandTypography: typography },
+                            [store.id]: {
+                              ...edit,
+                              brandTypography: typography,
+                            },
                           })
                         }
                       />
@@ -490,7 +556,10 @@ export function BranchSettingsTab({
                             try {
                               const formData = new FormData();
                               formData.set("cover", file);
-                              const url = await uploadStoreCoverAction(store.id, formData);
+                              const url = await uploadStoreCoverAction(
+                                store.id,
+                                formData,
+                              );
                               setStoreEdits((current) => {
                                 const latest = current[store.id] ?? edit;
                                 return {
@@ -501,10 +570,12 @@ export function BranchSettingsTab({
                                   },
                                 };
                               });
-                              toast.success("تم رفع صورة المشاركة");
+                              toast.success(t("Share image uploaded"));
                             } catch (error) {
                               toast.error(
-                                error instanceof Error ? error.message : "فشل رفع صورة المشاركة"
+                                error instanceof Error
+                                  ? error.message
+                                  : t("Could not upload share image"),
                               );
                             }
                           });
@@ -512,18 +583,23 @@ export function BranchSettingsTab({
                       />
 
                       <div className="grid gap-3 rounded-lg border border-border/60 p-3">
-                        <p className="text-sm font-medium">منيو الأونلاين</p>
+                        <p className="text-sm font-medium">
+                          {t("Online menu")}
+                        </p>
                         <label className="flex items-center gap-2 text-sm">
                           <Checkbox
                             checked={edit.onlineMenuEnabled}
                             onCheckedChange={(v) =>
                               setStoreEdits({
                                 ...storeEdits,
-                                [store.id]: { ...edit, onlineMenuEnabled: v === true },
+                                [store.id]: {
+                                  ...edit,
+                                  onlineMenuEnabled: v === true,
+                                },
                               })
                             }
                           />
-                          تفعيل المنيو العام
+                          {t("Enable public menu")}
                         </label>
                         <label className="flex items-center gap-2 text-sm">
                           <Checkbox
@@ -531,11 +607,14 @@ export function BranchSettingsTab({
                             onCheckedChange={(v) =>
                               setStoreEdits({
                                 ...storeEdits,
-                                [store.id]: { ...edit, onlineMenuOrderingEnabled: v === true },
+                                [store.id]: {
+                                  ...edit,
+                                  onlineMenuOrderingEnabled: v === true,
+                                },
                               })
                             }
                           />
-                          السماح بالطلب من المنيو
+                          {t("Allow online ordering")}
                         </label>
                         <label className="flex items-center gap-2 text-sm">
                           <Checkbox
@@ -543,11 +622,14 @@ export function BranchSettingsTab({
                             onCheckedChange={(v) =>
                               setStoreEdits({
                                 ...storeEdits,
-                                [store.id]: { ...edit, onlineOrderingPaused: v === true },
+                                [store.id]: {
+                                  ...edit,
+                                  onlineOrderingPaused: v === true,
+                                },
                               })
                             }
                           />
-                          إيقاف استقبال الطلبات مؤقتاً
+                          {t("Pause online orders")}
                         </label>
                         <label className="flex items-center gap-2 text-sm">
                           <Checkbox
@@ -555,15 +637,18 @@ export function BranchSettingsTab({
                             onCheckedChange={(v) =>
                               setStoreEdits({
                                 ...storeEdits,
-                                [store.id]: { ...edit, onlineMenuUnlisted: v === true },
+                                [store.id]: {
+                                  ...edit,
+                                  onlineMenuUnlisted: v === true,
+                                },
                               })
                             }
                           />
-                          غير مُدرج (يحتاج توكن في الرابط)
+                          {t("Unlisted (token required in URL)")}
                         </label>
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">
-                            رابط الفرع (slug) — للمنيو والكاشير
+                            {t("Store link (slug) — menu and cashier")}
                           </Label>
                           <Input
                             value={edit.onlineMenuSlug}
@@ -572,28 +657,38 @@ export function BranchSettingsTab({
                             onChange={(e) =>
                               setStoreEdits({
                                 ...storeEdits,
-                                [store.id]: { ...edit, onlineMenuSlug: e.target.value },
+                                [store.id]: {
+                                  ...edit,
+                                  onlineMenuSlug: e.target.value,
+                                },
                               })
                             }
                           />
                           {edit.onlineMenuSlug.trim() ? (
                             <p className="break-words rounded-lg bg-muted/70 px-3 py-2 text-xs text-muted-foreground">
-                              رابط الكاشير:{" "}
-                              <span className="font-mono text-foreground break-all" dir="ltr">
+                              {t("Cashier link:")}{" "}
+                              <span
+                                className="font-mono text-foreground break-all"
+                                dir="ltr"
+                              >
                                 /{edit.onlineMenuSlug.trim().toLowerCase()}/pos
                               </span>
                             </p>
                           ) : null}
                           <p className="text-xs text-muted-foreground">
-                            يجب أن يكون فريدًا على مستوى النظام بالكامل.
+                            {t("Must be unique across the system.")}
                           </p>
                         </div>
 
                         <div className="space-y-2">
                           <div>
-                            <Label className="text-xs text-muted-foreground">مظهر المنيو</Label>
+                            <Label className="text-xs text-muted-foreground">
+                              {t("Menu theme")}
+                            </Label>
                             <p className="text-[11px] text-muted-foreground">
-                              الثيمات المتاحة حسب تفعيل المنصة. غير المفعّل يظهر للمعاينة فقط.
+                              {t(
+                                "Available themes depend on platform access. Disabled themes are preview-only.",
+                              )}
                             </p>
                           </div>
                           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -610,7 +705,8 @@ export function BranchSettingsTab({
                                 }))
                             ).map((row) => {
                               const theme = MENU_THEMES[row.slug];
-                              const selected = edit.onlineMenuTheme === row.slug;
+                              const selected =
+                                edit.onlineMenuTheme === row.slug;
                               const canSelect = row.enabledForOrg;
                               const previewHref = onlineMenuHref
                                 ? `${onlineMenuHref}${onlineMenuHref.includes("?") ? "&" : "?"}theme=${row.slug}`
@@ -626,7 +722,8 @@ export function BranchSettingsTab({
                                       ...storeEdits,
                                       [store.id]: {
                                         ...edit,
-                                        onlineMenuTheme: row.slug as MenuThemeSlug,
+                                        onlineMenuTheme:
+                                          row.slug as MenuThemeSlug,
                                       },
                                     });
                                   }}
@@ -646,25 +743,34 @@ export function BranchSettingsTab({
                                   >
                                     <span
                                       className="w-1/2"
-                                      style={{ background: theme.previewColors.background }}
+                                      style={{
+                                        background:
+                                          theme.previewColors.background,
+                                      }}
                                     />
                                     <span
                                       className="w-1/4"
-                                      style={{ background: theme.previewColors.primary }}
+                                      style={{
+                                        background: theme.previewColors.primary,
+                                      }}
                                     />
                                     <span
                                       className="w-1/4"
-                                      style={{ background: theme.previewColors.accent }}
+                                      style={{
+                                        background: theme.previewColors.accent,
+                                      }}
                                     />
                                   </div>
-                                  <p className="text-sm font-medium">{theme.nameAr}</p>
+                                  <p className="text-sm font-medium">
+                                    {t(theme.nameAr)}
+                                  </p>
                                   <p className="mt-0.5 text-xs text-muted-foreground">
-                                    {theme.descriptionAr}
+                                    {t(theme.descriptionAr)}
                                   </p>
                                   <p className="mt-1 text-xs font-medium text-foreground/80">
                                     {canSelect
                                       ? formatMenuThemePriceEgp(row.priceEgp)
-                                      : `غير مفعّل · ${formatMenuThemePriceEgp(row.priceEgp)}`}
+                                      : `${t("Not enabled")} · ${formatMenuThemePriceEgp(row.priceEgp)}`}
                                   </p>
                                   {previewHref ? (
                                     <a
@@ -672,9 +778,11 @@ export function BranchSettingsTab({
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="mt-2 inline-block text-xs text-primary underline-offset-2 hover:underline"
-                                      onClick={(event) => event.stopPropagation()}
+                                      onClick={(event) =>
+                                        event.stopPropagation()
+                                      }
                                     >
-                                      معاينة
+                                      {t("Preview")}
                                     </a>
                                   ) : null}
                                 </button>
@@ -683,7 +791,9 @@ export function BranchSettingsTab({
                           </div>
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">توكن الوصول</Label>
+                          <Label className="text-xs text-muted-foreground">
+                            {t("Access token")}
+                          </Label>
                           <div className="flex flex-row items-center gap-2">
                             <Input
                               value={onlineMenuToken || "—"}
@@ -692,7 +802,7 @@ export function BranchSettingsTab({
                               className="min-w-0 flex-1 font-mono text-xs"
                             />
                             <CompactAction
-                              label="تجديد التوكن"
+                              label={t("Regenerate token")}
                               icon={RefreshCw}
                               disabled={pending}
                               onClick={() => {
@@ -701,11 +811,13 @@ export function BranchSettingsTab({
                                     await updateStoreAction(store.id, {
                                       onlineMenu: {
                                         enabled: edit.onlineMenuEnabled,
-                                        orderingEnabled: edit.onlineMenuOrderingEnabled,
+                                        orderingEnabled:
+                                          edit.onlineMenuOrderingEnabled,
                                         slug: edit.onlineMenuSlug,
                                         unlisted: edit.onlineMenuUnlisted,
                                         theme: edit.onlineMenuTheme,
-                                        orderingPaused: edit.onlineOrderingPaused,
+                                        orderingPaused:
+                                          edit.onlineOrderingPaused,
                                         orderingHours: {
                                           ...edit.orderingHours,
                                           enforce: edit.orderingHoursEnforce,
@@ -714,12 +826,12 @@ export function BranchSettingsTab({
                                       },
                                     });
                                     refreshSettings();
-                                    toast.success("تم تجديد توكن المنيو");
+                                    toast.success(t("Menu token regenerated"));
                                   } catch (error) {
                                     toast.error(
                                       error instanceof Error
                                         ? error.message
-                                        : "فشل تجديد التوكن"
+                                        : t("Could not regenerate menu token"),
                                     );
                                   }
                                 });
@@ -731,10 +843,13 @@ export function BranchSettingsTab({
                         <div className="grid gap-3 rounded-md border border-border/50 bg-muted/20 p-3">
                           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <div>
-                              <p className="text-sm font-medium">ساعات الطلب الأونلاين</p>
+                              <p className="text-sm font-medium">
+                                {t("Online ordering hours")}
+                              </p>
                               <p className="text-xs text-muted-foreground">
-                                تُحفظ في إعدادات الفرع. بدون تفعيل الجدول يبقى الطلب متاحاً طالما
-                                السماح بالطلب مفعّل.
+                                {t(
+                                  "Saved in store settings. Without enforcement, ordering stays available while online ordering is enabled.",
+                                )}
                               </p>
                             </div>
                             <label className="flex items-center gap-2 text-sm">
@@ -750,7 +865,7 @@ export function BranchSettingsTab({
                                   })
                                 }
                               />
-                              فرض ساعات العمل
+                              {t("Enforce business hours")}
                             </label>
                           </div>
                           <div className="grid gap-2">
@@ -758,7 +873,10 @@ export function BranchSettingsTab({
                               const day = edit.orderingHours.days[dayKey];
                               const closed = day?.closed === true;
                               const window =
-                                !closed && day && "windows" in day && day.windows[0]
+                                !closed &&
+                                day &&
+                                "windows" in day &&
+                                day.windows[0]
                                   ? day.windows[0]
                                   : { open: "10:00", close: "23:00" };
                               return (
@@ -770,13 +888,17 @@ export function BranchSettingsTab({
                                     <Checkbox
                                       checked={!closed}
                                       onCheckedChange={(v) => {
-                                        const nextDays: OnlineOrderingHoursConfig["days"] = {
-                                          ...edit.orderingHours.days,
-                                        };
+                                        const nextDays: OnlineOrderingHoursConfig["days"] =
+                                          {
+                                            ...edit.orderingHours.days,
+                                          };
                                         if (v === true) {
                                           nextDays[dayKey] = {
                                             windows: [
-                                              { open: window.open, close: window.close },
+                                              {
+                                                open: window.open,
+                                                close: window.close,
+                                              },
                                             ],
                                           };
                                         } else {
@@ -794,10 +916,10 @@ export function BranchSettingsTab({
                                         });
                                       }}
                                     />
-                                    {WEEKDAY_LABELS_AR[dayKey]}
+                                    {t(WEEKDAY_LABELS_AR[dayKey])}
                                   </label>
                                   <span className="self-center text-xs text-muted-foreground">
-                                    {closed ? "مغلق" : "مفتوح"}
+                                    {closed ? t("Closed") : t("Open")}
                                   </span>
                                   <Input
                                     type="time"
@@ -807,7 +929,10 @@ export function BranchSettingsTab({
                                     onChange={(e) => {
                                       const nextDay: DayHours = {
                                         windows: [
-                                          { open: e.target.value, close: window.close },
+                                          {
+                                            open: e.target.value,
+                                            close: window.close,
+                                          },
                                         ],
                                       };
                                       setStoreEdits({
@@ -825,7 +950,7 @@ export function BranchSettingsTab({
                                       });
                                     }}
                                     className="h-9"
-                                    aria-label={`فتح ${WEEKDAY_LABELS_AR[dayKey]}`}
+                                    aria-label={`${t("Open")} ${t(WEEKDAY_LABELS_AR[dayKey])}`}
                                   />
                                   <Input
                                     type="time"
@@ -835,7 +960,10 @@ export function BranchSettingsTab({
                                     onChange={(e) => {
                                       const nextDay: DayHours = {
                                         windows: [
-                                          { open: window.open, close: e.target.value },
+                                          {
+                                            open: window.open,
+                                            close: e.target.value,
+                                          },
                                         ],
                                       };
                                       setStoreEdits({
@@ -853,24 +981,28 @@ export function BranchSettingsTab({
                                       });
                                     }}
                                     className="h-9"
-                                    aria-label={`إغلاق ${WEEKDAY_LABELS_AR[dayKey]}`}
+                                    aria-label={`${t("Close")} ${t(WEEKDAY_LABELS_AR[dayKey])}`}
                                   />
                                 </div>
                               );
                             })}
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            التوقيت وفق توقيت مصر (القاهرة). الفترات الليلية (مثل 22:00→02:00)
-                            مدعومة.
+                            {t(
+                              "Times use Cairo time. Overnight periods such as 22:00→02:00 are supported.",
+                            )}
                           </p>
                         </div>
 
                         <div className="grid gap-3 rounded-md border border-border/50 bg-muted/20 p-3">
                           <div>
-                            <p className="text-sm font-medium">الاستلام والتوصيل</p>
+                            <p className="text-sm font-medium">
+                              {t("Pickup and delivery")}
+                            </p>
                             <p className="text-xs text-muted-foreground">
-                              إعدادات first-party فقط (بدون منصات خارجية). الرسوم تُحسب من السيرفر
-                              حسب المنطقة.
+                              {t(
+                                "Direct ordering settings only. Delivery fees are calculated by zone.",
+                              )}
                             </p>
                           </div>
                           <div className="flex flex-wrap gap-4">
@@ -890,7 +1022,7 @@ export function BranchSettingsTab({
                                   })
                                 }
                               />
-                              استلام من الفرع
+                              {t("Store pickup")}
                             </label>
                             <label className="flex items-center gap-2 text-sm">
                               <Checkbox
@@ -908,14 +1040,14 @@ export function BranchSettingsTab({
                                   })
                                 }
                               />
-                              توصيل
+                              {t("Delivery")}
                             </label>
                           </div>
                           {edit.fulfillment.deliveryEnabled ? (
                             <div className="grid gap-2">
                               <div className="flex items-center justify-between gap-2">
                                 <p className="text-xs font-medium text-muted-foreground">
-                                  مناطق التوصيل والرسوم
+                                  {t("Delivery zones and fees")}
                                 </p>
                                 <Button
                                   type="button"
@@ -923,7 +1055,10 @@ export function BranchSettingsTab({
                                   size="sm"
                                   onClick={() => {
                                     const nextZone: OnlineDeliveryZone = {
-                                      id: crypto.randomUUID().replaceAll("-", "").slice(0, 12),
+                                      id: crypto
+                                        .randomUUID()
+                                        .replaceAll("-", "")
+                                        .slice(0, 12),
                                       name: "",
                                       fee: 0,
                                     };
@@ -933,18 +1068,23 @@ export function BranchSettingsTab({
                                         ...edit,
                                         fulfillment: {
                                           ...edit.fulfillment,
-                                          zones: [...edit.fulfillment.zones, nextZone],
+                                          zones: [
+                                            ...edit.fulfillment.zones,
+                                            nextZone,
+                                          ],
                                         },
                                       },
                                     });
                                   }}
                                 >
-                                  إضافة منطقة
+                                  {t("Add zone")}
                                 </Button>
                               </div>
                               {edit.fulfillment.zones.length === 0 ? (
                                 <p className="text-xs text-amber-800 dark:text-amber-200">
-                                  أضف منطقة واحدة على الأقل قبل تفعيل التوصيل.
+                                  {t(
+                                    "Add at least one zone before enabling delivery.",
+                                  )}
                                 </p>
                               ) : (
                                 edit.fulfillment.zones.map((zone, index) => (
@@ -954,19 +1094,28 @@ export function BranchSettingsTab({
                                   >
                                     <Input
                                       value={zone.name}
-                                      placeholder="اسم المنطقة (مثال: المعادي)"
+                                      placeholder={t(
+                                        "Zone name (example: Maadi)",
+                                      )}
                                       onChange={(e) => {
-                                        const zones = edit.fulfillment.zones.map(
-                                          (candidate, i) =>
-                                            i === index
-                                              ? { ...candidate, name: e.target.value }
-                                              : candidate
-                                        );
+                                        const zones =
+                                          edit.fulfillment.zones.map(
+                                            (candidate, i) =>
+                                              i === index
+                                                ? {
+                                                    ...candidate,
+                                                    name: e.target.value,
+                                                  }
+                                                : candidate,
+                                          );
                                         setStoreEdits({
                                           ...storeEdits,
                                           [store.id]: {
                                             ...edit,
-                                            fulfillment: { ...edit.fulfillment, zones },
+                                            fulfillment: {
+                                              ...edit.fulfillment,
+                                              zones,
+                                            },
                                           },
                                         });
                                       }}
@@ -977,24 +1126,30 @@ export function BranchSettingsTab({
                                       step="0.01"
                                       dir="ltr"
                                       value={zone.fee}
-                                      placeholder="الرسوم"
-                                      aria-label="رسوم التوصيل"
+                                      placeholder={t("Fee")}
+                                      aria-label={t("Delivery fee")}
                                       onChange={(e) => {
                                         const fee = Number(e.target.value);
-                                        const zones = edit.fulfillment.zones.map(
-                                          (candidate, i) =>
-                                            i === index
-                                              ? {
-                                                  ...candidate,
-                                                  fee: Number.isFinite(fee) ? fee : 0,
-                                                }
-                                              : candidate
-                                        );
+                                        const zones =
+                                          edit.fulfillment.zones.map(
+                                            (candidate, i) =>
+                                              i === index
+                                                ? {
+                                                    ...candidate,
+                                                    fee: Number.isFinite(fee)
+                                                      ? fee
+                                                      : 0,
+                                                  }
+                                                : candidate,
+                                          );
                                         setStoreEdits({
                                           ...storeEdits,
                                           [store.id]: {
                                             ...edit,
-                                            fulfillment: { ...edit.fulfillment, zones },
+                                            fulfillment: {
+                                              ...edit.fulfillment,
+                                              zones,
+                                            },
                                           },
                                         });
                                       }}
@@ -1005,19 +1160,23 @@ export function BranchSettingsTab({
                                       size="sm"
                                       className="text-destructive"
                                       onClick={() => {
-                                        const zones = edit.fulfillment.zones.filter(
-                                          (_, i) => i !== index
-                                        );
+                                        const zones =
+                                          edit.fulfillment.zones.filter(
+                                            (_, i) => i !== index,
+                                          );
                                         setStoreEdits({
                                           ...storeEdits,
                                           [store.id]: {
                                             ...edit,
-                                            fulfillment: { ...edit.fulfillment, zones },
+                                            fulfillment: {
+                                              ...edit.fulfillment,
+                                              zones,
+                                            },
                                           },
                                         });
                                       }}
                                     >
-                                      حذف
+                                      {t("Delete")}
                                     </Button>
                                   </div>
                                 ))
@@ -1034,7 +1193,7 @@ export function BranchSettingsTab({
                         disabled={pending}
                         onClick={() => saveStore(store, edit)}
                       >
-                        حفظ إعدادات المنيو
+                        {t("Save menu settings")}
                       </Button>
                     </TabsContent>
 
@@ -1046,7 +1205,10 @@ export function BranchSettingsTab({
                             className="grid gap-2 rounded-lg border border-border/60 p-3"
                           >
                             <Input
-                              value={warehouseEdits[warehouse.id]?.name ?? warehouse.name}
+                              value={
+                                warehouseEdits[warehouse.id]?.name ??
+                                warehouse.name
+                              }
                               onChange={(e) =>
                                 setWarehouseEdits({
                                   ...warehouseEdits,
@@ -1063,7 +1225,8 @@ export function BranchSettingsTab({
                             <label className="flex items-center gap-2 text-sm">
                               <Checkbox
                                 checked={
-                                  warehouseEdits[warehouse.id]?.isActive ?? warehouse.is_active
+                                  warehouseEdits[warehouse.id]?.isActive ??
+                                  warehouse.is_active
                                 }
                                 disabled={warehouse.is_default}
                                 onCheckedChange={(v) =>
@@ -1079,7 +1242,7 @@ export function BranchSettingsTab({
                                   })
                                 }
                               />
-                              نشط
+                              {t("Active")}
                             </label>
                             <div className="flex flex-wrap gap-2">
                               <Button
@@ -1092,36 +1255,51 @@ export function BranchSettingsTab({
                                     try {
                                       await updateWarehouseAction(
                                         warehouse.id,
-                                        warehouseEdits[warehouse.id]
+                                        warehouseEdits[warehouse.id],
                                       );
-                                      toast.success("تم تحديث المخزن");
+                                      toast.success(t("Warehouse updated"));
                                     } catch {
-                                      toast.error("فشل تحديث المخزن");
+                                      toast.error(
+                                        t("Could not update warehouse"),
+                                      );
                                     }
                                   });
                                 }}
                               >
-                                حفظ
+                                {t("Save")}
                               </Button>
                               <Button
                                 type="button"
                                 size="sm"
-                                variant={warehouse.is_default ? "default" : "outline"}
+                                variant={
+                                  warehouse.is_default ? "default" : "outline"
+                                }
                                 disabled={
-                                  pending || warehouse.is_default || !warehouse.is_active
+                                  pending ||
+                                  warehouse.is_default ||
+                                  !warehouse.is_active
                                 }
                                 onClick={() => {
                                   startTransition(async () => {
                                     try {
-                                      await setDefaultWarehouseAction(store.id, warehouse.id);
-                                      toast.success("تم تحديث المخزن الافتراضي");
+                                      await setDefaultWarehouseAction(
+                                        store.id,
+                                        warehouse.id,
+                                      );
+                                      toast.success(
+                                        t("Default warehouse updated"),
+                                      );
                                     } catch {
-                                      toast.error("فشل تحديث المخزن الافتراضي");
+                                      toast.error(
+                                        t("Could not update default warehouse"),
+                                      );
                                     }
                                   });
                                 }}
                               >
-                                {warehouse.is_default ? "افتراضي" : "اجعله افتراضي"}
+                                {warehouse.is_default
+                                  ? t("Default")
+                                  : t("Make default")}
                               </Button>
                             </div>
                           </div>
@@ -1129,7 +1307,7 @@ export function BranchSettingsTab({
                       </div>
                       <div className="flex max-w-md flex-row items-center gap-2">
                         <Input
-                          placeholder="اسم المخزن"
+                          placeholder={t("Warehouse name")}
                           value={warehouseAdds[store.id] ?? ""}
                           onChange={(e) =>
                             setWarehouseAdds({
@@ -1140,7 +1318,7 @@ export function BranchSettingsTab({
                           className="min-w-0 flex-1"
                         />
                         <CompactAction
-                          label="إضافة مخزن"
+                          label={t("Add warehouse")}
                           icon={Plus}
                           disabled={pending || !warehouseAdds[store.id]?.trim()}
                           onClick={() => {
@@ -1148,11 +1326,17 @@ export function BranchSettingsTab({
                             if (!name) return;
                             startTransition(async () => {
                               try {
-                                await createWarehouseAction({ storeId: store.id, name });
-                                setWarehouseAdds({ ...warehouseAdds, [store.id]: "" });
-                                toast.success("تم إنشاء المخزن");
+                                await createWarehouseAction({
+                                  storeId: store.id,
+                                  name,
+                                });
+                                setWarehouseAdds({
+                                  ...warehouseAdds,
+                                  [store.id]: "",
+                                });
+                                toast.success(t("Warehouse created"));
                               } catch {
-                                toast.error("فشل إنشاء المخزن");
+                                toast.error(t("Could not create warehouse"));
                               }
                             });
                           }}
@@ -1167,40 +1351,50 @@ export function BranchSettingsTab({
 
           <TabsContent value={ADD_STORE_TAB} className="mt-0">
             <div className="grid max-w-xl gap-[var(--mds-space-3)] rounded-[var(--mds-radius-lg)] border border-dashed border-border/60 p-[var(--mds-space-4)]">
-              <p className="text-sm font-medium">إضافة فرع</p>
+              <p className="text-sm font-medium">{t("Add store")}</p>
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>اسم الفرع</Label>
+                  <Label>{t("Store name")}</Label>
                   <Input
                     value={storeForm.name}
-                    onChange={(e) => setStoreForm({ ...storeForm, name: e.target.value })}
+                    onChange={(e) =>
+                      setStoreForm({ ...storeForm, name: e.target.value })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>الكود</Label>
+                  <Label>{t("Code")}</Label>
                   <Input
                     value={storeForm.code}
-                    onChange={(e) => setStoreForm({ ...storeForm, code: e.target.value })}
-                    placeholder="يتم إنشاؤه تلقائيًا لو تُرك فارغًا"
+                    onChange={(e) =>
+                      setStoreForm({ ...storeForm, code: e.target.value })
+                    }
+                    placeholder={t("Generated automatically if left empty")}
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <Label>العنوان</Label>
+                  <Label>{t("Address")}</Label>
                   <Input
                     value={storeForm.address}
-                    onChange={(e) => setStoreForm({ ...storeForm, address: e.target.value })}
+                    onChange={(e) =>
+                      setStoreForm({ ...storeForm, address: e.target.value })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>الهاتف</Label>
+                  <Label>{t("Phone")}</Label>
                   <Input
                     value={storeForm.phone}
-                    onChange={(e) => setStoreForm({ ...storeForm, phone: e.target.value })}
+                    onChange={(e) =>
+                      setStoreForm({ ...storeForm, phone: e.target.value })
+                    }
                   />
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                سيتم إنشاء مخزن افتراضي باسم &quot;المخزن الرئيسي&quot; تلقائيًا.
+                {t(
+                  'A default warehouse named "Main Warehouse" will be created automatically.',
+                )}
               </p>
               <Button
                 type="button"
@@ -1216,14 +1410,14 @@ export function BranchSettingsTab({
                         address: "",
                         phone: "",
                       });
-                      toast.success("تم إنشاء الفرع");
+                      toast.success(t("Store created"));
                     } catch {
-                      toast.error("فشل إنشاء الفرع");
+                      toast.error(t("Could not create store"));
                     }
                   });
                 }}
               >
-                إضافة فرع
+                {t("Add store")}
               </Button>
             </div>
           </TabsContent>

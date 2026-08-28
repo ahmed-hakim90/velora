@@ -33,30 +33,31 @@ import {
   updateGlAccountAction,
 } from "@/modules/accounting/actions/gl-account.actions";
 import { AccountingSubnav } from "@/modules/accounting/components/accounting-subnav";
+import { useTranslation } from "@/lib/i18n/use-translation";
 import { CoaImportDialog } from "@/modules/accounting/components/coa-import-dialog";
 import { ModuleAnalyticsQuickLinks } from "@/modules/reports/components/module-analytics-quick-links";
 import type { AccountingOverview } from "@/modules/accounting/services/accounting-overview.service";
 import type { GlAccountTreeNode } from "@/modules/accounting/services/gl-account.service";
 
 const TYPE_LABELS: Record<GlAccountType, string> = {
-  asset: "أصل",
-  liability: "خصم",
-  equity: "ملكية",
-  revenue: "إيراد",
-  expense: "مصروف",
+  asset: "Asset",
+  liability: "Liability",
+  equity: "Equity",
+  revenue: "Revenue",
+  expense: "Expense",
 };
 
 const SOURCE_LABELS: Record<string, string> = {
-  manual: "يدوي",
-  sale: "بيع",
-  expense: "مصروف",
-  purchase: "شراء",
-  customer_payment: "تحصيل عميل",
-  supplier_payment: "دفعة مورد",
-  refund: "مرتجع / إلغاء",
-  adjustment: "تسوية",
-  waste: "هالك",
-  customs_certificate: "شهادة جمركية",
+  manual: "Manual",
+  sale: "Sale",
+  expense: "Expense",
+  purchase: "Purchase",
+  customer_payment: "Customer payment",
+  supplier_payment: "Supplier payment",
+  refund: "Refund / reversal",
+  adjustment: "Adjustment",
+  waste: "Waste",
+  customs_certificate: "Customs certificate",
 };
 
 interface ChartOfAccountsPageProps {
@@ -72,6 +73,7 @@ export function ChartOfAccountsPage({
   overview,
   canManage,
 }: ChartOfAccountsPageProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [query, setQuery] = useState("");
@@ -135,7 +137,7 @@ export function ChartOfAccountsPage({
         toast.error(result.error);
         return;
       }
-      toast.success("تم إضافة الحساب");
+      toast.success(t("Account added"));
       setOpen(false);
       resetForm();
       router.refresh();
@@ -151,7 +153,7 @@ export function ChartOfAccountsPage({
         toast.error(result.error);
         return;
       }
-      toast.success(account.is_active ? "تم تعطيل الحساب" : "تم تفعيل الحساب");
+      toast.success(account.is_active ? t("Account disabled") : t("Account enabled"));
       router.refresh();
     });
   };
@@ -166,7 +168,7 @@ export function ChartOfAccountsPage({
         return;
       }
       toast.success(
-        account.is_postable ? "الحساب بقى تجميعي" : "الحساب بقى قابل للترحيل"
+        account.is_postable ? t("Account is now a summary account") : t("Account is now postable")
       );
       router.refresh();
     });
@@ -178,24 +180,24 @@ export function ChartOfAccountsPage({
         breadcrumb={
           <span>
             <Link href="/accounting" className="text-primary hover:underline">
-              الحسابات
+              {t("Accounting")}
             </Link>
             <span className="mx-1 text-muted-foreground">/</span>
-            دليل الحسابات
+            {t("Chart of accounts")}
           </span>
         }
-        title="دليل الحسابات"
-        description="شجرة الحسابات المستخدمة في القيود والترحيل التلقائي من البيع والمشتريات والمصروفات"
+        title={t("Chart of accounts")}
+        description={t("Account tree used for journal entries and automatic posting.")}
         action={
           canManage ? (
             <CompactActions>
               <CompactAction
-                label="رفع شجرة"
+                label={t("Import tree")}
                 icon={Upload}
                 onClick={() => setImportOpen(true)}
               />
               <CompactAction
-                label="حساب جديد"
+                label={t("New account")}
                 icon={Plus}
                 variant="default"
                 alwaysLabeled
@@ -210,32 +212,32 @@ export function ChartOfAccountsPage({
         <AccountingSubnav />
       </div>
 
-      <div className="mb-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard
-          label="حسابات نشطة"
+          label={t("Active accounts")}
           value={String(overview.accountCount)}
-          change={`${overview.postableCount} قابل للترحيل`}
+          change={`${overview.postableCount} ${t("postable")}`}
           trend="neutral"
           icon={<Landmark className="size-5" />}
         />
         <KpiCard
-          label="قيود مرحلة"
+          label={t("Posted entries")}
           value={String(overview.postedCount)}
-          change={`${overview.autoPostedCount} أوتوماتيك`}
+          change={`${overview.autoPostedCount} ${t("automatic")}`}
           trend="up"
           icon={<ScrollText className="size-5" />}
         />
         <KpiCard
-          label="مسودات"
+          label={t("Drafts")}
           value={String(overview.draftCount)}
-          change={overview.draftCount > 0 ? "محتاجة ترحيل" : "مفيش معلّق"}
+          change={overview.draftCount > 0 ? t("Need posting") : t("Nothing pending")}
           trend={overview.draftCount > 0 ? "down" : "neutral"}
           icon={<BookOpen className="size-5" />}
         />
         <KpiCard
-          label="ملغاة"
+          label={t("Voided")}
           value={String(overview.voidCount)}
-          change="من آخر 200 قيد"
+          change={t("From the latest 200 entries")}
           trend="neutral"
           icon={<Sparkles className="size-5" />}
         />
@@ -243,43 +245,43 @@ export function ChartOfAccountsPage({
 
       <div className="mb-4">
         <ModuleAnalyticsQuickLinks
-          title="تقارير مالية"
-          description="الدفاتر مصدر الحقيقة — الروابط للتفاصيل والتقارير"
+          title={t("Financial reports")}
+          description={t("Ledgers are the source of truth. Use these links for details and reports.")}
           links={[
             {
               href: "/accounting/income-statement",
-              label: "قائمة الدخل",
-              description: "ربح الفترة من الأستاذ",
+              label: t("Income statement"),
+              description: t("Period profit from the ledger"),
               icon: FileSpreadsheet,
             },
             {
               href: "/accounting/trial-balance",
-              label: "ميزان المراجعة",
-              description: "أرصدة الحسابات",
+              label: t("Trial balance"),
+              description: t("Account balances"),
               icon: Scale,
             },
             {
               href: "/accounting/balance-sheet",
-              label: "الميزانية",
-              description: "المركز المالي",
+              label: t("Balance sheet"),
+              description: t("Financial position"),
               icon: Landmark,
             },
             {
               href: "/reports/pnl",
-              label: "PnL تشغيلي",
-              description: "تقدير سريع من التقارير",
+              label: t("Operational P&L"),
+              description: t("Quick estimate from reports"),
               icon: BarChart3,
             },
             {
               href: "/expenses",
-              label: "المصروفات",
-              description: "تسجيل واعتماد",
+              label: t("Expenses"),
+              description: t("Record and approve"),
               icon: Wallet,
             },
             {
               href: "/reports/expenses",
-              label: "تقرير المصروفات",
-              description: "تجميع + Excel",
+              label: t("Expense report"),
+              description: t("Summary + Excel"),
               icon: BookOpen,
             },
           ]}
@@ -287,22 +289,22 @@ export function ChartOfAccountsPage({
       </div>
 
       <OperationalCard
-        title="الحسابات"
-        description={`${visible.length} من ${flat.length} · أصول ${typeCounts.asset} · خصوم ${typeCounts.liability} · ملكية ${typeCounts.equity} · إيراد ${typeCounts.revenue} · مصروف ${typeCounts.expense}`}
+        title={t("Accounts")}
+        description={`${visible.length} ${t("of")} ${flat.length} · ${t("Assets")} ${typeCounts.asset} · ${t("Liabilities")} ${typeCounts.liability} · ${t("Equity")} ${typeCounts.equity} · ${t("Revenue")} ${typeCounts.revenue} · ${t("Expense")} ${typeCounts.expense}`}
       >
-        <div className="mb-4 grid gap-3 sm:grid-cols-2">
+        <div className="mb-4 grid grid-cols-2 gap-3">
           <div>
-            <Label htmlFor="coa-search">بحث</Label>
+            <Label htmlFor="coa-search">{t("Search")}</Label>
             <Input
               id="coa-search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="كود أو اسم الحساب"
+              placeholder={t("Account code or name")}
               className="mt-1"
             />
           </div>
           <div>
-            <Label>النوع</Label>
+            <Label>{t("Type")}</Label>
             <Select
               value={typeFilter}
               onValueChange={(v) => {
@@ -314,10 +316,10 @@ export function ChartOfAccountsPage({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">كل الأنواع</SelectItem>
+                <SelectItem value="all">{t("All types")}</SelectItem>
                 {(Object.keys(TYPE_LABELS) as GlAccountType[]).map((type) => (
                   <SelectItem key={type} value={type}>
-                    {TYPE_LABELS[type]} ({typeCounts[type]})
+                    {t(TYPE_LABELS[type])} ({typeCounts[type]})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -327,13 +329,13 @@ export function ChartOfAccountsPage({
 
         {accounts.length === 0 ? (
           <EmptyStateBlock
-            title="مفيش حسابات"
-            description="هيتزرع دليل الحسابات الافتراضي تلقائيًا عند أول فتح."
+            title={t("No accounts")}
+            description={t("The default chart of accounts will be created automatically.")}
           />
         ) : visible.length === 0 ? (
           <EmptyStateBlock
-            title="مفيش نتائج"
-            description="غيّر البحث أو فلتر النوع."
+            title={t("No results")}
+            description={t("Change the search or type filter.")}
           />
         ) : (
           <ResponsiveListLayout
@@ -345,25 +347,25 @@ export function ChartOfAccountsPage({
                   <span className="flex flex-wrap items-center gap-1.5">
                     <span>{account.name}</span>
                     {account.is_system ? (
-                      <Badge variant="secondary">نظام</Badge>
+                      <Badge variant="secondary">{t("System")}</Badge>
                     ) : null}
                     {!account.is_postable ? (
-                      <Badge variant="outline">تجميعي</Badge>
+                      <Badge variant="outline">{t("Summary")}</Badge>
                     ) : null}
                   </span>
                 }
                 badge={
                   <Badge variant="outline">
-                    {TYPE_LABELS[account.account_type]}
+                    {t(TYPE_LABELS[account.account_type])}
                   </Badge>
                 }
                 fields={[
                   {
-                    label: "الحالة",
+                    label: t("Status"),
                     value: account.is_active ? (
-                      <span className="text-emerald-700 dark:text-emerald-400">نشط</span>
+                      <span className="text-emerald-700 dark:text-emerald-400">{t("Active")}</span>
                     ) : (
-                      <span className="text-muted-foreground">معطّل</span>
+                      <span className="text-muted-foreground">{t("Disabled")}</span>
                     ),
                   },
                 ]}
@@ -371,24 +373,24 @@ export function ChartOfAccountsPage({
                   <CompactActions className="w-full justify-end">
                     {account.is_postable ? (
                       <CompactAction
-                        label="دفتر"
+                        label={t("Ledger")}
                         icon={BookOpen}
                         href={`/accounting/ledger?accountId=${account.id}`}
                       />
                     ) : (
-                      <span className="text-xs text-muted-foreground">مفيش دفتر</span>
+                      <span className="text-xs text-muted-foreground">{t("No ledger")}</span>
                     )}
                     {canManage && !account.is_system ? (
                       <>
                         <CompactAction
-                          label={account.is_postable ? "تجميعي" : "تفصيلي"}
+                          label={account.is_postable ? t("Summary") : t("Postable")}
                           icon={Layers}
                           variant="ghost"
                           disabled={pending}
                           onClick={() => onTogglePostable(account)}
                         />
                         <CompactAction
-                          label={account.is_active ? "تعطيل" : "تفعيل"}
+                          label={account.is_active ? t("Disable") : t("Enable")}
                           icon={Power}
                           variant="ghost"
                           disabled={pending}
@@ -405,13 +407,13 @@ export function ChartOfAccountsPage({
                 <table className="w-full min-w-[640px] text-sm">
                   <thead className="bg-muted/40 text-muted-foreground">
                     <tr>
-                      <th className="px-3 py-2 text-start font-medium">الكود</th>
-                      <th className="px-3 py-2 text-start font-medium">الاسم</th>
-                      <th className="px-3 py-2 text-start font-medium">النوع</th>
-                      <th className="px-3 py-2 text-start font-medium">الحالة</th>
-                      <th className="px-3 py-2 text-start font-medium">دفتر</th>
+                      <th className="px-3 py-2 text-start font-medium">{t("Code")}</th>
+                      <th className="px-3 py-2 text-start font-medium">{t("Name")}</th>
+                      <th className="px-3 py-2 text-start font-medium">{t("Type")}</th>
+                      <th className="px-3 py-2 text-start font-medium">{t("Status")}</th>
+                      <th className="px-3 py-2 text-start font-medium">{t("Ledger")}</th>
                       {canManage ? (
-                        <th className="px-3 py-2 text-start font-medium">إجراء</th>
+                        <th className="px-3 py-2 text-start font-medium">{t("Action")}</th>
                       ) : null}
                     </tr>
                   </thead>
@@ -428,23 +430,23 @@ export function ChartOfAccountsPage({
                           <div className="flex flex-wrap items-center gap-2">
                             <span>{account.name}</span>
                             {account.is_system ? (
-                              <Badge variant="secondary">نظام</Badge>
+                              <Badge variant="secondary">{t("System")}</Badge>
                             ) : null}
                             {!account.is_postable ? (
-                              <Badge variant="outline">تجميعي</Badge>
+                              <Badge variant="outline">{t("Summary")}</Badge>
                             ) : null}
                           </div>
                         </td>
                         <td className="px-3 py-2">
                           <Badge variant="outline">
-                            {TYPE_LABELS[account.account_type]}
+                            {t(TYPE_LABELS[account.account_type])}
                           </Badge>
                         </td>
                         <td className="px-3 py-2">
                           {account.is_active ? (
-                            <span className="text-emerald-700 dark:text-emerald-400">نشط</span>
+                            <span className="text-emerald-700 dark:text-emerald-400">{t("Active")}</span>
                           ) : (
-                            <span className="text-muted-foreground">معطّل</span>
+                            <span className="text-muted-foreground">{t("Disabled")}</span>
                           )}
                         </td>
                         <td className="px-3 py-2">
@@ -453,7 +455,7 @@ export function ChartOfAccountsPage({
                               href={`/accounting/ledger?accountId=${account.id}`}
                               className="text-sm text-primary underline-offset-2 hover:underline"
                             >
-                              دفتر
+                              {t("Ledger")}
                             </Link>
                           ) : (
                             <span className="text-xs text-muted-foreground">—</span>
@@ -470,7 +472,7 @@ export function ChartOfAccountsPage({
                                   disabled={pending}
                                   onClick={() => onTogglePostable(account)}
                                 >
-                                  {account.is_postable ? "تجميعي" : "تفصيلي"}
+                                  {account.is_postable ? t("Summary") : t("Postable")}
                                 </Button>
                                 <Button
                                   type="button"
@@ -479,7 +481,7 @@ export function ChartOfAccountsPage({
                                   disabled={pending}
                                   onClick={() => onToggleActive(account)}
                                 >
-                                  {account.is_active ? "تعطيل" : "تفعيل"}
+                                  {account.is_active ? t("Disable") : t("Enable")}
                                 </Button>
                               </div>
                             ) : (
@@ -499,8 +501,8 @@ export function ChartOfAccountsPage({
 
       {overview.recentPosted.length > 0 ? (
         <OperationalCard
-          title="آخر قيود مرحلة"
-          description="من البيع والمصروفات والقيود اليدوية"
+          title={t("Latest posted entries")}
+          description={t("From sales, expenses, and manual entries")}
           className="mt-4"
         >
           <ResponsiveListLayout
@@ -511,13 +513,13 @@ export function ChartOfAccountsPage({
                 title={entry.entry_number}
                 subtitle={entry.memo || "—"}
                 fields={[
-                  { label: "التاريخ", value: entry.entry_date },
+                  { label: t("Date"), value: entry.entry_date },
                   {
-                    label: "المصدر",
-                    value: SOURCE_LABELS[entry.source] ?? entry.source,
+                    label: t("Source"),
+                    value: t(SOURCE_LABELS[entry.source] ?? entry.source),
                   },
                 ]}
-                trailingHint="فتح القيود ←"
+                trailingHint={`${t("Open entries")} ←`}
               />
             ))}
             desktop={
@@ -525,10 +527,10 @@ export function ChartOfAccountsPage({
                 <table className="w-full min-w-[560px] text-sm">
                   <thead className="bg-muted/40 text-muted-foreground">
                     <tr>
-                      <th className="px-3 py-2 text-start font-medium">الرقم</th>
-                      <th className="px-3 py-2 text-start font-medium">التاريخ</th>
-                      <th className="px-3 py-2 text-start font-medium">البيان</th>
-                      <th className="px-3 py-2 text-start font-medium">المصدر</th>
+                      <th className="px-3 py-2 text-start font-medium">{t("Number")}</th>
+                      <th className="px-3 py-2 text-start font-medium">{t("Date")}</th>
+                      <th className="px-3 py-2 text-start font-medium">{t("Memo")}</th>
+                      <th className="px-3 py-2 text-start font-medium">{t("Source")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -545,7 +547,7 @@ export function ChartOfAccountsPage({
                         <td className="px-3 py-2 tabular-nums">{entry.entry_date}</td>
                         <td className="px-3 py-2">{entry.memo || "—"}</td>
                         <td className="px-3 py-2 text-muted-foreground">
-                          {SOURCE_LABELS[entry.source] ?? entry.source}
+                          {t(SOURCE_LABELS[entry.source] ?? entry.source)}
                         </td>
                       </tr>
                     ))}
@@ -566,8 +568,8 @@ export function ChartOfAccountsPage({
       >
         <StandardModalContent
           size="sm"
-          title="حساب جديد"
-          description="أضف حسابًا يدويًا تحت الدليل الحالي. حسابات النظام محمية من الحذف."
+          title={t("New account")}
+          description={t("Add an account under the current chart. System accounts are protected.")}
           footer={
             <>
               <Button
@@ -577,7 +579,7 @@ export function ChartOfAccountsPage({
                 disabled={pending}
                 onClick={() => setOpen(false)}
               >
-                إلغاء
+                {t("Cancel")}
               </Button>
               <Button
                 type="button"
@@ -585,14 +587,14 @@ export function ChartOfAccountsPage({
                 disabled={pending}
                 onClick={onCreate}
               >
-                حفظ
+                {t("Save")}
               </Button>
             </>
           }
         >
           <div className="grid gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="coa-code">الكود</Label>
+              <Label htmlFor="coa-code">{t("Code")}</Label>
               <Input
                 id="coa-code"
                 value={form.code}
@@ -600,7 +602,7 @@ export function ChartOfAccountsPage({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="coa-name">الاسم</Label>
+              <Label htmlFor="coa-name">{t("Name")}</Label>
               <Input
                 id="coa-name"
                 value={form.name}
@@ -608,7 +610,7 @@ export function ChartOfAccountsPage({
               />
             </div>
             <div className="space-y-1.5">
-              <Label>النوع</Label>
+              <Label>{t("Type")}</Label>
               <Select
                 value={form.account_type}
                 onValueChange={(v) => {
@@ -622,14 +624,14 @@ export function ChartOfAccountsPage({
                 <SelectContent>
                   {(Object.keys(TYPE_LABELS) as GlAccountType[]).map((type) => (
                     <SelectItem key={type} value={type}>
-                      {TYPE_LABELS[type]}
+                      {t(TYPE_LABELS[type])}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>الحساب الأب (اختياري)</Label>
+              <Label>{t("Parent account (optional)")}</Label>
               <Select
                 value={form.parent_id || "__none__"}
                 onValueChange={(v) => {
@@ -641,10 +643,10 @@ export function ChartOfAccountsPage({
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="بدون أب" />
+                  <SelectValue placeholder={t("No parent")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">بدون أب</SelectItem>
+                  <SelectItem value="__none__">{t("No parent")}</SelectItem>
                   {flat
                     .filter((a) => a.account_type === form.account_type)
                     .map((a) => (
@@ -664,9 +666,9 @@ export function ChartOfAccountsPage({
                 className="mt-0.5"
               />
               <span>
-                <span className="font-medium">قابل للترحيل</span>
+                <span className="font-medium">{t("Postable")}</span>
                 <span className="mt-0.5 block text-xs text-muted-foreground">
-                  غير محدد = حساب تجميعي (مفيش قيود عليه)
+                  {t("Turn off for a summary account that cannot receive entries")}
                 </span>
               </span>
             </label>

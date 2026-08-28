@@ -5,7 +5,7 @@ import { useAppRouter as useRouter } from "@/hooks/use-app-router";
 import type { CostCenter, ExpenseCategory } from "@/lib/types";
 import { EXPENSE_SOURCES, EXPENSE_STATUSES } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DateRangeFilter } from "@/components/Velora/date-range-filter";
 
 const SOURCE_LABELS: Record<string, string> = {
   session_cash: "نقدية الجلسة",
@@ -41,11 +41,11 @@ export function ExpenseFiltersBar({ costCenters, categories, values }: ExpenseFi
       if (v) params.set(k, v);
       else params.delete(k);
     }
-    router.push(`/expenses?${params.toString()}`);
+    router.replace(`/expenses?${params.toString()}`, { scroll: false });
   }
 
   return (
-    <div className="grid grid-cols-1 items-end gap-[var(--mds-space-3)] rounded-[var(--mds-radius-lg)] border border-border bg-card p-[var(--mds-space-4)] shadow-[var(--mds-elevation-1)] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-2 items-end gap-[var(--mds-space-3)] rounded-[var(--mds-radius-lg)] border border-border bg-card p-[var(--mds-space-4)] shadow-[var(--mds-elevation-1)] lg:grid-cols-3 xl:grid-cols-4">
       <div className="min-w-0 space-y-1">
         <label className="text-xs text-muted-foreground">مركز التكلفة</label>
         <select
@@ -120,29 +120,16 @@ export function ExpenseFiltersBar({ costCenters, categories, values }: ExpenseFi
           ))}
         </select>
       </div>
-      <div className="min-w-0 space-y-1">
-        <label className="text-xs text-muted-foreground">من</label>
-        <Input
-          type="date"
-          value={values.from}
-          onChange={(e) => apply({ from: e.target.value })}
-          className="h-9 w-full rounded-[var(--mds-radius-md)]"
-        />
-      </div>
-      <div className="min-w-0 space-y-1">
-        <label className="text-xs text-muted-foreground">إلى</label>
-        <Input
-          type="date"
-          value={values.to}
-          onChange={(e) => apply({ to: e.target.value })}
-          className="h-9 w-full rounded-[var(--mds-radius-md)]"
-        />
-      </div>
+      <DateRangeFilter
+        value={{ from: values.from, to: values.to }}
+        className="col-span-2 lg:col-span-3 xl:col-span-4"
+        onChange={(next) => apply({ from: next.from, to: next.to })}
+      />
       <Button
         variant="outline"
         size="sm"
-        className="h-9 w-full sm:col-span-2 lg:col-span-1 xl:col-span-2"
-        onClick={() => router.push("/expenses")}
+        className="col-span-2 h-9 w-full lg:col-span-1 xl:col-span-2"
+        onClick={() => router.replace("/expenses", { scroll: false })}
       >
         مسح الفلاتر
       </Button>

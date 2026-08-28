@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   FileSpreadsheet,
   LayoutGrid,
@@ -49,6 +50,7 @@ import { toast } from "sonner";
 import { useAppRouter as useRouter } from "@/hooks/use-app-router";
 import { cn } from "@/lib/utils";
 import { useConfirmationDialog } from "@/components/Velora/confirmation-dialog";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 type CatalogView = "menu" | "ingredients";
 type LayoutView = "grid" | "table";
@@ -76,16 +78,21 @@ export function ProductsPage({
   availableStockByProductId = {},
   availableStockByVariantId = {},
 }: ProductsPageProps) {
+  const { t } = useTranslation();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { requestConfirmation, confirmationDialog } = useConfirmationDialog();
   const useCafeCatalog = usesCafeMenuCatalog(businessActivity);
   const useMenuCopy = isFoodServiceActivity(businessActivity.activity_type);
   const showShelfColumns = !useMenuCopy;
   const showIngredientsCatalog = recipesEnabled;
-  const [search, setSearch] = useState("");
-  const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [view, setView] = useState<CatalogView>("menu");
-  const [layout, setLayout] = useState<LayoutView>("table");
+  const [search, setSearch] = useState(searchParams.get("q") ?? "");
+  const [categoryId, setCategoryId] = useState<string | null>(() => {
+    const requested = searchParams.get("category");
+    return requested && categories.some((category) => category?.id === requested) ? requested : null;
+  });
+  const [view, setView] = useState<CatalogView>(() => showIngredientsCatalog && searchParams.get("catalog") === "ingredients" ? "ingredients" : "menu");
+  const [layout, setLayout] = useState<LayoutView>(() => searchParams.get("view") === "grid" ? "grid" : "table");
   const [cafeDialogOpen, setCafeDialogOpen] = useState(false);
   const [retailDialogOpen, setRetailDialogOpen] = useState(false);
   const [ingredientDialogOpen, setIngredientDialogOpen] = useState(false);
@@ -94,8 +101,16 @@ export function ProductsPage({
   const [editing, setEditing] = useState<Product | null>(null);
   const [editingVariants, setEditingVariants] = useState<ProductVariant[]>([]);
   const [editingIngredient, setEditingIngredient] = useState<Product | null>(null);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [mobileVisibleCount, setMobileVisibleCount] = useState(12);
   const [pending, startTransition] = useTransition();
+
+  function updateUrl(patch: Record<string, string | null>) {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(patch).forEach(([key, value]) => value && value !== "table" && value !== "menu" ? params.set(key, value) : params.delete(key));
+    const query = params.toString();
+    window.history.replaceState(null, "", query ? `/products?${query}` : "/products");
+  }
 
   const categoryList = categories.filter((c): c is NonNullable<typeof c> => c !== null);
 
@@ -138,6 +153,12 @@ export function ProductsPage({
     });
   }, [visibleSource, categoryId, search]);
 
+  const mobileItems = filtered.slice(0, mobileVisibleCount);
+
+  useEffect(() => {
+    setMobileVisibleCount(12);
+  }, [search, categoryId, view]);
+
   const activeCount = menuItems.filter((p) => p.product.is_active).length;
   const popularCount = menuItems.filter((p) => p.product.is_popular).length;
 
@@ -173,16 +194,16 @@ export function ProductsPage({
 
   async function handleDelete(product: Product) {
     if (
-      !(await requestConfirmation(`حذف ${product.name}؟`, {
-        title: "حذف المنتج",
-        confirmLabel: "حذف",
+      !(await requestConfirmation(`${t("Delete")} ${product.name}?`, {
+        title: t("Delete product"),
+        confirmLabel: t("Delete"),
         destructive: true,
       }))
     ) return;
     startTransition(async () => {
       const result = await deleteProductAction(product.id);
       if (result.ok) {
-        toast.success("تم حذف المنتج");
+        toast.success(t("Product deleted."));
         router.refresh();
       } else {
         toast.error(result.error);
@@ -194,8 +215,8 @@ export function ProductsPage({
     if (
       !(await requestConfirmation(
         useMenuCopy
-          ? "سيتم تفعيل كل أصناف المنيو وجعلها غير متتبعة للمخزون. المكونات لن تتأثر. هل تريد المتابعة؟"
-          : "سيتم تفعيل كل منتجات البيع وجعلها غير متتبعة للمخزون. هل تريد المتابعة؟"
+          ? t("All menu items will be activated with inventory tracking off. Ingredients are not affected. Continue?")
+          : t("All sales products will be activated with inventory tracking off. Continue?")
       ))
     ) {
       return;
@@ -206,37 +227,37 @@ export function ProductsPage({
         const result = await bulkDisableMenuInventoryTrackingAction();
         toast.success(
           useMenuCopy
-            ? `تم تحديث ${result.count} صنف منيو`
-            : `تم تحديث ${result.count} منتج`
+            ? `${t("Updated")} ${result.count} ${t("menu items")}`
+            : `${t("Updated")} ${result.count} ${t("products")}`
         );
         setSelectedIds([]);
         router.refresh();
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "تعذر تحديث الأصناف");
+        toast.error(error instanceof Error ? t(error.message) : t("Could not update products."));
       }
     });
   }
 
   async function handleBulkTracking(trackInventory: boolean, scope: "selection" | "category") {
     if (scope === "category" && !categoryId) {
-      toast.error("اختَر تصنيفًا من القائمة الجانبية أولًا");
+      toast.error(t("Choose a category first."));
       return;
     }
     if (scope === "selection" && selectedIds.length === 0) {
-      toast.error("حدّد منتجات من الجدول أولًا");
+      toast.error(t("Select products from the table first."));
       return;
     }
 
     const categoryName =
-      categoryList.find((category) => category.id === categoryId)?.name ?? "التصنيف";
+      categoryList.find((category) => category.id === categoryId)?.name ?? t("Category");
     const confirmMessage =
       scope === "category"
         ? trackInventory
-          ? `تفعيل تتبع المخزون لكل منتجات «${categoryName}»؟`
-          : `إيقاف تتبع المخزون لكل منتجات «${categoryName}»؟`
+          ? `${t("Enable inventory tracking for all products in")} “${categoryName}”?`
+          : `${t("Disable inventory tracking for all products in")} “${categoryName}”?`
         : trackInventory
-          ? `تفعيل تتبع المخزون لـ ${selectedIds.length} منتج؟`
-          : `إيقاف تتبع المخزون لـ ${selectedIds.length} منتج؟`;
+          ? `${t("Enable inventory tracking for")} ${selectedIds.length} ${t("products")}?`
+          : `${t("Disable inventory tracking for")} ${selectedIds.length} ${t("products")}?`;
 
     if (!(await requestConfirmation(confirmMessage))) return;
 
@@ -249,13 +270,13 @@ export function ProductsPage({
         );
         toast.success(
           trackInventory
-            ? `تم تفعيل التتبع لـ ${result.count} منتج`
-            : `تم إيقاف التتبع لـ ${result.count} منتج`
+            ? `${t("Inventory tracking enabled for")} ${result.count} ${t("products")}`
+            : `${t("Inventory tracking disabled for")} ${result.count} ${t("products")}`
         );
         setSelectedIds([]);
         router.refresh();
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "تعذر تحديث التتبع");
+        toast.error(error instanceof Error ? t(error.message) : t("Could not update inventory tracking."));
       }
     });
   }
@@ -265,7 +286,7 @@ export function ProductsPage({
       <div className="flex flex-wrap items-center gap-2">
         {selectedIds.length > 0 ? (
           <>
-            <span className="text-xs text-muted-foreground">{selectedIds.length} محدد</span>
+            <span className="text-xs text-muted-foreground">{selectedIds.length} {t("selected")}</span>
             <Button
               type="button"
               size="sm"
@@ -273,7 +294,7 @@ export function ProductsPage({
               disabled={pending}
               onClick={() => handleBulkTracking(true, "selection")}
             >
-              تفعيل التتبع
+              {t("Enable tracking")}
             </Button>
             <Button
               type="button"
@@ -282,7 +303,7 @@ export function ProductsPage({
               disabled={pending}
               onClick={() => handleBulkTracking(false, "selection")}
             >
-              إيقاف التتبع
+              {t("Disable tracking")}
             </Button>
           </>
         ) : null}
@@ -295,7 +316,7 @@ export function ProductsPage({
               disabled={pending}
               onClick={() => handleBulkTracking(true, "category")}
             >
-              تفعيل التصنيف كامل
+              {t("Enable category tracking")}
             </Button>
             <Button
               type="button"
@@ -304,7 +325,7 @@ export function ProductsPage({
               disabled={pending}
               onClick={() => handleBulkTracking(false, "category")}
             >
-              إيقاف التصنيف كامل
+              {t("Disable category tracking")}
             </Button>
           </>
         ) : null}
@@ -315,24 +336,24 @@ export function ProductsPage({
     showIngredientsCatalog && view === "ingredients" ? (
       <Button type="button" onClick={openCreateIngredient}>
         <Plus className="size-4" />
-        مكوّن جديد
+        {t("New ingredient")}
       </Button>
     ) : (
       <Button type="button" onClick={openCreate}>
         <Plus className="size-4" />
-        {useMenuCopy ? "صنف منيو جديد" : "منتج جديد"}
+        {useMenuCopy ? t("New menu item") : t("New product")}
       </Button>
     );
 
   return (
     <div className="flex flex-col gap-3">
       <PageHeader
-        breadcrumb={<span>المخزون · المنتجات</span>}
-        title="المنتجات"
+        breadcrumb={<span>{t("Inventory")} · {t("Products")}</span>}
+        title="Products"
         description={
           useMenuCopy
-            ? "كتالوج المنيو والأسعار والتصنيفات — المكان اللي بتجهّز منه الكاشير."
-            : "كتالوج البيع، الباركود، سعر الشراء وسعر البيع — تجهيز الكاشير والمخزون."
+            ? t("Manage menu items, prices, and categories for POS.")
+            : t("Manage sales products, barcodes, purchase prices, and sale prices.")
         }
         action={
           <div className="flex w-full items-center gap-2 sm:w-auto sm:justify-end">
@@ -342,22 +363,22 @@ export function ProductsPage({
               className="min-w-0 flex-1 shadow-[var(--mds-elevation-1)] sm:flex-initial"
             >
               <Plus className="size-4" />
-              {useMenuCopy ? "صنف منيو جديد" : "منتج جديد"}
+              {useMenuCopy ? t("New menu item") : t("New product")}
             </Button>
             <div className="hidden items-center gap-2 sm:flex">
               {showIngredientsCatalog ? (
                 <Button type="button" variant="outline" onClick={openCreateIngredient}>
                   <Plus className="size-4" />
-                  مكوّن جديد
+                  {t("New ingredient")}
                 </Button>
               ) : null}
               <Button type="button" variant="outline" onClick={() => setCategoryDialogOpen(true)}>
                 <Tags className="size-4" />
-                التصنيفات
+                {t("Categories")}
               </Button>
               <Button type="button" variant="outline" onClick={() => setImportOpen(true)}>
                 <FileSpreadsheet className="size-4" />
-                استيراد / تصدير
+                {t("Import / Export")}
               </Button>
             </div>
             <DropdownMenu>
@@ -368,7 +389,7 @@ export function ProductsPage({
                     variant="outline"
                     size="icon"
                     className="size-11 shrink-0 sm:size-9"
-                    aria-label="المزيد"
+                    aria-label={t("More")}
                   />
                 }
               >
@@ -378,7 +399,7 @@ export function ProductsPage({
                 {showIngredientsCatalog ? (
                   <DropdownMenuItem onClick={openCreateIngredient} className="sm:hidden">
                     <Plus className="size-4" />
-                    مكوّن جديد
+                    {t("New ingredient")}
                   </DropdownMenuItem>
                 ) : null}
                 <DropdownMenuItem
@@ -386,11 +407,11 @@ export function ProductsPage({
                   className="sm:hidden"
                 >
                   <Tags className="size-4" />
-                  التصنيفات
+                  {t("Categories")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setImportOpen(true)} className="sm:hidden">
                   <FileSpreadsheet className="size-4" />
-                  استيراد / تصدير
+                  {t("Import / Export")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   variant="destructive"
@@ -398,7 +419,7 @@ export function ProductsPage({
                   onClick={handleBulkDisableTracking}
                 >
                   <Package className="size-4" />
-                  تفعيل وإلغاء تتبع المخزون
+                  {t("Reset product inventory tracking")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -406,23 +427,24 @@ export function ProductsPage({
         }
       />
 
-      <div className={`grid gap-[var(--mds-space-3)] ${showIngredientsCatalog ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+      <div className={`grid grid-cols-2 gap-[var(--mds-space-3)] ${showIngredientsCatalog ? "lg:grid-cols-3" : ""}`}>
         <OperationalCard
-          title={useMenuCopy ? "الأصناف النشطة" : "المنتجات النشطة"}
+          title={useMenuCopy ? t("Active menu items") : t("Active products")}
           value={String(activeCount)}
-          subtitle={`من أصل ${menuItems.length} ${useMenuCopy ? "صنف منيو" : "منتج"}`}
+          subtitle={`${t("Out of")} ${menuItems.length} ${useMenuCopy ? t("menu item records") : t("product records")}`}
         />
         <OperationalCard
-          title="شائعة في الكاشير"
+          title={t("Popular in POS")}
           value={String(popularCount)}
-          subtitle="تظهر أولاً في نقطة البيع"
+          subtitle={t("Shown first in POS")}
           accent="var(--mds-color-feedback-info)"
         />
         {showIngredientsCatalog ? (
           <OperationalCard
-            title="المكونات"
+            className="col-span-2 lg:col-span-1"
+            title={t("Ingredients")}
             value={String(ingredientItems.length)}
-            subtitle="للوصفات والمخزون"
+            subtitle={t("For recipes and inventory")}
             accent="var(--mds-color-feedback-success)"
           />
         ) : null}
@@ -436,6 +458,7 @@ export function ProductsPage({
           onSelect={(id) => {
             setCategoryId(id);
             setSelectedIds([]);
+            updateUrl({ category: id });
           }}
         />
 
@@ -445,7 +468,7 @@ export function ProductsPage({
               <div
                 className="inline-flex rounded-[var(--mds-radius-md)] bg-muted/60 p-1"
                 role="tablist"
-                aria-label="نوع الكتالوج"
+                aria-label={t("Catalog type")}
               >
                 <button
                   type="button"
@@ -461,9 +484,10 @@ export function ProductsPage({
                     setView("menu");
                     setCategoryId(null);
                     setSelectedIds([]);
+                    updateUrl({ catalog: "menu", category: null });
                   }}
                 >
-                  أصناف المنيو
+                  {t("Menu items")}
                 </button>
                 <button
                   type="button"
@@ -479,14 +503,15 @@ export function ProductsPage({
                     setView("ingredients");
                     setCategoryId(null);
                     setSelectedIds([]);
+                    updateUrl({ catalog: "ingredients", category: null });
                   }}
                 >
-                  المكونات
+                  {t("Ingredients")}
                 </button>
               </div>
             ) : (
               <p className="text-sm font-medium text-foreground">
-                {useMenuCopy ? "أصناف المنيو" : "منتجات البيع"}
+                {useMenuCopy ? t("Menu items") : t("Sales products")}
               </p>
             )}
 
@@ -497,18 +522,18 @@ export function ProductsPage({
                   className="h-10 border-border/70 bg-background pe-3 ps-9"
                   placeholder={
                     showIngredientsCatalog && view === "ingredients"
-                      ? "ابحث في المكونات بالاسم أو الكود…"
-                      : "ابحث بالاسم أو الكود أو الباركود…"
+                      ? t("Search ingredients by name or code…")
+                      : t("Search by name, code, or barcode…")
                   }
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  aria-label="بحث المنتجات"
+                  onChange={(e) => { setSearch(e.target.value); updateUrl({ q: e.target.value }); }}
+                  aria-label={t("Search products")}
                 />
               </div>
               <div
-                className="hidden shrink-0 rounded-[var(--mds-radius-md)] bg-muted/60 p-1 md:inline-flex"
+                className="hidden shrink-0 rounded-[var(--mds-radius-md)] bg-muted/60 p-1 lg:inline-flex"
                 role="group"
-                aria-label="شكل العرض"
+                aria-label={t("View layout")}
               >
                 <button
                   type="button"
@@ -519,8 +544,8 @@ export function ProductsPage({
                       : "text-muted-foreground hover:text-foreground"
                   )}
                   aria-pressed={layout === "table"}
-                  aria-label="عرض جدول"
-                  onClick={() => setLayout("table")}
+                  aria-label={t("Table view")}
+                  onClick={() => { setLayout("table"); updateUrl({ view: "table" }); }}
                 >
                   <List className="size-4" />
                 </button>
@@ -533,8 +558,8 @@ export function ProductsPage({
                       : "text-muted-foreground hover:text-foreground"
                   )}
                   aria-pressed={layout === "grid"}
-                  aria-label="عرض كروت"
-                  onClick={() => setLayout("grid")}
+                  aria-label={t("Card view")}
+                  onClick={() => { setLayout("grid"); updateUrl({ view: "grid" }); }}
                 >
                   <LayoutGrid className="size-4" />
                 </button>
@@ -544,21 +569,21 @@ export function ProductsPage({
 
           <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
             <span>
-              عرض {filtered.length} من {visibleSource.length}
-              {categoryId ? " · تصنيف محدد" : ""}
-              <span className="hidden md:inline">
+              {t("Showing")} {filtered.length} {t("of")} {visibleSource.length}
+              {categoryId ? ` · ${t("Category selected")}` : ""}
+              <span className="hidden lg:inline">
                 {layout === "table"
-                  ? " · عدّل السعر والحالة وتتبع المخزون مباشرة من الجدول"
+                  ? ` · ${t("Edit price, status, and inventory tracking from the table")}`
                   : ""}
               </span>
             </span>
-            {pending ? <span>جاري التحديث…</span> : null}
+            {pending ? <span>{t("Updating…")}</span> : null}
           </div>
 
           {/* Mobile: always cards. Desktop: honor layout toggle. */}
-          <div className="md:hidden">
+          <div className="lg:hidden">
             <ProductGrid
-              items={filtered}
+              items={mobileItems}
               currency={currency}
               priceMode={
                 showIngredientsCatalog && view === "ingredients" ? "cost" : "sale"
@@ -573,8 +598,23 @@ export function ProductsPage({
               onDelete={handleDelete}
               emptyAction={emptyAction}
             />
+            {mobileVisibleCount < filtered.length ? (
+              <div className="mt-4 flex flex-col items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11 w-full sm:w-auto"
+                  onClick={() => setMobileVisibleCount((count) => count + 12)}
+                >
+                  {t("Show more")}
+                </Button>
+                <p className="text-xs text-muted-foreground" aria-live="polite">
+                  {t("Now showing")} {Math.min(mobileVisibleCount, filtered.length)} {t("of")} {filtered.length}
+                </p>
+              </div>
+            ) : null}
           </div>
-          <div className="hidden md:block">
+          <div className="hidden lg:block">
             {layout === "table" ? (
               <ProductTable
                 items={filtered}

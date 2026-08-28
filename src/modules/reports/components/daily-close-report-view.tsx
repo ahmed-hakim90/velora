@@ -156,7 +156,7 @@ export function DailyCloseReportView({
       />
 
       <OperationalCard title="تسوية النقدية">
-        <dl className="grid gap-2 text-sm sm:grid-cols-2">
+        <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
           {(
             [
               ["رصيد الافتتاح", t.openingCash],

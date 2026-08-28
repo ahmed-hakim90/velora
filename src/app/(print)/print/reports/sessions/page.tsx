@@ -1,6 +1,7 @@
 import { getSessionsReportPageData } from "@/modules/reports/actions/session-report.actions";
 import { PrintableDocument } from "@/modules/reports/components/printable-document";
 import { formatCurrency } from "@/lib/format";
+import { LocalizedText } from "@/components/Velora/localized-text";
 
 export default async function PrintSessionsReportPage({
   searchParams,
@@ -12,7 +13,7 @@ export default async function PrintSessionsReportPage({
   return (
     <PrintableDocument
       branding={data.context}
-      title="تقرير الجلسات"
+      title="Sessions Report"
       dateRange={data.context.filterSummary}
       generatedBy={data.context.generatedBy}
       generatedAt={data.context.generatedAt}
@@ -21,10 +22,10 @@ export default async function PrintSessionsReportPage({
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b">
-            <th className="py-2 text-start">الكاشير</th>
-            <th className="py-2 text-start">الفرع</th>
-            <th className="py-2 text-end">الفرق</th>
-            <th className="py-2 text-start">الحالة</th>
+            <th className="py-2 text-start"><LocalizedText text="Cashier" /></th>
+            <th className="py-2 text-start"><LocalizedText text="Branch" /></th>
+            <th className="py-2 text-end"><LocalizedText text="Variance" /></th>
+            <th className="py-2 text-start"><LocalizedText text="Status" /></th>
           </tr>
         </thead>
         <tbody>

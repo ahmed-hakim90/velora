@@ -207,7 +207,7 @@ export function BalanceSheetPage({
         <AccountingSubnav />
       </div>
 
-      <div className="mb-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard
           label="الأصول"
           value={formatCurrency(result.totalAssets, currency)}
@@ -246,7 +246,7 @@ export function BalanceSheetPage({
       </div>
 
       <OperationalCard title="التاريخ">
-        <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto]">
+        <div className="grid grid-cols-2 items-end gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto]">
           <div className="min-w-0 space-y-1.5">
             <Label htmlFor="bs-asof">حتى تاريخ</Label>
             <Input
@@ -264,8 +264,8 @@ export function BalanceSheetPage({
             onValueChange={setSelectedStore}
             allowAll
           />
-          <div className="flex items-end">
-            <Button type="button" disabled={pending} onClick={applyFilters}>
+          <div className="col-span-2 flex items-end lg:col-span-1">
+            <Button type="button" className="w-full" disabled={pending} onClick={applyFilters}>
               عرض
             </Button>
           </div>
@@ -439,7 +439,7 @@ export function BalanceSheetPage({
               />
             </section>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl border bg-muted/30 px-4 py-3">
                 <div className="text-sm text-muted-foreground">إجمالي الأصول</div>
                 <div className="text-lg font-semibold tabular-nums">

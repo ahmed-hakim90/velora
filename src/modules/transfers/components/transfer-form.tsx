@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { ArrowRight, Check, PackageCheck, Plus, Trash2, Undo2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,7 @@ import {
   voidTransferAction,
 } from "@/modules/transfers/actions/transfer.actions";
 import type { TransferWithLines } from "@/modules/transfers/services/transfer.service";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface TransferFormProps {
   stores: Store[];
@@ -58,6 +59,7 @@ export function TransferForm({
   initialTransferId,
   onComplete,
 }: TransferFormProps) {
+  const { t } = useTranslation();
   const [lifecyclePending, startLifecycle] = useTransition();
   const { run: runBackground } = useBackgroundMutation();
   const [loading, setLoading] = useState(!!initialTransferId);
@@ -89,7 +91,10 @@ export function TransferForm({
   const removeLineRef = useRef<(lineId: string) => void>(() => {});
   const updateLineQtyRef = useRef<(lineId: string, qty: number) => void>(() => {});
   const { push: pushUndo, undo: undoLast, clear: clearUndo } = useUndoStack();
-  transferRef.current = transfer;
+
+  useEffect(() => {
+    transferRef.current = transfer;
+  }, [transfer]);
 
   useEffect(() => {
     if (!initialTransferId) return;
@@ -127,16 +132,16 @@ export function TransferForm({
         toast.error(result.error);
         return;
       }
-      const t = result.data;
+      const transferDraft = result.data;
       setTransfer({
-        ...t,
+        ...transferDraft,
         lines: [],
         fromStoreName: stores.find((s) => s.id === fromStoreId)?.name ?? "",
         toStoreName: stores.find((s) => s.id === toStoreId)?.name ?? "",
         fromWarehouseName: warehouses.find((w) => w.id === fromWarehouseId)?.name ?? "",
         toWarehouseName: warehouses.find((w) => w.id === toWarehouseId)?.name ?? "",
       });
-      toast.success("تم إنشاء مسودة التحويل");
+      toast.success(t("Transfer draft created"));
     });
   };
 
@@ -238,7 +243,7 @@ export function TransferForm({
     })();
   };
 
-  const removeLine = (lineId: string) => {
+  const removeLine = useCallback((lineId: string) => {
     if (!transfer) return;
     const removed = transfer.lines.find((l) => l.id === lineId);
     snapshotRef.current = transfer;
@@ -294,9 +299,9 @@ export function TransferForm({
         toast.error(result.error);
       }
     })();
-  };
+  }, [pushUndo, transfer]);
 
-  const updateLineQty = (lineId: string, qty: number) => {
+  const updateLineQty = useCallback((lineId: string, qty: number) => {
     if (!transfer || qty <= 0 || lineId.startsWith("temp-")) return;
     snapshotRef.current = transfer;
     setTransfer({
@@ -321,16 +326,18 @@ export function TransferForm({
         };
       });
     })();
-  };
+  }, [transfer]);
 
-  removeLineRef.current = removeLine;
-  updateLineQtyRef.current = updateLineQty;
+  useEffect(() => {
+    removeLineRef.current = removeLine;
+    updateLineQtyRef.current = updateLineQty;
+  }, [removeLine, updateLineQty]);
 
   useOperatorShortcuts({
     enabled: transfer?.status === "draft",
     onSave: () => {
       if (!transfer || transfer.status !== "draft") return;
-      toast.success("المسودة محفوظة — البنود بتتسجل تلقائي");
+      toast.success(t("Draft saved. Items are saved automatically."));
       onComplete();
     },
     onDelete: () => {
@@ -339,7 +346,7 @@ export function TransferForm({
       if (last) removeLine(last.id);
     },
     onUndo: () => {
-      if (!undoLast()) toast.message("مفيش خطوة للتراجع");
+      if (!undoLast()) toast.message(t("Nothing to undo"));
     },
   });
 
@@ -348,13 +355,13 @@ export function TransferForm({
     const transferId = transfer.id;
     runBackground({
       key: backgroundMutationKey("transfer", "send", transferId),
-      label: "جاري إرسال التحويل…",
+      label: t("Sending transfer…"),
       execute: async () => {
         const result = await sendTransferAction(transferId);
         if (!result.ok) throw new Error(result.error);
         return result;
       },
-      successMessage: "تم إرسال التحويل",
+      successMessage: t("Transfer sent"),
       onSuccess: () => {
         refreshTransfer(transferId);
       },
@@ -367,13 +374,13 @@ export function TransferForm({
     onComplete();
     runBackground({
       key: backgroundMutationKey("transfer", "receive", transferId),
-      label: "جاري استلام التحويل…",
+      label: t("Receiving transfer…"),
       execute: async () => {
         const result = await receiveTransferAction(transferId);
         if (!result.ok) throw new Error(result.error);
         return result;
       },
-      successMessage: "تم استلام التحويل",
+      successMessage: t("Transfer received"),
     });
   };
 
@@ -384,7 +391,7 @@ export function TransferForm({
       toast.error(result.error);
       throw new Error(result.error);
     }
-    toast.success("تم حذف التحويل");
+    toast.success(t("Transfer deleted"));
     clearUndo();
     onComplete();
   };
@@ -421,7 +428,7 @@ export function TransferForm({
         toast.error(result.error);
         return;
       }
-      toast.success("تم تحديث الفروع");
+      toast.success(t("Branches updated"));
     })();
   };
 
@@ -432,29 +439,29 @@ export function TransferForm({
       toast.error(result.error);
       throw new Error(result.error);
     }
-    toast.success("تم إلغاء التحويل - تم عكس المخزون");
+    toast.success(t("Transfer cancelled and stock reversed"));
     onComplete();
   };
 
   if (loading) {
     return (
-      <OperationalCard title="جاري تحميل التحويل…">
-        <p className="text-sm text-muted-foreground">برجاء الانتظار</p>
+      <OperationalCard title={t("Loading transfer…")}>
+        <p className="text-sm text-muted-foreground">{t("Please wait")}</p>
       </OperationalCard>
     );
   }
 
   if (!transfer) {
     return (
-      <div className="flex flex-col gap-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
+      <div className="flex flex-col gap-4 pb-16 lg:pb-12">
         <OperationalCard
           accent="var(--mds-color-action-primary)"
-          title="تحويل جديد"
-          description="حدد الفروع والمخازن — الأزرار ثابتة تحت"
+          title={t("New transfer")}
+          description={t("Select branches and warehouses. Actions stay available below.")}
         >
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>من فرع</Label>
+              <Label>{t("From branch")}</Label>
               <Select
                 value={fromStoreId}
                 onValueChange={(v) => {
@@ -478,7 +485,7 @@ export function TransferForm({
               </Select>
               <Select value={fromWarehouseId} onValueChange={(v) => setFromWarehouseId(v ?? "")}>
                 <SelectTrigger className="min-h-11 w-full">
-                  <SelectValue placeholder="من مخزن">
+                  <SelectValue placeholder={t("From warehouse")}>
                     {(value) => selectLabelById(warehouses, value, (w) => w.name)}
                   </SelectValue>
                 </SelectTrigger>
@@ -492,7 +499,7 @@ export function TransferForm({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>إلى فرع</Label>
+              <Label>{t("To branch")}</Label>
               <Select
                 value={toStoreId}
                 onValueChange={(v) => {
@@ -516,7 +523,7 @@ export function TransferForm({
               </Select>
               <Select value={toWarehouseId} onValueChange={(v) => setToWarehouseId(v ?? "")}>
                 <SelectTrigger className="min-h-11 w-full">
-                  <SelectValue placeholder="إلى مخزن">
+                  <SelectValue placeholder={t("To warehouse")}>
                     {(value) => selectLabelById(warehouses, value, (w) => w.name)}
                   </SelectValue>
                 </SelectTrigger>
@@ -532,17 +539,17 @@ export function TransferForm({
           </div>
           <EmptyStateBlock
             className="mt-6"
-            title="لسه مفيش أصناف"
-            description="بعد فتح المسودة هتقدر تضيف الأصناف في نفس الشاشة"
+            title={t("No items yet")}
+            description={t("Open the draft to add items on this screen.")}
           />
         </OperationalCard>
-        <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-border/60 bg-background/95 px-3 py-2.5 backdrop-blur-xl md:bottom-0 md:pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pt-3 lg:ps-64">
+        <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-border/60 bg-background/95 px-3 py-2.5 backdrop-blur-xl lg:bottom-0 lg:pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:ps-64 lg:pt-3">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
-            <p className="text-sm text-muted-foreground">تحويل جديد</p>
+            <p className="text-sm text-muted-foreground">{t("New transfer")}</p>
             <CompactActions>
-              <CompactAction label="إلغاء" icon={X} onClick={onComplete} />
+              <CompactAction label={t("Cancel")} icon={X} onClick={onComplete} />
               <CompactAction
-                label="فتح التحويل"
+                label={t("Open transfer")}
                 icon={Plus}
                 variant="default"
                 disabled={
@@ -567,20 +574,20 @@ export function TransferForm({
   const canVoid = isSent || isReceived;
 
   return (
-    <div className="flex flex-col gap-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
+    <div className="flex flex-col gap-4 pb-16 lg:pb-12">
       <OperationalCard
         accent="var(--mds-color-action-primary)"
         title={`${transfer.fromStoreName} → ${transfer.toStoreName}`}
         description={
           isDraft
-            ? "مسودة تحويل — الرأس والأصناف ظاهرة · الأزرار ثابتة تحت"
-            : `الحالة: ${transfer.status} · ${transfer.fromWarehouseName} → ${transfer.toWarehouseName}`
+            ? t("Transfer draft with details and items. Actions stay available below.")
+            : `${t("Status")}: ${t(transfer.status)} · ${transfer.fromWarehouseName} → ${transfer.toWarehouseName}`
         }
       >
         {isDraft && (
           <div className="mb-4 grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>من فرع</Label>
+              <Label>{t("From branch")}</Label>
               <Select
                 value={fromStoreId}
                 onValueChange={(v) => {
@@ -618,7 +625,7 @@ export function TransferForm({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>إلى فرع</Label>
+              <Label>{t("To branch")}</Label>
               <div className="flex flex-row flex-wrap items-end gap-2">
                 <Select
                   value={toStoreId}
@@ -668,7 +675,7 @@ export function TransferForm({
                       toWarehouseId === transfer.to_warehouse_id)
                   }
                 >
-                  حفظ
+                  {t("Save")}
                 </Button>
               </div>
             </div>
@@ -678,7 +685,7 @@ export function TransferForm({
           <div className="flex flex-row flex-wrap items-center gap-2">
             <Select value={productId} onValueChange={(v) => setProductId(v ?? "")}>
               <SelectTrigger className="h-11 min-w-0 flex-1 sm:h-9 sm:min-w-48 sm:flex-none sm:w-auto">
-                <SelectValue placeholder="المنتج">
+                <SelectValue placeholder={t("Product")}>
                   {(value) => selectLabelById(products, value, (p) => p.name)}
                 </SelectValue>
               </SelectTrigger>
@@ -698,7 +705,7 @@ export function TransferForm({
               className="h-11 w-20 sm:h-9 sm:w-24"
             />
             <CompactAction
-              label="إضافة"
+              label={t("Add")}
               icon={Plus}
               variant="default"
               disabled={!productId || !transfer}
@@ -707,14 +714,14 @@ export function TransferForm({
           </div>
         )}
         <div className="mt-4 space-y-2 border-t border-border/60 pt-4">
-          <h3 className="text-sm font-semibold">الأصناف ({transfer.lines.length})</h3>
+          <h3 className="text-sm font-semibold">{t("Items")} ({transfer.lines.length})</h3>
           {transfer.lines.length === 0 ? (
             <EmptyStateBlock
-              title="مفيش أصناف في التحويل"
+              title={t("No items in this transfer")}
               description={
                 isDraft
-                  ? "اختَر منتج وكمية من فوق عشان تضيف بند."
-                  : "التحويل بدون بنود."
+                  ? t("Select a product and quantity above to add an item.")
+                  : t("This transfer has no items.")
               }
             />
           ) : (
@@ -738,7 +745,7 @@ export function TransferForm({
                         }}
                       />
                     ) : (
-                      <span className="font-medium">{line.quantity_sent} وحدة</span>
+                      <span className="font-medium">{line.quantity_sent} {t("units")}</span>
                     )}
                     {isDraft && (
                       <Button
@@ -757,10 +764,10 @@ export function TransferForm({
         </div>
       </OperationalCard>
 
-      <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-border/60 bg-background/95 px-3 py-2.5 backdrop-blur-xl md:bottom-0 md:pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pt-3 lg:ps-64">
+      <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-border/60 bg-background/95 px-3 py-2.5 backdrop-blur-xl lg:bottom-0 lg:pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:ps-64 lg:pt-3">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
           <div className="min-w-0 shrink">
-            <p className="text-xs text-muted-foreground sm:text-sm">{transfer.lines.length} بند</p>
+            <p className="text-xs text-muted-foreground sm:text-sm">{transfer.lines.length} {t("items")}</p>
             <p className="truncate text-sm text-muted-foreground">
               {transfer.fromWarehouseName} → {transfer.toWarehouseName}
             </p>
@@ -770,23 +777,23 @@ export function TransferForm({
           {isDraft ? (
             <>
               <CompactAction
-                label="حفظ مؤقت"
+                label={t("Save draft")}
                 icon={Check}
                 shortcut={OPERATOR_SHORTCUTS.save}
                 onClick={() => {
-                  toast.success("المسودة محفوظة — البنود بتتسجل تلقائي");
+                  toast.success(t("Draft saved. Items are saved automatically."));
                   onComplete();
                 }}
               />
               <CompactAction
-                label="إرسال التحويل"
+                label={t("Send transfer")}
                 icon={ArrowRight}
                 variant="default"
                 disabled={lifecyclePending || transfer.lines.length === 0}
                 onClick={send}
               />
               <CompactAction
-                label="حذف المسودة"
+                label={t("Delete draft")}
                 icon={Trash2}
                 variant="destructive"
                 disabled={lifecyclePending}
@@ -797,14 +804,14 @@ export function TransferForm({
           {isSent ? (
             <>
               <CompactAction
-                label="الاستلام في الوجهة"
+                label={t("Receive at destination")}
                 icon={PackageCheck}
                 variant="default"
                 disabled={lifecyclePending}
                 onClick={receive}
               />
               <CompactAction
-                label="إلغاء الإرسال"
+                label={t("Cancel sending")}
                 icon={Undo2}
                 disabled={lifecyclePending}
                 onClick={() => setConfirmVoid(true)}
@@ -813,14 +820,14 @@ export function TransferForm({
           ) : null}
           {canVoid && isReceived ? (
             <CompactAction
-              label="إلغاء التحويل"
+              label={t("Cancel transfer")}
               icon={Undo2}
               disabled={lifecyclePending}
               onClick={() => setConfirmVoid(true)}
             />
           ) : null}
           <CompactAction
-            label={isCancelled ? "رجوع" : "تم"}
+            label={isCancelled ? t("Back") : t("Done")}
             icon={isCancelled ? X : Check}
             onClick={onComplete}
           />
@@ -831,9 +838,9 @@ export function TransferForm({
       <ConfirmActionDialog
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
-        title="حذف مسودة التحويل؟"
-        description="سيتم حذف التحويل وكل البنود نهائيًا. لم يتم تحريك أي مخزون بعد."
-        confirmLabel="حذف"
+        title={t("Delete transfer draft?")}
+        description={t("The transfer and all items will be deleted permanently. No stock has moved yet.")}
+        confirmLabel={t("Delete")}
         destructive
         onConfirm={handleDeleteDraft}
       />
@@ -841,9 +848,9 @@ export function TransferForm({
       <ConfirmActionDialog
         open={confirmVoid}
         onOpenChange={setConfirmVoid}
-        title={isSent ? "إلغاء تحويل مرسل؟" : "إلغاء تحويل مستلم؟"}
-        description="سيتم عكس مستويات المخزون لإلغاء هذا التحويل. لا يمكن التراجع عن ذلك."
-        confirmLabel="إلغاء وعكس المخزون"
+        title={isSent ? t("Cancel sent transfer?") : t("Cancel received transfer?")}
+        description={t("Stock levels will be reversed to cancel this transfer. This cannot be undone.")}
+        confirmLabel={t("Cancel and reverse stock")}
         destructive
         onConfirm={handleVoid}
       />

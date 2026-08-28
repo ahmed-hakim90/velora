@@ -7,9 +7,9 @@ import {
 
 describe("sanitizeOgText", () => {
   it("returns fallback for empty values", () => {
-    expect(sanitizeOgText("")).toBe("منيو أونلاين");
-    expect(sanitizeOgText("   ")).toBe("منيو أونلاين");
-    expect(sanitizeOgText(null)).toBe("منيو أونلاين");
+    expect(sanitizeOgText("")).toBe("اطلب أونلاين");
+    expect(sanitizeOgText("   ")).toBe("اطلب أونلاين");
+    expect(sanitizeOgText(null)).toBe("اطلب أونلاين");
   });
 
   it("keeps pure Arabic and Latin names", () => {

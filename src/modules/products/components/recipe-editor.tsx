@@ -23,6 +23,7 @@ import {
   saveRecipeAction,
 } from "@/modules/products/actions/recipe.actions";
 import { toast } from "sonner";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface RecipeLineDraft {
   ingredient_product_id: string;
@@ -47,6 +48,7 @@ export function RecipeEditor({
   salePrice,
   onSaved,
 }: RecipeEditorProps) {
+  const { t } = useTranslation();
   const [ingredients, setIngredients] = useState<Product[]>([]);
   const [lines, setLines] = useState<RecipeLineDraft[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,7 +77,7 @@ export function RecipeEditor({
           setLines([{ ingredient_product_id: "", quantity: 1, unit: "piece" }]);
         }
       } catch {
-        if (!cancelled) toast.error("تعذر تحميل الوصفة");
+        if (!cancelled) toast.error(t("Could not load recipe"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -84,7 +86,7 @@ export function RecipeEditor({
     return () => {
       cancelled = true;
     };
-  }, [product.id, variantId]);
+  }, [product.id, variantId, t]);
 
   const recipeCost = lines.reduce((sum, line) => {
     const ing = ingredients.find((i) => i.id === line.ingredient_product_id);
@@ -129,35 +131,35 @@ export function RecipeEditor({
       (l) => l.ingredient_product_id && l.quantity > 0
     );
     if (valid.length === 0) {
-      toast.error("أضف مكوّن واحد على الأقل");
+      toast.error(t("Add at least one ingredient"));
       return;
     }
     setSaving(true);
     try {
       await saveRecipeAction(product.id, valid, variantId ?? null);
-      toast.success("تم حفظ الوصفة");
+      toast.success(t("Recipe saved"));
       onSaved?.();
     } catch {
-      toast.error("تعذر حفظ الوصفة");
+      toast.error(t("Could not save recipe"));
     } finally {
       setSaving(false);
     }
   }
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">جاري تحميل الوصفة…</p>;
+    return <p className="text-sm text-muted-foreground">{t("Loading recipe…")}</p>;
   }
 
   return (
     <div className="grid gap-4">
       {variantLabel ? (
-        <p className="text-sm text-muted-foreground">وصفة {variantLabel}</p>
+        <p className="text-sm text-muted-foreground">{t("Recipe")} {variantLabel}</p>
       ) : null}
       <div className="space-y-3">
         {lines.map((line, index) => (
           <div key={index} className="grid gap-2 rounded-lg border p-3 sm:grid-cols-[1fr_100px_120px_auto]">
             <div className="grid gap-1">
-              <Label className="text-xs">المكوّن</Label>
+              <Label className="text-xs">{t("Ingredient")}</Label>
               <Select
                 value={line.ingredient_product_id}
                 onValueChange={(v) =>
@@ -165,7 +167,7 @@ export function RecipeEditor({
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="اختار مكوّن">
+                  <SelectValue placeholder={t("Select an ingredient")}>
                     {(value) => selectLabelById(ingredients, value, (ing) => ing.name)}
                   </SelectValue>
                 </SelectTrigger>
@@ -179,7 +181,7 @@ export function RecipeEditor({
               </Select>
             </div>
             <div className="grid gap-1">
-              <Label className="text-xs">الكمية</Label>
+              <Label className="text-xs">{t("Quantity")}</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -191,7 +193,7 @@ export function RecipeEditor({
               />
             </div>
             <div className="grid gap-1">
-              <Label className="text-xs">الوحدة</Label>
+              <Label className="text-xs">{t("Unit")}</Label>
               <Select
                 value={line.unit}
                 onValueChange={(v) =>
@@ -231,32 +233,32 @@ export function RecipeEditor({
 
       <Button type="button" variant="outline" size="sm" onClick={addLine}>
         <Plus className="size-4" />
-        إضافة مكوّن
+        {t("Add ingredient")}
       </Button>
 
       <div className="rounded-lg bg-muted/50 p-4 text-sm">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <div>
-            <p className="text-muted-foreground">تكلفة الوصفة</p>
+            <p className="text-muted-foreground">{t("Recipe cost")}</p>
             <p className="font-semibold">{formatCurrency(recipeCost, currency)}</p>
           </div>
           <div>
-            <p className="text-muted-foreground">سعر البيع</p>
+            <p className="text-muted-foreground">{t("Sale price")}</p>
             <p className="font-semibold">{formatCurrency(price, currency)}</p>
           </div>
           <div>
-            <p className="text-muted-foreground">الربح</p>
+            <p className="text-muted-foreground">{t("Profit")}</p>
             <p className="font-semibold">{formatCurrency(profit, currency)}</p>
           </div>
           <div>
-            <p className="text-muted-foreground">الهامش</p>
+            <p className="text-muted-foreground">{t("Margin")}</p>
             <p className="font-semibold">{margin.toFixed(1)}%</p>
           </div>
         </div>
       </div>
 
       <Button type="button" onClick={handleSave} disabled={saving}>
-        {saving ? "جاري الحفظ…" : "حفظ الوصفة"}
+        {saving ? t("Saving…") : t("Save recipe")}
       </Button>
     </div>
   );

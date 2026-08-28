@@ -77,7 +77,7 @@ export function CloseSessionStepper({
           : "rounded-[var(--mds-radius-lg)] border border-border bg-card p-4 shadow-[var(--mds-elevation-1)] sm:p-[var(--mds-space-6)]"
       )}
     >
-      <div className="mb-4 flex gap-1 sm:mb-[var(--mds-space-6)]">
+      <div className={cn("flex gap-1", embedded ? "mb-2" : "mb-4 sm:mb-[var(--mds-space-6)]")}>
         {STEPS.map((label, i) => (
           <div
             key={label}
@@ -91,16 +91,16 @@ export function CloseSessionStepper({
       </div>
 
       {step === 0 && (
-        <div className="space-y-4">
+        <div className={cn(embedded ? "space-y-2.5" : "space-y-4")}>
           <div className="space-y-1">
-            <h3 className="font-heading text-lg font-semibold">ملخص الجلسة</h3>
-            <p className="text-sm text-muted-foreground">الكاشير: {cashierName}</p>
-            <p className="text-sm text-muted-foreground">
+            <h3 className={cn("font-heading font-semibold", embedded ? "text-base" : "text-lg")}>ملخص الجلسة</h3>
+            <p className={cn("text-muted-foreground", embedded ? "text-xs" : "text-sm")}>الكاشير: {cashierName}</p>
+            <p className={cn("text-muted-foreground", embedded ? "text-xs" : "text-sm")}>
               تم الفتح {new Date(session.opened_at).toLocaleString()}
             </p>
           </div>
 
-          <dl className="space-y-2 rounded-xl border border-border/60 bg-muted/30 p-3 text-sm">
+          <dl className={cn("rounded-xl border border-border/60 bg-muted/30 text-sm", embedded ? "space-y-1.5 p-2.5" : "space-y-2 p-3")}>
             <div className="flex justify-between">
               <dt className="text-muted-foreground">رصيد الافتتاح</dt>
               <dd className="tabular-nums">{formatCurrency(reconciliation.openingCash)}</dd>
@@ -139,16 +139,16 @@ export function CloseSessionStepper({
             (مش بيتضاف على رصيد بداية الوردية الجاية لوحده).
           </p>
 
-          <div className="space-y-2">
-            <p className="text-sm font-medium">مصروفات الجلسة</p>
+          <div className={cn(embedded ? "space-y-1" : "space-y-2")}>
+            <p className="text-xs font-medium">مصروفات الجلسة</p>
             {sessionExpenses.length === 0 ? (
               <p className="text-sm text-muted-foreground">لا توجد مصروفات مسجلة</p>
             ) : (
-              <ul className="max-h-40 space-y-2 overflow-y-auto">
+              <ul className={cn("overflow-y-auto", embedded ? "max-h-24 space-y-1" : "max-h-40 space-y-2")}>
                 {sessionExpenses.map((e) => (
                   <li
                     key={e.id}
-                    className="rounded-[var(--mds-radius-sm)] bg-muted/50 px-[var(--mds-space-3)] py-[var(--mds-space-2)] text-sm"
+                    className={cn("rounded-[var(--mds-radius-sm)] bg-muted/50 text-sm", embedded ? "px-2 py-1.5" : "px-[var(--mds-space-3)] py-[var(--mds-space-2)]")}
                   >
                     <div className="flex justify-between gap-2">
                       <span className="font-medium">{e.title}</span>
@@ -169,13 +169,13 @@ export function CloseSessionStepper({
       )}
 
       {step === 1 && (
-        <div className="space-y-4">
-          <h3 className="font-heading text-lg font-semibold">عدّ النقدية وتأكيد الإغلاق</h3>
-          <p className="text-sm text-muted-foreground">
+        <div className={cn(embedded ? "space-y-2.5" : "space-y-4")}>
+          <h3 className={cn("font-heading font-semibold", embedded ? "text-base" : "text-lg")}>عدّ النقدية وتأكيد الإغلاق</h3>
+          <p className="text-xs text-muted-foreground">
             المتوقع {formatCurrency(reconciliation.expectedCash)}
           </p>
-          <div className="space-y-2">
-            <Label htmlFor="actual-cash">المبلغ في الدرج</Label>
+          <div className={cn(embedded ? "grid grid-cols-[minmax(0,1fr)_8rem] items-center gap-2" : "space-y-2")}>
+            <Label htmlFor="actual-cash" className={embedded ? "text-xs" : undefined}>المبلغ في الدرج</Label>
             <Input
               id="actual-cash"
               type="number"
@@ -183,14 +183,15 @@ export function CloseSessionStepper({
               step="0.01"
               value={actualCash}
               onChange={(e) => setActualCash(e.target.value)}
-              className="h-12 rounded-[var(--mds-radius-md)] text-lg"
+              className={cn("rounded-[var(--mds-radius-md)]", embedded ? "h-11 text-sm" : "h-12 text-lg")}
               placeholder="0.00"
             />
           </div>
           {actualCash ? (
             <p
               className={cn(
-                "text-2xl font-bold tabular-nums",
+                "font-bold tabular-nums",
+                embedded ? "text-lg" : "text-2xl",
                 variance === 0
                   ? "text-emerald-600"
                   : variance > 0
@@ -202,14 +203,14 @@ export function CloseSessionStepper({
               {formatCurrency(variance)}
             </p>
           ) : null}
-          <div className="space-y-2">
-            <Label htmlFor="notes">ملاحظات (اختياري)</Label>
+          <div className={cn(embedded ? "space-y-1" : "space-y-2")}>
+            <Label htmlFor="notes" className={embedded ? "text-xs" : undefined}>ملاحظات (اختياري)</Label>
             <Textarea
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="rounded-[var(--mds-radius-md)]"
-              rows={3}
+              rows={embedded ? 2 : 3}
             />
           </div>
         </div>
@@ -217,9 +218,10 @@ export function CloseSessionStepper({
 
       <div
         className={cn(
-          "mt-6 flex items-center justify-between gap-3 sm:mt-[var(--mds-space-8)]",
+          "flex items-center justify-between gap-2",
+          embedded ? "mt-3" : "mt-6 sm:mt-[var(--mds-space-8)]",
           embedded &&
-            "sticky bottom-0 z-10 -mx-1 border-t border-border/60 bg-background/95 px-1 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80"
+            "sticky bottom-0 z-10 -mx-1 border-t border-border/60 bg-background/95 px-1 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80"
         )}
       >
         <Button

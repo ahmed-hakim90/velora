@@ -115,4 +115,4 @@ export const OPERATOR_SHORTCUT_HINT = "F1 حفظ · F2 مسح · F3 تراجع";
 
 /** Arabic hint strip — POS (F1–F4 + F6–F7). */
 export const POS_OPERATOR_SHORTCUT_HINT =
-  "F1 دفع · F2 مسح · F3 تراجع · F4 تعليق · F6 عميل · F7 خصم";
+  " ";

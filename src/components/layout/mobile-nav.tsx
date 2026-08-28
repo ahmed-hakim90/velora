@@ -123,20 +123,20 @@ export function MobileNav({
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-[var(--mds-z-sticky)] border-t border-border/80 bg-card/95 shadow-[0_-4px_24px_rgb(15_23_42/0.06)] backdrop-blur-xl supports-[backdrop-filter]:bg-card/85 md:hidden"
+      className="fixed inset-x-0 bottom-0 z-[var(--mds-z-sticky)] border-t border-border/80 bg-card/95 shadow-[0_-4px_24px_rgb(15_23_42/0.06)] backdrop-blur-xl supports-[backdrop-filter]:bg-card/85 lg:hidden"
       aria-label={t("Navigation")}
     >
-      <ul className="mx-auto flex max-w-lg items-stretch justify-around px-1 pb-[env(safe-area-inset-bottom)] pt-1">
+      <ul className="mx-auto flex max-w-lg items-stretch justify-around px-1 pb-[env(safe-area-inset-bottom)] pt-0.5">
         {mobileItems.map((item, index) => {
           const active = isNavHrefActive(pathname, item.href, allHrefs);
           const Icon = iconMap[item.icon as keyof typeof iconMap] ?? LayoutDashboard;
           return (
-            <li key={`${item.href}-${index}`} className="flex-1">
+            <li key={`${item.href}-${index}`} className="min-w-0 flex-1">
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex min-h-[52px] touch-manipulation flex-col items-center justify-center gap-0.5 rounded-[var(--mds-radius-md)] px-1 py-1.5 text-[10px] transition-colors",
+                  "flex min-h-12 min-w-0 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-[var(--mds-radius-md)] px-1 py-1 text-[10px] transition-colors",
                   active
                     ? "font-semibold text-primary"
                     : "font-medium text-muted-foreground active:text-foreground"
@@ -144,13 +144,13 @@ export function MobileNav({
               >
                 <span
                   className={cn(
-                    "flex size-8 items-center justify-center rounded-full transition-all",
+                    "flex size-7 items-center justify-center rounded-full transition-all",
                     active
                       ? "bg-[var(--mds-color-harbor-50)] text-[var(--mds-color-action-primary)] ring-1 ring-[var(--mds-color-action-primary)]/20 dark:bg-primary/15"
                       : ""
                   )}
                 >
-                  <Icon className="size-[20px]" strokeWidth={active ? 2.25 : 2} />
+                  <Icon className="size-[19px]" strokeWidth={active ? 2.25 : 2} />
                 </span>
                 <span className="max-w-full truncate leading-none">{t(item.label)}</span>
               </Link>
@@ -158,7 +158,7 @@ export function MobileNav({
           );
         })}
 
-        <li className="flex-1">
+        <li className="min-w-0 flex-1">
           <button
             type="button"
             onClick={openMobileNavSheet}
@@ -166,7 +166,7 @@ export function MobileNav({
             aria-controls="mobile-nav-sheet"
             aria-label={t("More")}
             className={cn(
-              "flex min-h-[52px] w-full touch-manipulation flex-col items-center justify-center gap-0.5 rounded-[var(--mds-radius-md)] px-1 py-1.5 text-[10px] transition-colors",
+              "flex min-h-12 w-full min-w-0 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-[var(--mds-radius-md)] px-1 py-1 text-[10px] transition-colors",
               moreActive
                 ? "font-semibold text-primary"
                 : "font-medium text-muted-foreground active:text-foreground"
@@ -174,13 +174,13 @@ export function MobileNav({
           >
             <span
               className={cn(
-                "flex size-8 items-center justify-center rounded-full transition-all",
+                "flex size-7 items-center justify-center rounded-full transition-all",
                 moreActive
                   ? "bg-[var(--mds-color-harbor-50)] text-[var(--mds-color-action-primary)] ring-1 ring-[var(--mds-color-action-primary)]/20 dark:bg-primary/15"
                   : ""
               )}
             >
-              <Ellipsis className="size-[20px]" strokeWidth={moreActive ? 2.25 : 2} />
+              <Ellipsis className="size-[19px]" strokeWidth={moreActive ? 2.25 : 2} />
             </span>
             <span className="leading-none">{t("More")}</span>
           </button>

@@ -9,6 +9,7 @@ import {
 } from "@/modules/sessions/services/session-lifecycle.service";
 import { getSessionSettings } from "@/modules/system/services/settings.service";
 import type { CashierSession } from "@/lib/types";
+import { LocalizedText } from "@/components/Velora/localized-text";
 
 interface ActiveSessionsWidgetProps {
   sessions: CashierSession[];
@@ -28,17 +29,17 @@ export async function ActiveSessionsWidget({
   return (
     <div className="rounded-[var(--mds-radius-lg)] border border-border bg-card p-[var(--mds-space-5)] text-card-foreground shadow-[var(--mds-elevation-1)]">
       <div className="mb-[var(--mds-space-4)] flex items-center justify-between">
-        <h3 className="font-heading text-sm font-semibold">الجلسات المفتوحة</h3>
+        <h3 className="font-heading text-sm font-semibold"><LocalizedText text="Open sessions" /></h3>
         <Link
           href="/sessions"
           className="text-xs font-medium text-primary hover:underline"
         >
-          إدارة
+          <LocalizedText text="Manage" />
         </Link>
       </div>
       {sessions.length === 0 ? (
         <EmptyStateBlock
-          title="مفيش جلسات مفتوحة"
+          title="No open sessions"
           className="p-[var(--mds-space-4)]"
         />
       ) : (

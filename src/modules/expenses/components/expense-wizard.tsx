@@ -25,6 +25,7 @@ import {
   EXPENSE_PAYMENT_METHODS,
   EXPENSE_SOURCES,
 } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 import type {
   CostCenter,
   Expense,
@@ -56,6 +57,7 @@ interface ExpenseWizardProps {
   trigger?: React.ReactNode;
   defaultOpen?: boolean;
   onDone?: () => void;
+  onOpenChange?: (open: boolean) => void;
   /** When true: cash from open shift drawer. */
   sessionMode?: boolean;
 }
@@ -70,11 +72,17 @@ export function ExpenseWizard({
   trigger,
   defaultOpen = false,
   onDone,
+  onOpenChange,
   sessionMode = false,
 }: ExpenseWizardProps) {
   const [open, setOpen] = useState(defaultOpen);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+
+  function handleOpenChange(nextOpen: boolean) {
+    setOpen(nextOpen);
+    onOpenChange?.(nextOpen);
+  }
 
   const activeCenters = useMemo(
     () => costCenters.filter((c) => c.is_active),
@@ -219,9 +227,9 @@ export function ExpenseWizard({
   }
 
   const form = (
-    <div className="space-y-4">
+    <div className={cn(sessionMode ? "space-y-2.5" : "space-y-4")}>
       {sessionMode ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="rounded-lg border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs leading-relaxed text-muted-foreground">
           المصروف بيتخصم من درج الوردية المفتوحة (نقدي). شراء المخزون من{" "}
           <Link
             href="/inventory/purchases"
@@ -244,37 +252,39 @@ export function ExpenseWizard({
         </p>
       )}
 
-      <div className="space-y-2">
-        <Label htmlFor="expense-title">العنوان</Label>
-        <Input
-          id="expense-title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="h-11 rounded-xl"
-          placeholder="مثال: توصيل / أدوات نظافة"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="expense-amount">المبلغ</Label>
-        <Input
-          id="expense-amount"
-          type="number"
-          min={0}
-          step="0.01"
-          inputMode="decimal"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          className="h-11 rounded-xl text-base tabular-nums"
-        />
+      <div className={cn(sessionMode ? "grid grid-cols-[minmax(0,1fr)_7.5rem] gap-2" : "contents")}>
+        <div className={cn(sessionMode ? "space-y-1" : "space-y-2")}>
+          <Label htmlFor="expense-title" className={sessionMode ? "text-xs" : undefined}>العنوان</Label>
+          <Input
+            id="expense-title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className={cn("h-11", sessionMode ? "rounded-lg text-sm" : "rounded-xl")}
+            placeholder="مثال: توصيل / أدوات نظافة"
+          />
+        </div>
+        <div className={cn(sessionMode ? "space-y-1" : "space-y-2")}>
+          <Label htmlFor="expense-amount" className={sessionMode ? "text-xs" : undefined}>المبلغ</Label>
+          <Input
+            id="expense-amount"
+            type="number"
+            min={0}
+            step="0.01"
+            inputMode="decimal"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className={cn("h-11 text-base tabular-nums", sessionMode ? "rounded-lg text-sm" : "rounded-xl")}
+          />
+        </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="expense-category">التصنيف</Label>
+      <div className={cn(sessionMode ? "space-y-1" : "space-y-2")}>
+        <Label htmlFor="expense-category" className={sessionMode ? "text-xs" : undefined}>التصنيف</Label>
         <select
           id="expense-category"
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
-          className="flex h-11 w-full rounded-xl border border-input bg-background px-3 text-sm"
+          className={cn("flex h-11 w-full border border-input bg-background px-3 text-sm", sessionMode ? "rounded-lg" : "rounded-xl")}
         >
           <option value="">اختار التصنيف</option>
           {activeCenters.map((center) => {
@@ -345,21 +355,21 @@ export function ExpenseWizard({
         />
       ) : null}
 
-      <div className="space-y-2">
-        <Label htmlFor="expense-notes">ملاحظة (اختياري)</Label>
+      <div className={cn(sessionMode ? "space-y-1" : "space-y-2")}>
+        <Label htmlFor="expense-notes" className={sessionMode ? "text-xs" : undefined}>ملاحظة (اختياري)</Label>
         <Textarea
           id="expense-notes"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          className="rounded-xl"
+          className={cn(sessionMode ? "min-h-16 rounded-lg text-sm" : "rounded-xl")}
           rows={2}
         />
       </div>
 
-      <div className="flex gap-2 pt-1">
+      <div className={cn("flex gap-2", sessionMode ? "pt-0" : "pt-1")}>
         <Button
           type="button"
-          className="h-11 flex-1 rounded-xl"
+          className={cn("h-11 flex-1", sessionMode ? "rounded-lg" : "rounded-xl")}
           disabled={pending}
           onClick={handleSubmit}
         >
@@ -399,7 +409,7 @@ export function ExpenseWizard({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         {trigger !== undefined && isValidElement(trigger) ? (
           <DialogTrigger render={trigger} />
         ) : (
@@ -407,9 +417,9 @@ export function ExpenseWizard({
             إضافة مصروف
           </DialogTrigger>
         )}
-        <DialogContent className="max-h-[90dvh] overflow-y-auto rounded-2xl sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{expense ? "تعديل مصروف" : "إضافة مصروف"}</DialogTitle>
+        <DialogContent className={cn("overflow-y-auto rounded-2xl sm:max-w-md", sessionMode ? "max-h-[96dvh] gap-3 p-3 max-sm:max-w-[calc(100%-0.5rem)]" : "max-h-[90dvh]")}>
+          <DialogHeader className={sessionMode ? "text-start" : undefined}>
+            <DialogTitle className={sessionMode ? "text-base" : undefined}>{expense ? "تعديل مصروف" : "إضافة مصروف"}</DialogTitle>
           </DialogHeader>
           {form}
         </DialogContent>

@@ -57,6 +57,7 @@ import {
 } from "@/modules/products/lib/match-products";
 import { clampCountedQty, nextCountedQty } from "@/modules/stock-count/lib/counted-qty";
 import { playPosErrorSound, playPosScanSound, unlockPosAudio } from "@/modules/pos/lib/pos-sounds";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface StockCountWizardProps {
   count: StockCountWithLines;
@@ -90,6 +91,7 @@ export function StockCountWizard({
   barcodeScannerEnabled = true,
   onComplete,
 }: StockCountWizardProps) {
+  const { t } = useTranslation();
   const [pending, startTransition] = useTransition();
   const initialStep =
     count.status === "pending_approval" || count.status === "approved"
@@ -110,7 +112,10 @@ export function StockCountWizard({
   const countsRef = useRef(counts);
   const savedRef = useRef(counts);
   const skipSaveRef = useRef(true);
-  countsRef.current = counts;
+
+  useEffect(() => {
+    countsRef.current = counts;
+  }, [counts]);
 
   const productMap = useMemo(
     () => new Map(products.map((p) => [p.id, p])),
@@ -178,11 +183,11 @@ export function StockCountWizard({
     if (linesLocked) return;
     const timer = window.setTimeout(() => {
       void persistLines(countsRef.current).catch(() => {
-        toast.error("تعذر حفظ العد تلقائياً");
+        toast.error(t("Could not save the count automatically"));
       });
     }, 1200);
     return () => window.clearTimeout(timer);
-  }, [counts, linesLocked, persistLines]);
+  }, [counts, linesLocked, persistLines, t]);
 
   const setCountedQty = useCallback((productId: string, qty: number) => {
     setCounts((prev) => ({
@@ -198,15 +203,15 @@ export function StockCountWizard({
       const product = findProductByCode(products, code);
       if (!product) {
         playPosErrorSound();
-        toast.error("باركود غير معروف");
+        toast.error(t("Unknown barcode"));
         return;
       }
       if (!lineProductIds.has(product.id)) {
         playPosErrorSound();
         toast.error(
           product.track_inventory
-            ? "الصنف مش في الجرد ده"
-            : "الصنف من غير تتبع مخزون — فعّل التتبع من المنتجات"
+            ? t("This product is not in this count")
+            : t("This product does not track inventory. Enable tracking from Products.")
         );
         return;
       }
@@ -226,7 +231,7 @@ export function StockCountWizard({
         scanRef.current?.focus();
       });
     },
-    [lineProductIds, products]
+    [lineProductIds, products, t]
   );
 
   useEffect(() => {
@@ -270,9 +275,9 @@ export function StockCountWizard({
       try {
         await persistLines(countsRef.current);
         if (thenReview) setStep("review");
-        toast.success("تم حفظ العد");
+        toast.success(t("Count saved"));
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "تعذر الحفظ");
+        toast.error(e instanceof Error ? e.message : t("Could not save"));
       }
     });
   };
@@ -282,10 +287,10 @@ export function StockCountWizard({
       try {
         await persistLines(countsRef.current);
         await submitCountForApprovalAction(count.id);
-        toast.success("تم إرسال الجرد للاعتماد");
+        toast.success(t("Stock count sent for approval"));
         onComplete();
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "تعذر الإرسال للاعتماد");
+        toast.error(e instanceof Error ? e.message : t("Could not send for approval"));
       }
     });
   };
@@ -294,10 +299,10 @@ export function StockCountWizard({
     startTransition(async () => {
       try {
         await approveCountAction(count.id);
-        toast.success("تم اعتماد الجرد");
+        toast.success(t("Stock count approved"));
         onComplete();
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "تعذر الاعتماد");
+        toast.error(e instanceof Error ? e.message : t("Could not approve"));
       }
     });
   };
@@ -306,10 +311,10 @@ export function StockCountWizard({
     startTransition(async () => {
       try {
         await rejectCountApprovalAction(count.id);
-        toast.success("تم إرجاع الجرد للعد");
+        toast.success(t("Stock count returned for counting"));
         onComplete();
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "تعذر الإرجاع");
+        toast.error(e instanceof Error ? e.message : t("Could not return the count"));
       }
     });
   };
@@ -318,10 +323,10 @@ export function StockCountWizard({
     startTransition(async () => {
       try {
         await postCountAction(count.id);
-        toast.success("تم ترحيل الفروقات");
+        toast.success(t("Differences posted"));
         onComplete();
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "تعذر الترحيل");
+        toast.error(e instanceof Error ? e.message : t("Could not post differences"));
       }
     });
   };
@@ -336,7 +341,7 @@ export function StockCountWizard({
           "noopener,noreferrer"
         );
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "احفظ العد قبل الطباعة");
+        toast.error(e instanceof Error ? e.message : t("Save the count before printing"));
       }
     });
   };
@@ -344,25 +349,25 @@ export function StockCountWizard({
   if (step === "review" || linesLocked) {
     return (
       <OperationalCard
-        title="مراجعة الفروقات"
+        title={t("Review differences")}
         description={
           count.status === "pending_approval"
-            ? "بانتظار اعتماد المدير قبل الترحيل"
+            ? t("Waiting for manager approval before posting")
             : count.status === "approved"
-              ? "معتمد — جاهز لترحيل الفروقات"
-              : "أكد العد ثم أرسل للاعتماد قبل الترحيل"
+              ? t("Approved and ready to post differences")
+              : t("Confirm the count and send it for approval before posting")
         }
       >
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <StatusPill
-            label={`${varianceCount} فروقات`}
+            label={`${varianceCount} ${t("differences")}`}
             variant={varianceCount > 0 ? "warning" : "success"}
           />
           {count.status === "pending_approval" && (
-            <StatusPill label="بانتظار الاعتماد" variant="warning" />
+            <StatusPill label={t("Pending approval")} variant="warning" />
           )}
           {count.status === "approved" && (
-            <StatusPill label="معتمد" variant="success" />
+            <StatusPill label={t("Approved")} variant="success" />
           )}
         </div>
         <ul className="max-h-96 space-y-2 overflow-y-auto">
@@ -386,14 +391,14 @@ export function StockCountWizard({
             ))}
           {varianceCount === 0 && (
             <p className="py-8 text-center text-muted-foreground">
-              كل الكميات مطابقة للمتوقع
+              {t("All quantities match the expected stock")}
             </p>
           )}
         </ul>
         <div className="mt-6">
           <CompactActions className="justify-start">
           <CompactAction
-            label="طباعة"
+            label={t("Print")}
             icon={Printer}
             disabled={pending}
             onClick={openPrint}
@@ -401,13 +406,13 @@ export function StockCountWizard({
           {count.status === "in_progress" ? (
             <>
               <CompactAction
-                label="رجوع"
+                label={t("Back")}
                 icon={ArrowLeft}
                 disabled={pending}
                 onClick={() => setStep("count")}
               />
               <CompactAction
-                label="إرسال للاعتماد"
+                label={t("Send for approval")}
                 icon={Send}
                 variant="default"
                 disabled={pending}
@@ -418,13 +423,13 @@ export function StockCountWizard({
           {count.status === "pending_approval" && canApprove ? (
             <>
               <CompactAction
-                label="إرجاع للعد"
+                label={t("Return for counting")}
                 icon={RotateCcw}
                 disabled={pending}
                 onClick={rejectApproval}
               />
               <CompactAction
-                label="اعتماد الجرد"
+                label={t("Approve stock count")}
                 icon={ClipboardCheck}
                 variant="default"
                 disabled={pending}
@@ -434,21 +439,21 @@ export function StockCountWizard({
           ) : null}
           {count.status === "pending_approval" && !canApprove ? (
             <p className="text-sm text-muted-foreground">
-              بانتظار اعتماد المالك أو المدير قبل ترحيل الفروقات.
+              {t("Waiting for owner or manager approval before posting differences.")}
             </p>
           ) : null}
           {count.status === "approved" ? (
             <>
               {canApprove ? (
                 <CompactAction
-                  label="إرجاع للعد"
+                  label={t("Return for counting")}
                   icon={RotateCcw}
                   disabled={pending}
                   onClick={rejectApproval}
                 />
               ) : null}
               <CompactAction
-                label="ترحيل الفروقات"
+                label={t("Post differences")}
                 icon={Check}
                 variant="default"
                 disabled={pending}
@@ -476,19 +481,19 @@ export function StockCountWizard({
   const lastScanned = lastScannedId ? productMap.get(lastScannedId) : null;
   const saveLabel =
     saveState === "saving"
-      ? "جاري الحفظ…"
+      ? t("Saving…")
       : saveState === "saved"
-        ? "محفوظ"
+        ? t("Saved")
         : saveState === "error"
-          ? "فشل الحفظ"
-          : `${touchedCount} فرق · ${scannedUnits} وحدة`;
+          ? t("Save failed")
+          : `${touchedCount} ${t("differences")} · ${scannedUnits} ${t("units")}`;
 
   return (
-    <div className="space-y-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
+    <div className="space-y-4 pb-16 lg:pb-12">
       {barcodeScannerEnabled ? (
         <OperationalCard
-          title="عدّ بالسكانر"
-          description="امسح الباركود — كل مسحة بتزود 1. صفّر الأول لو هتعدّ من الصفر."
+          title={t("Count with scanner")}
+          description={t("Scan a barcode to add one. Reset first when counting from zero.")}
         >
           <form
             className="flex flex-col gap-3 sm:flex-row sm:items-end"
@@ -498,7 +503,7 @@ export function StockCountWizard({
             }}
           >
             <div className="min-w-0 flex-1 space-y-1.5">
-              <Label htmlFor="stock-count-scan">باركود الصنف</Label>
+              <Label htmlFor="stock-count-scan">{t("Product barcode")}</Label>
               <Input
                 ref={scanRef}
                 id="stock-count-scan"
@@ -506,19 +511,19 @@ export function StockCountWizard({
                 onChange={(e) => setScanCode(e.target.value)}
                 autoComplete="off"
                 autoFocus
-                placeholder="امسح هنا — الجهاز بيعدّ لوحده"
-                aria-label="مسح باركود الجرد"
+                placeholder={t("Scan here to count automatically")}
+                aria-label={t("Scan stock count barcode")}
                 className="h-12 font-mono text-base"
               />
             </div>
             <Button type="submit" className="h-12 shrink-0 sm:w-auto">
               <Barcode className="size-4" />
-              عدّ +1
+              {t("Count +1")}
             </Button>
           </form>
           {lastScanned ? (
             <p className="mt-3 text-sm">
-              آخر مسح:{" "}
+              {t("Last scan")}:{" "}
               <span className="font-medium">{lastScanned.name}</span>
               <span className="ms-2 tabular-nums text-muted-foreground">
                 → {counts[lastScanned.id] ?? 0}
@@ -529,25 +534,25 @@ export function StockCountWizard({
       ) : null}
 
       <DataTableShell
-        title={`عدّ الأصناف · ${count.lines.length} صنف`}
+        title={`${t("Count products")} · ${count.lines.length} ${t("items")}`}
         search={search}
-        searchPlaceholder="ابحث بالاسم أو الباركود أو الـ SKU…"
+        searchPlaceholder={t("Search by name, barcode, or SKU…")}
         onSearchChange={setSearch}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Select value={categoryId} onValueChange={(value) => setCategoryId(value ?? "all")}>
-              <SelectTrigger className="h-11 w-[min(100%,12rem)] sm:h-9" aria-label="قسم المنتجات">
-                <SelectValue placeholder="كل الأقسام">
+              <SelectTrigger className="h-11 w-[min(100%,12rem)] sm:h-9" aria-label={t("Product category")}>
+                <SelectValue placeholder={t("All categories")}>
                   {(value) =>
                     value === "all"
-                      ? "كل الأقسام"
+                      ? t("All categories")
                       : selectLabelById(categories, value, (c) => c.name)
                   }
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" label="كل الأقسام">
-                  كل الأقسام
+                <SelectItem value="all" label={t("All categories")}>
+                  {t("All categories")}
                 </SelectItem>
                 {categories.map((category) => (
                   <SelectItem key={category.id} value={category.id} label={category.name}>
@@ -563,7 +568,7 @@ export function StockCountWizard({
               onClick={zeroAllVisible}
               disabled={pending || filteredLines.length === 0}
             >
-              صفّر الظاهر وعدّ
+              {t("Reset visible and count")}
             </Button>
           </div>
         }
@@ -572,25 +577,25 @@ export function StockCountWizard({
           <EmptyStateBlock
             title={
               search.trim() || categoryId !== "all"
-                ? "لا نتائج للبحث"
+                ? t("No search results")
                 : trackedProductCount === 0
-                  ? "لا توجد منتجات بتتبع مخزون"
-                  : "لا توجد أصناف في هذا الجرد"
+                  ? t("No products track inventory")
+                  : t("No products in this count")
             }
             description={
               search.trim() || categoryId !== "all"
-                ? "جرّب اسم أو باركود تاني، أو غيّر القسم."
+                ? t("Try another name or barcode, or change the category.")
                 : trackedProductCount === 0
-                  ? "من شاشة المنتجات فعّل «تتبع المخزون» للأصناف اللي عايز تجردها، بعدين أعد تحميل الصفحة."
-                  : "حدّث الصفحة لإعادة مزامنة الأصناف المتتبَّعة مع الجرد."
+                  ? t("Enable inventory tracking for products, then reload the page.")
+                  : t("Reload the page to sync tracked products with this count.")
             }
           />
         ) : (
-          <div className="max-h-[50vh] overflow-y-auto">
+          <div className="max-h-[50dvh] overflow-y-auto">
             <ResponsiveListLayout
               mobile={filteredLines.map((line) => {
                 const product = productMap.get(line.product_id);
-                const name = product?.name ?? "صنف";
+                const name = product?.name ?? t("Product");
                 const unit = product ? formatUnit(product.unit) : "";
                 const counted = counts[line.product_id] ?? line.counted_qty;
                 const variance = counted - line.expected_qty;
@@ -606,13 +611,13 @@ export function StockCountWizard({
                       )}
                       fields={[
                         {
-                          label: "المتوقع",
+                          label: t("Expected"),
                           value: (
                             <span className="tabular-nums">{line.expected_qty}</span>
                           ),
                         },
                         {
-                          label: "الفرق",
+                          label: t("Difference"),
                           value: (
                             <span
                               className={
@@ -635,7 +640,7 @@ export function StockCountWizard({
                             type="button"
                             variant="outline"
                             className="size-11 shrink-0"
-                            aria-label={`نقص ${name}`}
+                            aria-label={`${t("Decrease")} ${name}`}
                             disabled={pending || counted <= 0}
                             onClick={() =>
                               setCountedQty(line.product_id, nextCountedQty(counted, -1))
@@ -649,7 +654,7 @@ export function StockCountWizard({
                             step="any"
                             inputMode="decimal"
                             className="h-11 flex-1 text-center tabular-nums"
-                            aria-label={`الرصيد الحالي لـ ${name}`}
+                            aria-label={`${t("Current count for")} ${name}`}
                             value={counted}
                             onChange={(e) =>
                               setCountedQty(
@@ -662,7 +667,7 @@ export function StockCountWizard({
                             type="button"
                             variant="outline"
                             className="size-11 shrink-0"
-                            aria-label={`زيادة ${name}`}
+                            aria-label={`${t("Increase")} ${name}`}
                             disabled={pending}
                             onClick={() =>
                               setCountedQty(line.product_id, nextCountedQty(counted, 1))
@@ -682,20 +687,20 @@ export function StockCountWizard({
                     <TableHeader className="sticky top-0 z-10 bg-card">
                       <TableRow className="hover:bg-transparent">
                         <TableHead className="h-10 text-xs font-semibold text-muted-foreground">
-                          المنتج
+                          {t("Product")}
                         </TableHead>
                         <TableHead className="h-10 text-end text-xs font-semibold text-muted-foreground">
-                          الرصيد المتاح
+                          {t("Expected stock")}
                         </TableHead>
                         <TableHead className="h-10 text-end text-xs font-semibold text-muted-foreground">
-                          الحالي
+                          {t("Current")}
                         </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredLines.map((line) => {
                         const product = productMap.get(line.product_id);
-                        const name = product?.name ?? "صنف";
+                        const name = product?.name ?? t("Product");
                         const unit = product ? formatUnit(product.unit) : "";
                         const counted = counts[line.product_id] ?? line.counted_qty;
                         const highlighted = lastScannedId === line.product_id;
@@ -723,7 +728,7 @@ export function StockCountWizard({
                                   variant="ghost"
                                   size="sm"
                                   className="size-9 shrink-0"
-                                  aria-label={`نقص ${name}`}
+                                  aria-label={`${t("Decrease")} ${name}`}
                                   disabled={pending || counted <= 0}
                                   onClick={() =>
                                     setCountedQty(
@@ -740,7 +745,7 @@ export function StockCountWizard({
                                   step="any"
                                   inputMode="decimal"
                                   className="h-9 w-20 text-center tabular-nums"
-                                  aria-label={`الرصيد الحالي لـ ${name}`}
+                                  aria-label={`${t("Current count for")} ${name}`}
                                   value={counted}
                                   onChange={(e) =>
                                     setCountedQty(
@@ -754,7 +759,7 @@ export function StockCountWizard({
                                   variant="ghost"
                                   size="sm"
                                   className="size-9 shrink-0"
-                                  aria-label={`زيادة ${name}`}
+                                  aria-label={`${t("Increase")} ${name}`}
                                   disabled={pending}
                                   onClick={() =>
                                     setCountedQty(
@@ -779,18 +784,18 @@ export function StockCountWizard({
         )}
       </DataTableShell>
 
-      <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-border/60 bg-background/95 px-3 py-2.5 backdrop-blur-xl md:bottom-0 md:pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pt-3 lg:ps-64">
+      <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-border/60 bg-background/95 px-3 py-2.5 backdrop-blur-xl lg:bottom-0 lg:pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:ps-64 lg:pt-3">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
           <p className="min-w-0 truncate text-sm text-muted-foreground">{saveLabel}</p>
           <CompactActions>
             <CompactAction
-              label="طباعة"
+              label={t("Print")}
               icon={Printer}
               disabled={pending}
               onClick={openPrint}
             />
             <CompactAction
-              label="مراجعة الفروقات"
+              label={t("Review differences")}
               icon={ClipboardList}
               variant="default"
               disabled={pending}

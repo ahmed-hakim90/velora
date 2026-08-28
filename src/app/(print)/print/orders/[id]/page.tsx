@@ -13,21 +13,33 @@ export default async function PrintOrderInvoicePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ variant?: string; embed?: string; hidePrices?: string }>;
+  searchParams: Promise<{
+    variant?: string;
+    embed?: string;
+    hidePrices?: string;
+    lang?: string;
+  }>;
 }) {
   const { id } = await params;
   const query = await searchParams;
   const auth = await requirePageAuth(`/print/orders/${id}`);
   if (!auth.ok) {
-    return <AccessDenied title={auth.denial.title} description={auth.denial.description} />;
+    return (
+      <AccessDenied
+        title={auth.denial.title}
+        description={auth.denial.description}
+      />
+    );
   }
   const user = auth.data;
   const order = await getOrder(id);
   if (!order) notFound();
-  const { branding, settings } = await getCommercialPrintContext(order.store_id);
+  const { branding, settings } = await getCommercialPrintContext(
+    order.store_id,
+  );
   const document = mapOrderToCommercialDocument(
     order,
-    query.variant === "delivery" ? { kind: "delivery_note" } : undefined
+    query.variant === "delivery" ? { kind: "delivery_note" } : undefined,
   );
   const template = resolvePrintTemplate(settings, document.kind);
   const qrDataUrl = template.fields.showQr
@@ -35,7 +47,8 @@ export default async function PrintOrderInvoicePage({
     : null;
   const hideMoney =
     query.hidePrices === "1" &&
-    (order.document_kind === "quotation" || order.document_kind === "sales_order");
+    (order.document_kind === "quotation" ||
+      order.document_kind === "sales_order");
 
   return (
     <CommercialDocumentView
@@ -46,6 +59,7 @@ export default async function PrintOrderInvoicePage({
       generatedAt={new Date().toISOString()}
       qrDataUrl={qrDataUrl}
       hideMoney={hideMoney}
+      language={query.lang === "en" ? "en" : "ar"}
     />
   );
 }

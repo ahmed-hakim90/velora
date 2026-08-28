@@ -5,10 +5,14 @@ import { ReceiptPrintServer } from "@/modules/pos/components/receipt-print-serve
 
 export default async function PrintReceiptPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ lang?: string }>;
 }) {
   const { id } = await params;
+  const { lang } = await searchParams;
+  const language = lang === "en" ? "en" : "ar";
   const order = await getOrder(id);
   if (!order) notFound();
   const branding = await getReportBranding(order.store_id);
@@ -17,7 +21,7 @@ export default async function PrintReceiptPage({
 
   return (
     <ReceiptPrintServer
-      documentLabel="ريسيت مبيعات"
+      documentLabel="Sales receipt"
       orderNumber={order.order_number}
       createdAt={order.created_at}
       items={order.items}
@@ -28,10 +32,11 @@ export default async function PrintReceiptPage({
       total={order.total}
       paymentStatus={order.payment_status}
       payments={order.payments}
-      partyLabel="العميل"
+      partyLabel="Customer"
       partyName={order.customerName}
       isDraft={order.document_status === "draft"}
       branding={branding}
+      language={language}
     />
   );
 }

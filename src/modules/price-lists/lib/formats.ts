@@ -19,7 +19,7 @@ export const PRICE_LIST_FORMATS: PriceListFormat[] = [
   },
   {
     id: "square",
-    label: "Facebook مربع",
+    label: "Facebook square",
     width: 1080,
     height: 1080,
     pixelRatio: 2,
@@ -33,7 +33,7 @@ export const PRICE_LIST_FORMATS: PriceListFormat[] = [
   },
   {
     id: "a4",
-    label: "A4 طباعة",
+    label: "A4 print",
     width: 794,
     height: 1123,
     pixelRatio: 3,
@@ -78,7 +78,7 @@ export type PriceListPrintPayload = {
   sectionTitle: string;
   footerText: string;
   showLogo: boolean;
-  /** Show offer prices as قبل (struck) + بعد on the poster. */
+  /** Show offer prices as before (struck) + after on the poster. */
   showOldPrice: boolean;
   /** Show weight/unit line under product name on the poster. */
   showUnitLine: boolean;

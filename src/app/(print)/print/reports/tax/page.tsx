@@ -1,6 +1,7 @@
 import { getTaxReportPageData } from "@/modules/reports/actions/tax-report.actions";
 import { PrintableDocument } from "@/modules/reports/components/printable-document";
 import { formatCurrency } from "@/lib/format";
+import { LocalizedText } from "@/components/Velora/localized-text";
 
 export default async function PrintTaxReportPage({
   searchParams,
@@ -14,7 +15,7 @@ export default async function PrintTaxReportPage({
   return (
     <PrintableDocument
       branding={data.context}
-      title="تقرير الضريبة"
+      title="Tax Report"
       dateRange={data.context.filterSummary}
       generatedBy={data.context.generatedBy}
       generatedAt={data.context.generatedAt}
@@ -23,19 +24,19 @@ export default async function PrintTaxReportPage({
       <table className="mb-6 w-full text-sm">
         <tbody>
           <tr className="border-b">
-            <td className="py-2 font-medium">الأساس الخاضع</td>
+            <td className="py-2 font-medium"><LocalizedText text="Taxable base" /></td>
             <td className="py-2 text-end tabular-nums">
               {formatCurrency(s.taxableBase, data.currency)}
             </td>
           </tr>
           <tr className="border-b">
-            <td className="py-2 font-medium">الضريبة المحصّلة</td>
+            <td className="py-2 font-medium"><LocalizedText text="Tax collected" /></td>
             <td className="py-2 text-end tabular-nums">
               {formatCurrency(s.taxCollected, data.currency)}
             </td>
           </tr>
           <tr className="border-b">
-            <td className="py-2 font-medium">إجمالي المبيعات</td>
+            <td className="py-2 font-medium"><LocalizedText text="Gross sales" /></td>
             <td className="py-2 text-end tabular-nums">
               {formatCurrency(s.grossSales, data.currency)}
             </td>
@@ -45,10 +46,10 @@ export default async function PrintTaxReportPage({
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b">
-            <th className="py-2 text-start">اليوم</th>
-            <th className="py-2 text-end">طلبات</th>
-            <th className="py-2 text-end">ضريبة</th>
-            <th className="py-2 text-end">إجمالي</th>
+            <th className="py-2 text-start"><LocalizedText text="Day" /></th>
+            <th className="py-2 text-end"><LocalizedText text="Orders" /></th>
+            <th className="py-2 text-end"><LocalizedText text="Tax" /></th>
+            <th className="py-2 text-end"><LocalizedText text="Total" /></th>
           </tr>
         </thead>
         <tbody>

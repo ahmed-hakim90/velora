@@ -119,11 +119,11 @@ describe("sidebar IA regroup", () => {
 
     expect(groupHrefs("owner", "Purchasing")).toEqual([
       "/purchasing",
+      "/inventory/suppliers",
       "/inventory/purchase-requests",
       "/inventory/purchase-orders",
       "/inventory/purchases",
       "/inventory/purchase-returns",
-      "/inventory/suppliers",
     ]);
 
     expect(groupHrefs("owner", "Products")).toEqual([

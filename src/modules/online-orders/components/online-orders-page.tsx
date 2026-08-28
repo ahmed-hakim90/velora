@@ -1,7 +1,14 @@
 "use client";
 
 import { useAppRouter as useRouter } from "@/hooks/use-app-router";
-import { useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import {
   ChevronDown,
   FileText,
@@ -38,16 +45,19 @@ import {
 } from "@/modules/online-orders/actions/online-order.actions";
 import { PaymentPanel } from "@/modules/pos/components/payment-panel";
 import { PosReceiptSuccessDialog } from "@/modules/pos/components/pos-receipt-success-dialog";
-import {
-  triggerReceiptPrint,
-} from "@/modules/pos/components/receipt-print";
+import { triggerReceiptPrint } from "@/modules/pos/components/receipt-print";
 import {
   buildWhatsAppReceiptUrl,
   normalizeWhatsAppPhone,
 } from "@/modules/pos/services/receipt-format.service";
 import { printReceiptViaUsb } from "@/modules/pos/services/receipt-usb-printer.service";
 import { buildReceiptPayloadFromOnlineOrder } from "@/modules/pos/utils/receipt-payload";
-import { playPosErrorSound, playPosNewOrderSound, playPosSuccessSound, unlockPosAudio } from "@/modules/pos/lib/pos-sounds";
+import {
+  playPosErrorSound,
+  playPosNewOrderSound,
+  playPosSuccessSound,
+  unlockPosAudio,
+} from "@/modules/pos/lib/pos-sounds";
 import type { ReceiptPayload } from "@/modules/pos/services/receipt-format.service";
 import type { ReportBranding } from "@/modules/reports/core/report-context";
 import type { PaymentMethod, PaymentSplit } from "@/lib/types";
@@ -57,6 +67,7 @@ import type {
 } from "@/modules/online-orders/services/online-order.service";
 import type { OnlineOrderStatus } from "@/lib/types";
 import { formatCurrency } from "@/lib/format";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 type DraftLine = {
   key: string;
@@ -124,7 +135,7 @@ function filterOrders(orders: OnlineOrderWithItems[], filter: BoardFilter) {
       return orders.filter((order) => order.status === "ready");
     case "active":
       return orders.filter(
-        (order) => order.status !== "cancelled" && order.status !== "invoiced"
+        (order) => order.status !== "cancelled" && order.status !== "invoiced",
       );
     case "all":
     default:
@@ -132,8 +143,8 @@ function filterOrders(orders: OnlineOrderWithItems[], filter: BoardFilter) {
   }
 }
 
-function formatOrderTime(value: string) {
-  return new Date(value).toLocaleString("ar-EG", {
+function formatOrderTime(value: string, language: "ar" | "en") {
+  return new Date(value).toLocaleString(language === "ar" ? "ar-EG" : "en-GB", {
     day: "numeric",
     month: "short",
     hour: "2-digit",
@@ -142,7 +153,9 @@ function formatOrderTime(value: string) {
 }
 
 function orderItemName(item: OnlineOrderWithItems["items"][number]) {
-  return item.variant_name ? `${item.product_name} · ${item.variant_name}` : item.product_name;
+  return item.variant_name
+    ? `${item.product_name} · ${item.variant_name}`
+    : item.product_name;
 }
 
 function orderMatchesSearch(order: OnlineOrderWithItems, query: string) {
@@ -151,7 +164,8 @@ function orderMatchesSearch(order: OnlineOrderWithItems, query: string) {
 
   const phoneDigits = phoneSearchDigits(q);
   const orderPhoneDigits = phoneSearchDigits(order.customer_phone ?? "");
-  if (phoneDigits.length >= 3 && orderPhoneDigits.includes(phoneDigits)) return true;
+  if (phoneDigits.length >= 3 && orderPhoneDigits.includes(phoneDigits))
+    return true;
 
   const haystack = [
     order.customer_name,
@@ -169,16 +183,28 @@ function orderMatchesSearch(order: OnlineOrderWithItems, query: string) {
   return haystack.includes(q);
 }
 
-function customerWhatsAppUrl(phone: string, status: OnlineOrderStatus, customerName: string) {
+function customerWhatsAppUrl(
+  phone: string,
+  status: OnlineOrderStatus,
+  customerName: string,
+  language: "ar" | "en",
+) {
   const normalized = normalizeWhatsAppPhone(phone);
   if (!normalized) return null;
-  const greeting = customerName.trim() ? `مرحباً ${customerName.trim()}، ` : "مرحباً، ";
+  const greeting =
+    language === "ar"
+      ? customerName.trim()
+        ? `مرحبًا ${customerName.trim()}، `
+        : "مرحبًا، "
+      : customerName.trim()
+        ? `Hello ${customerName.trim()}, `
+        : "Hello, ";
   const body =
     status === "ready"
-      ? `${greeting}طلبك جاهز.`
+      ? `${greeting}${language === "ar" ? "طلبك جاهز." : "Your order is ready."}`
       : status === "preparing"
-        ? `${greeting}طلبك قيد التحضير.`
-        : `${greeting}بخصوص طلبك.`;
+        ? `${greeting}${language === "ar" ? "طلبك قيد التحضير." : "Your order is being prepared."}`
+        : `${greeting}${language === "ar" ? "بخصوص طلبك." : "About your order."}`;
   return `https://wa.me/${normalized}?text=${encodeURIComponent(body)}`;
 }
 
@@ -203,16 +229,21 @@ function makeDraft(order: OnlineOrderWithItems): Draft {
 
 function getLineUnitPrice(
   line: DraftLine,
-  productMap: Map<string, StaffOnlineProductOption>
+  productMap: Map<string, StaffOnlineProductOption>,
 ) {
   const product = productMap.get(line.productId);
   if (!product) return 0;
   if (!line.variantId) return product.price;
-  return product.variants.find((variant) => variant.id === line.variantId)?.price ?? product.price;
+  return (
+    product.variants.find((variant) => variant.id === line.variantId)?.price ??
+    product.price
+  );
 }
 
 function itemsPreview(items: OnlineOrderWithItems["items"], limit = 3) {
-  const names = items.slice(0, limit).map((item) => `${item.quantity}× ${orderItemName(item)}`);
+  const names = items
+    .slice(0, limit)
+    .map((item) => `${item.quantity}× ${orderItemName(item)}`);
   const extra = items.length - limit;
   if (extra > 0) names.push(`+${extra}`);
   return names.join(" · ");
@@ -233,13 +264,16 @@ export function OnlineOrdersPageClient({
   enabledPaymentMethods = ["cash", "card", "wallet", "other"],
   receiptBranding = null,
 }: OnlineOrdersPageClientProps) {
+  const { t, language } = useTranslation();
   const [boardFilter, setBoardFilter] = useState<BoardFilter>("active");
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [orders, setOrders] = useState(initialOrders);
   const seenOrderIds = useRef(new Set(initialOrders.map((order) => order.id)));
   const [expandedId, setExpandedId] = useState<string | null>(() => {
-    const firstPending = initialOrders.find((order) => order.status === "pending");
+    const firstPending = initialOrders.find(
+      (order) => order.status === "pending",
+    );
     return firstPending?.id ?? null;
   });
 
@@ -257,12 +291,14 @@ export function OnlineOrdersPageClient({
         try {
           const next = await listOnlineOrdersBoardAction();
           if (cancelled) return;
-          const hasNew = next.some((order) => !seenOrderIds.current.has(order.id));
+          const hasNew = next.some(
+            (order) => !seenOrderIds.current.has(order.id),
+          );
           seenOrderIds.current = new Set(next.map((order) => order.id));
           setOrders(next);
           if (hasNew) {
             playPosNewOrderSound();
-            toast.message("طلب أونلاين جديد");
+            toast.message(t("New online order"));
           }
         } catch {
           // Keep the current board; the next poll retries.
@@ -273,7 +309,7 @@ export function OnlineOrdersPageClient({
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [compact]);
+  }, [compact, t]);
 
   function upsertOrder(next: OnlineOrderWithItems) {
     setOrders((prev) => {
@@ -287,7 +323,7 @@ export function OnlineOrdersPageClient({
 
   const searchedOrders = useMemo(
     () => orders.filter((order) => orderMatchesSearch(order, deferredSearch)),
-    [orders, deferredSearch]
+    [orders, deferredSearch],
   );
   const visibleOrders = useMemo(
     () =>
@@ -296,28 +332,32 @@ export function OnlineOrdersPageClient({
         .sort((a, b) => {
           const rank = STATUS_SORT[a.status] - STATUS_SORT[b.status];
           if (rank !== 0) return rank;
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          return (
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
         }),
-    [searchedOrders, boardFilter]
+    [searchedOrders, boardFilter],
   );
 
   const filters: { id: BoardFilter; label: string; count: number }[] = [
     {
       id: "active",
-      label: "نشطة",
-      count: searchedOrders.filter((o) => o.status !== "cancelled" && o.status !== "invoiced").length,
+      label: t("Active"),
+      count: searchedOrders.filter(
+        (o) => o.status !== "cancelled" && o.status !== "invoiced",
+      ).length,
     },
     {
       id: "pending",
-      label: "معلقة",
+      label: t("Pending"),
       count: searchedOrders.filter((o) => o.status === "pending").length,
     },
     {
       id: "ready",
-      label: "جاهزة",
+      label: t("Ready"),
       count: searchedOrders.filter((o) => o.status === "ready").length,
     },
-    { id: "all", label: "الكل", count: searchedOrders.length },
+    { id: "all", label: t("All"), count: searchedOrders.length },
   ];
 
   const hasSearch = search.trim().length > 0;
@@ -325,31 +365,36 @@ export function OnlineOrdersPageClient({
   if (orders.length === 0) {
     return (
       <EmptyStateBlock
-        title="لا توجد طلبات أونلاين"
-        description="الطلبات الجديدة من رابط المنيو هتظهر هنا تلقائيًا."
+        title={t("No online orders")}
+        description={t(
+          "New orders from the menu link will appear here automatically.",
+        )}
       />
     );
   }
 
   return (
-    <div className={cn("grid", compact ? "gap-2" : "gap-3")} dir="rtl">
+    <div
+      className={cn("grid", compact ? "gap-2" : "gap-3")}
+      dir={language === "ar" ? "rtl" : "ltr"}
+    >
       <div className="relative">
         <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="ابحث بالاسم أو الهاتف أو الصنف…"
-          aria-label="بحث طلبات الأونلاين"
+          placeholder={t("Search by name, phone, or item...")}
+          aria-label={t("Search online orders")}
           className={cn(
             "rounded-[var(--mds-radius-md)] ps-10 pe-10",
-            compact ? "h-9 text-sm" : "h-11 md:h-10"
+            compact ? "h-9 text-sm" : "h-11 md:h-10",
           )}
         />
         {hasSearch ? (
           <button
             type="button"
             className="absolute end-1.5 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-            aria-label="مسح البحث"
+            aria-label={t("Clear search")}
             onClick={() => setSearch("")}
           >
             <X className="size-3.5" />
@@ -360,7 +405,7 @@ export function OnlineOrdersPageClient({
       <div
         className="flex flex-wrap gap-1.5 rounded-[var(--mds-radius-md)] bg-muted/60 p-1"
         role="tablist"
-        aria-label="تصفية الطلبات"
+        aria-label={t("Filter orders")}
       >
         {filters.map((filter) => {
           const active = boardFilter === filter.id;
@@ -374,7 +419,7 @@ export function OnlineOrdersPageClient({
                 "inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-[var(--mds-radius-sm)] px-3 text-sm font-medium transition-colors sm:min-h-9 sm:flex-none",
                 active
                   ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
               )}
               onClick={() => setBoardFilter(filter.id)}
             >
@@ -382,7 +427,7 @@ export function OnlineOrdersPageClient({
               <span
                 className={cn(
                   "tabular-nums text-xs",
-                  active ? "text-foreground" : "text-muted-foreground"
+                  active ? "text-foreground" : "text-muted-foreground",
                 )}
               >
                 {filter.count}
@@ -395,24 +440,34 @@ export function OnlineOrdersPageClient({
       {hasSearch ? (
         <p className="text-xs text-muted-foreground">
           {visibleOrders.length === 0
-            ? "لا نتائج"
-            : `${visibleOrders.length} نتيجة`}
+            ? t("No results")
+            : `${visibleOrders.length} ${t("results")}`}
           {deferredSearch.trim() ? ` · «${deferredSearch.trim()}»` : null}
         </p>
       ) : null}
 
       {visibleOrders.length === 0 ? (
         <EmptyStateBlock
-          title={hasSearch ? "لا نتائج لهذا البحث" : "لا توجد طلبات في هذا الفلتر"}
+          title={
+            hasSearch
+              ? t("No results for this search")
+              : t("No orders in this filter")
+          }
           description={
             hasSearch
-              ? "جرّب اسم العميل أو جزء من رقم الهاتف أو اسم صنف."
+              ? t(
+                  "Try the customer name, part of the phone number, or an item name.",
+                )
               : undefined
           }
           action={
             hasSearch ? (
-              <Button type="button" variant="outline" onClick={() => setSearch("")}>
-                مسح البحث
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setSearch("")}
+              >
+                {t("Clear search")}
               </Button>
             ) : undefined
           }
@@ -427,7 +482,9 @@ export function OnlineOrdersPageClient({
                 compact={compact}
                 expanded={expandedId === order.id}
                 onToggleExpand={() =>
-                  setExpandedId((current) => (current === order.id ? null : order.id))
+                  setExpandedId((current) =>
+                    current === order.id ? null : order.id,
+                  )
                 }
                 enabledPaymentMethods={enabledPaymentMethods}
                 receiptBranding={receiptBranding}
@@ -460,6 +517,7 @@ function OnlineOrderCard({
   receiptBranding: ReportBranding | null;
   onOrderChange: (order: OnlineOrderWithItems) => void;
 }) {
+  const { t, language } = useTranslation();
   const [draft, setDraft] = useState<Draft>(() => makeDraft(order));
   const [isEditingItems, setIsEditingItems] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -473,18 +531,22 @@ function OnlineOrderCard({
   const detailsSnapshotRef = useRef<OnlineOrderWithItems | null>(null);
   const isLocked = order.status === "cancelled" || order.status === "invoiced";
   const nextStatus = primaryNextOnlineOrderStatus(order.status);
-  const transitionTargets = allowedOnlineOrderStatusTransitions(order.status).filter(
-    (status) => status !== "cancelled"
-  );
+  const transitionTargets = allowedOnlineOrderStatusTransitions(
+    order.status,
+  ).filter((status) => status !== "cancelled");
   const canCancel = canCancelOnlineOrder(order.status);
-  const productMap = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
+  const productMap = useMemo(
+    () => new Map(products.map((product) => [product.id, product])),
+    [products],
+  );
   const draftTotal = useMemo(
     () =>
       draft.lines.reduce(
-        (total, line) => total + getLineUnitPrice(line, productMap) * line.quantity,
-        0
+        (total, line) =>
+          total + getLineUnitPrice(line, productMap) * line.quantity,
+        0,
       ),
-    [draft.lines, productMap]
+    [draft.lines, productMap],
   );
 
   useEffect(() => {
@@ -515,7 +577,9 @@ function OnlineOrderCard({
   function updateLine(key: string, patch: Partial<DraftLine>) {
     setDraft((current) => ({
       ...current,
-      lines: current.lines.map((line) => (line.key === key ? { ...line, ...patch } : line)),
+      lines: current.lines.map((line) =>
+        line.key === key ? { ...line, ...patch } : line,
+      ),
     }));
   }
 
@@ -536,11 +600,14 @@ function OnlineOrderCard({
           })),
         });
         onOrderChange(updated);
-        toast.success("تم حفظ الطلب");
+        toast.success(t("Order saved"));
       } catch (error) {
-        if (detailsSnapshotRef.current) onOrderChange(detailsSnapshotRef.current);
+        if (detailsSnapshotRef.current)
+          onOrderChange(detailsSnapshotRef.current);
         setIsEditingItems(true);
-        toast.error(error instanceof Error ? error.message : "تعذر حفظ الطلب");
+        toast.error(
+          error instanceof Error ? error.message : t("Could not save order"),
+        );
       }
     })();
   }
@@ -555,7 +622,9 @@ function OnlineOrderCard({
         onOrderChange(updated);
       } catch (error) {
         if (statusSnapshotRef.current) onOrderChange(statusSnapshotRef.current);
-        toast.error(error instanceof Error ? error.message : "تعذر تحديث الحالة");
+        toast.error(
+          error instanceof Error ? error.message : t("Could not update status"),
+        );
       }
     })();
   }
@@ -569,7 +638,7 @@ function OnlineOrderCard({
       try {
         const result = await invoiceOnlineOrderAction(order.id, payments);
         playPosSuccessSound();
-        toast.success(`تم إنشاء الريسيت ${result.order_number}`);
+        toast.success(`${t("Receipt created")} ${result.order_number}`);
         setPaymentOpen(false);
         if (receiptBranding) {
           setReceipt(
@@ -579,14 +648,18 @@ function OnlineOrderCard({
               orderNumber: result.order_number,
               payments,
               total: result.total,
-            })
+            }),
           );
           setReceiptOpen(true);
         }
         router.refresh();
       } catch (error) {
         playPosErrorSound();
-        toast.error(error instanceof Error ? error.message : "تعذر إنشاء الريسيت");
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : t("Could not create receipt"),
+        );
       }
     });
   }
@@ -598,19 +671,16 @@ function OnlineOrderCard({
         setReceipt(payload);
         setReceiptOpen(true);
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "تعذر عرض الريسيت");
+        toast.error(
+          error instanceof Error ? error.message : t("Could not open receipt"),
+        );
       }
     });
   }
 
   async function handleUsbPrintReceipt() {
-    if (!receipt) return;
-    try {
-      await printReceiptViaUsb(receipt);
-      toast.success("تم إرسال الإيصال لطابعة USB");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "تعذرت طباعة الإيصال");
-    }
+    if (!receipt) throw new Error(t("Could not print receipt"));
+    await printReceiptViaUsb(receipt);
   }
 
   function handleBrowserPrintReceipt() {
@@ -618,33 +688,37 @@ function OnlineOrderCard({
     setTimeout(() => triggerReceiptPrint(), 50);
   }
 
-  function handleSendWhatsAppReceipt() {
-    if (!receipt) return;
-    const url = buildWhatsAppReceiptUrl(receipt);
+  function handleSendWhatsAppReceipt(phoneOverride?: string) {
+    if (!receipt) throw new Error(t("Could not open WhatsApp"));
+    const url = buildWhatsAppReceiptUrl(receipt, phoneOverride);
     if (!url) {
-      toast.error("رقم هاتف العميل غير صالح لواتساب");
-      return;
+      throw new Error(t("Customer phone number is not valid for WhatsApp"));
     }
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
   const fulfillmentLabel =
     order.fulfillment_type === "delivery"
-      ? "توصيل"
+      ? t("Delivery")
       : order.fulfillment_type === "pickup"
-        ? "استلام"
+        ? t("Pickup")
         : null;
 
   const nextActionLabel =
     nextStatus && nextStatus in NEXT_ACTION_LABELS
-      ? NEXT_ACTION_LABELS[nextStatus as keyof typeof NEXT_ACTION_LABELS]
+      ? t(NEXT_ACTION_LABELS[nextStatus as keyof typeof NEXT_ACTION_LABELS])
       : nextStatus
-        ? STATUS_LABELS[nextStatus]
+        ? t(STATUS_LABELS[nextStatus])
         : null;
 
   const callHref = draft.customerPhone ? telHref(draft.customerPhone) : null;
   const whatsappHref = draft.customerPhone
-    ? customerWhatsAppUrl(draft.customerPhone, order.status, draft.customerName)
+    ? customerWhatsAppUrl(
+        draft.customerPhone,
+        order.status,
+        draft.customerName,
+        language,
+      )
     : null;
   const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -654,13 +728,13 @@ function OnlineOrderCard({
         className={cn(
           "rounded-[var(--mds-radius-lg)] border border-border border-s-4 bg-card shadow-[var(--mds-elevation-1)]",
           STATUS_ACCENT[order.status],
-          compact ? "p-2.5" : "p-3.5"
+          compact ? "p-2.5" : "p-3.5",
         )}
       >
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <StatusPill
-              label={STATUS_LABELS[order.status]}
+              label={t(STATUS_LABELS[order.status])}
               variant={STATUS_PILL[order.status]}
             />
             {fulfillmentLabel ? (
@@ -672,21 +746,33 @@ function OnlineOrderCard({
               </span>
             ) : null}
             <span className="text-xs text-muted-foreground tabular-nums">
-              {itemCount} قطعة
+              {itemCount} {t("items")}
             </span>
           </div>
           <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
-            <time dateTime={order.created_at}>{formatOrderTime(order.created_at)}</time>
+            <time dateTime={order.created_at}>
+              {formatOrderTime(order.created_at, language)}
+            </time>
             <span className="tabular-nums opacity-70" dir="ltr">
               #{order.id.slice(0, 8)}
             </span>
           </div>
         </div>
 
-        <div className={cn("mt-2 flex flex-wrap items-start justify-between gap-2", compact ? "gap-1.5" : "gap-3")}>
+        <div
+          className={cn(
+            "mt-2 flex flex-wrap items-start justify-between gap-2",
+            compact ? "gap-1.5" : "gap-3",
+          )}
+        >
           <div className="min-w-0 flex-1">
-            <p className={cn("truncate font-semibold tracking-tight", compact ? "text-sm" : "text-base")}>
-              {draft.customerName || "بدون اسم"}
+            <p
+              className={cn(
+                "truncate font-semibold tracking-tight",
+                compact ? "text-sm" : "text-base",
+              )}
+            >
+              {draft.customerName || t("No name")}
             </p>
             {draft.customerPhone ? (
               <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
@@ -695,13 +781,21 @@ function OnlineOrderCard({
                     href={callHref}
                     className="inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-[var(--mds-radius-md)] bg-muted/50 px-2 py-1 text-sm text-foreground transition-colors hover:bg-muted"
                     dir="ltr"
-                    aria-label={`اتصال بـ ${draft.customerName || draft.customerPhone}`}
+                    aria-label={`${t("Call")} ${draft.customerName || draft.customerPhone}`}
                   >
-                    <Phone className="size-3.5 shrink-0 text-primary" aria-hidden />
-                    <span className="truncate tabular-nums">{draft.customerPhone}</span>
+                    <Phone
+                      className="size-3.5 shrink-0 text-primary"
+                      aria-hidden
+                    />
+                    <span className="truncate tabular-nums">
+                      {draft.customerPhone}
+                    </span>
                   </a>
                 ) : (
-                  <span className="text-sm text-muted-foreground tabular-nums" dir="ltr">
+                  <span
+                    className="text-sm text-muted-foreground tabular-nums"
+                    dir="ltr"
+                  >
                     {draft.customerPhone}
                   </span>
                 )}
@@ -711,32 +805,49 @@ function OnlineOrderCard({
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex size-8 items-center justify-center rounded-[var(--mds-radius-md)] text-emerald-700 transition-colors hover:bg-emerald-500/10 dark:text-emerald-300"
-                    aria-label="مراسلة واتساب"
+                    aria-label={t("Message on WhatsApp")}
                   >
                     <MessageCircle className="size-4" />
                   </a>
                 ) : null}
               </div>
             ) : (
-              <p className="mt-1 text-sm text-muted-foreground">بدون هاتف</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t("No phone")}
+              </p>
             )}
           </div>
-          <p className={cn("shrink-0 font-semibold tabular-nums", compact ? "text-base" : "text-lg")}>
+          <p
+            className={cn(
+              "shrink-0 font-semibold tabular-nums",
+              compact ? "text-base" : "text-lg",
+            )}
+          >
             {formatCurrency(order.total)}
           </p>
         </div>
 
-        <p className={cn("mt-2 text-muted-foreground", compact ? "text-xs line-clamp-2" : "text-sm line-clamp-2")}>
+        <p
+          className={cn(
+            "mt-2 text-muted-foreground",
+            compact ? "text-xs line-clamp-2" : "text-sm line-clamp-2",
+          )}
+        >
           {itemsPreview(order.items, compact ? 2 : 3)}
         </p>
 
         {order.notes && !expanded ? (
           <p className="mt-1.5 truncate text-xs text-amber-700 dark:text-amber-300">
-            ملاحظة: {order.notes}
+            {t("Note")}: {order.notes}
           </p>
         ) : null}
 
-        <div className={cn("mt-3 flex flex-wrap items-center gap-1.5", compact && "gap-1")}>
+        <div
+          className={cn(
+            "mt-3 flex flex-wrap items-center gap-1.5",
+            compact && "gap-1",
+          )}
+        >
           {!isLocked && nextStatus ? (
             <Button
               type="button"
@@ -754,10 +865,10 @@ function OnlineOrderCard({
             className="min-h-10 size-10 shrink-0 rounded-[var(--mds-radius-md)] px-0 sm:h-auto sm:w-auto sm:px-3 sm:gap-1.5"
             disabled={invoicePending || isLocked}
             onClick={openPayment}
-            aria-label="ريسيت"
+            aria-label={t("Receipt")}
           >
             <ReceiptText className="size-4" aria-hidden />
-            <span className="sr-only sm:not-sr-only">ريسيت</span>
+            <span className="sr-only sm:not-sr-only">{t("Receipt")}</span>
           </Button>
           {order.order_id ? (
             <Button
@@ -767,10 +878,10 @@ function OnlineOrderCard({
               className="min-h-10 size-10 shrink-0 rounded-[var(--mds-radius-md)] px-0 sm:h-auto sm:w-auto sm:px-3 sm:gap-1.5"
               disabled={receiptPending}
               onClick={viewReceipt}
-              aria-label="الريسيت"
+              aria-label={t("Receipt")}
             >
               <FileText className="size-4" aria-hidden />
-              <span className="sr-only sm:not-sr-only">الريسيت</span>
+              <span className="sr-only sm:not-sr-only">{t("Receipt")}</span>
             </Button>
           ) : null}
           <Button
@@ -779,25 +890,38 @@ function OnlineOrderCard({
             size={compact ? "sm" : "default"}
             className="min-h-10 size-10 shrink-0 rounded-[var(--mds-radius-md)] px-0 text-muted-foreground sm:h-auto sm:w-auto sm:px-3 sm:gap-1.5"
             aria-expanded={expanded}
-            aria-label={expanded ? "إخفاء" : "تفاصيل"}
+            aria-label={expanded ? t("Hide") : t("Details")}
             onClick={onToggleExpand}
           >
             <ChevronDown
-              className={cn("size-4 transition-transform", expanded && "rotate-180")}
+              className={cn(
+                "size-4 transition-transform",
+                expanded && "rotate-180",
+              )}
               aria-hidden
             />
-            <span className="sr-only sm:not-sr-only">{expanded ? "إخفاء" : "تفاصيل"}</span>
+            <span className="sr-only sm:not-sr-only">
+              {expanded ? t("Hide") : t("Details")}
+            </span>
           </Button>
         </div>
 
         {expanded ? (
-          <div className={cn("mt-3 border-t border-border/70 pt-3", compact ? "space-y-2" : "space-y-3")}>
+          <div
+            className={cn(
+              "mt-3 border-t border-border/70 pt-3",
+              compact ? "space-y-2" : "space-y-3",
+            )}
+          >
             {order.fulfillment_type === "delivery" && order.delivery_address ? (
               <p className="text-sm text-muted-foreground">
-                العنوان: <span className="text-foreground">{order.delivery_address}</span>
+                {t("Address")}:{" "}
+                <span className="text-foreground">
+                  {order.delivery_address}
+                </span>
                 {order.delivery_fee > 0 ? (
                   <span className="ms-2 tabular-nums">
-                    (توصيل {formatCurrency(order.delivery_fee)})
+                    ({t("Delivery")} {formatCurrency(order.delivery_fee)})
                   </span>
                 ) : null}
               </p>
@@ -827,8 +951,9 @@ function OnlineOrderCard({
 
             {order.delivery_fee > 0 ? (
               <p className="text-xs text-muted-foreground">
-                أصناف {formatCurrency(order.subtotal)} + توصيل {formatCurrency(order.delivery_fee)}
-                — فاتورة الكاشير للأصناف فقط.
+                {t("Items")} {formatCurrency(order.subtotal)} + {t("Delivery")}{" "}
+                {formatCurrency(order.delivery_fee)}—{" "}
+                {t("The cashier invoice includes items only.")}
               </p>
             ) : null}
 
@@ -841,7 +966,7 @@ function OnlineOrderCard({
                   className="rounded-[var(--mds-radius-md)]"
                   onClick={() => setIsEditingItems((open) => !open)}
                 >
-                  {isEditingItems ? "إخفاء التعديل" : "تعديل الطلب"}
+                  {isEditingItems ? t("Hide editing") : t("Edit order")}
                 </Button>
                 {transitionTargets
                   .filter((status) => status !== nextStatus)
@@ -854,7 +979,7 @@ function OnlineOrderCard({
                       className="rounded-[var(--mds-radius-md)]"
                       onClick={() => changeStatus(status)}
                     >
-                      {STATUS_LABELS[status]}
+                      {t(STATUS_LABELS[status])}
                     </Button>
                   ))}
                 {canCancel ? (
@@ -866,51 +991,76 @@ function OnlineOrderCard({
                     onClick={() => setCancelConfirmOpen(true)}
                   >
                     <XCircle className="size-4" />
-                    إلغاء
+                    {t("Cancel")}
                   </Button>
                 ) : null}
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">
                 {order.status === "cancelled"
-                  ? "الطلب ملغي — لا يمكن تغيير حالته."
-                  : "الطلب مُفوتر — الحالة مقفلة."}
+                  ? t(
+                      "The order is cancelled and its status cannot be changed.",
+                    )
+                  : t("The order is invoiced and its status is locked.")}
               </p>
             )}
 
             {isEditingItems ? (
-              <div className={cn("space-y-3 rounded-[var(--mds-radius-md)] border border-border bg-muted/20", compact ? "p-2" : "p-3")}>
+              <div
+                className={cn(
+                  "space-y-3 rounded-[var(--mds-radius-md)] border border-border bg-muted/20",
+                  compact ? "p-2" : "p-3",
+                )}
+              >
                 <div className="grid gap-2 sm:grid-cols-2">
                   <Input
                     value={draft.customerName}
                     disabled={isLocked}
-                    placeholder="اسم العميل"
-                    aria-label="اسم العميل"
+                    placeholder={t("Customer name")}
+                    aria-label={t("Customer name")}
                     onChange={(event) =>
-                      setDraft((current) => ({ ...current, customerName: event.target.value }))
+                      setDraft((current) => ({
+                        ...current,
+                        customerName: event.target.value,
+                      }))
                     }
-                    className={cn("rounded-[var(--mds-radius-md)]", compact ? "h-8 text-xs" : "h-10")}
+                    className={cn(
+                      "rounded-[var(--mds-radius-md)]",
+                      compact ? "h-8 text-xs" : "h-10",
+                    )}
                   />
                   <Input
                     value={draft.customerPhone}
                     disabled={isLocked}
-                    placeholder="رقم الهاتف (اختياري)"
-                    aria-label="رقم الهاتف"
+                    placeholder={t("Phone number (optional)")}
+                    aria-label={t("Phone number")}
                     dir="ltr"
                     onChange={(event) =>
-                      setDraft((current) => ({ ...current, customerPhone: event.target.value }))
+                      setDraft((current) => ({
+                        ...current,
+                        customerPhone: event.target.value,
+                      }))
                     }
-                    className={cn("rounded-[var(--mds-radius-md)]", compact ? "h-8 text-xs" : "h-10")}
+                    className={cn(
+                      "rounded-[var(--mds-radius-md)]",
+                      compact ? "h-8 text-xs" : "h-10",
+                    )}
                   />
                   <Input
                     value={draft.notes}
                     disabled={isLocked}
-                    placeholder="ملاحظات"
-                    aria-label="ملاحظات"
+                    placeholder={t("Notes")}
+                    aria-label={t("Notes")}
                     onChange={(event) =>
-                      setDraft((current) => ({ ...current, notes: event.target.value }))
+                      setDraft((current) => ({
+                        ...current,
+                        notes: event.target.value,
+                      }))
                     }
-                    className={cn("rounded-[var(--mds-radius-md)] sm:col-span-2", compact ? "h-8 text-xs" : "h-10")}
+                    className={cn(
+                      "rounded-[var(--mds-radius-md)] sm:col-span-2",
+                      compact ? "h-8 text-xs" : "h-10",
+                    )}
                   />
                 </div>
 
@@ -926,13 +1076,13 @@ function OnlineOrderCard({
                           "grid grid-cols-1 gap-1.5 rounded-[var(--mds-radius-md)] bg-background/80 p-1.5 sm:grid-cols-2 md:items-center",
                           compact
                             ? "md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_4.5rem_5rem_auto]"
-                            : "md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_5.5rem_6.5rem_auto]"
+                            : "md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_5.5rem_6.5rem_auto]",
                         )}
                       >
                         <select
                           value={line.productId}
                           disabled={isLocked}
-                          aria-label="المنتج"
+                          aria-label={t("Product")}
                           onChange={(event) => {
                             const selected = productMap.get(event.target.value);
                             updateLine(line.key, {
@@ -942,7 +1092,7 @@ function OnlineOrderCard({
                           }}
                           className={cn(
                             "rounded-[var(--mds-radius-md)] border border-input bg-background text-sm",
-                            compact ? "h-8 px-2 text-xs" : "h-10 px-3"
+                            compact ? "h-8 px-2 text-xs" : "h-10 px-3",
                           )}
                         >
                           {products.map((option) => (
@@ -954,14 +1104,18 @@ function OnlineOrderCard({
                         <select
                           value={line.variantId ?? ""}
                           disabled={isLocked || variants.length === 0}
-                          aria-label="الخيار"
-                          onChange={(event) => updateLine(line.key, { variantId: event.target.value || null })}
+                          aria-label={t("Option")}
+                          onChange={(event) =>
+                            updateLine(line.key, {
+                              variantId: event.target.value || null,
+                            })
+                          }
                           className={cn(
                             "rounded-[var(--mds-radius-md)] border border-input bg-background text-sm",
-                            compact ? "h-8 px-2 text-xs" : "h-10 px-3"
+                            compact ? "h-8 px-2 text-xs" : "h-10 px-3",
                           )}
                         >
-                          <option value="">بدون خيار</option>
+                          <option value="">{t("No option")}</option>
                           {variants.map((variant) => (
                             <option key={variant.id} value={variant.id}>
                               {variant.name}
@@ -974,13 +1128,28 @@ function OnlineOrderCard({
                           max={99}
                           value={line.quantity}
                           disabled={isLocked}
-                          aria-label="الكمية"
+                          aria-label={t("Quantity")}
                           onChange={(event) =>
-                            updateLine(line.key, { quantity: Math.max(1, Number(event.target.value) || 1) })
+                            updateLine(line.key, {
+                              quantity: Math.max(
+                                1,
+                                Number(event.target.value) || 1,
+                              ),
+                            })
                           }
-                          className={cn("rounded-[var(--mds-radius-md)]", compact ? "h-8 px-2 text-xs" : "h-10")}
+                          className={cn(
+                            "rounded-[var(--mds-radius-md)]",
+                            compact ? "h-8 px-2 text-xs" : "h-10",
+                          )}
                         />
-                        <div className={cn("rounded-[var(--mds-radius-md)] bg-muted/40 font-medium tabular-nums", compact ? "px-2 py-1.5 text-xs" : "px-3 py-2 text-sm")}>
+                        <div
+                          className={cn(
+                            "rounded-[var(--mds-radius-md)] bg-muted/40 font-medium tabular-nums",
+                            compact
+                              ? "px-2 py-1.5 text-xs"
+                              : "px-3 py-2 text-sm",
+                          )}
+                        >
                           {formatCurrency(unitPrice * line.quantity)}
                         </div>
                         <Button
@@ -992,10 +1161,12 @@ function OnlineOrderCard({
                           onClick={() =>
                             setDraft((current) => ({
                               ...current,
-                              lines: current.lines.filter((candidate) => candidate.key !== line.key),
+                              lines: current.lines.filter(
+                                (candidate) => candidate.key !== line.key,
+                              ),
                             }))
                           }
-                          aria-label="حذف الصنف"
+                          aria-label={t("Delete item")}
                         >
                           <Trash2 className="size-4" />
                         </Button>
@@ -1006,7 +1177,8 @@ function OnlineOrderCard({
 
                 {Math.abs(draftTotal - order.subtotal) > 0.01 ? (
                   <p className="text-xs text-amber-700 dark:text-amber-300">
-                    مسودة الأصناف: {formatCurrency(draftTotal)} (لم تُحفظ بعد)
+                    {t("Item draft")}: {formatCurrency(draftTotal)} (
+                    {t("Not saved yet")})
                   </p>
                 ) : null}
 
@@ -1020,7 +1192,7 @@ function OnlineOrderCard({
                     onClick={addLine}
                   >
                     <Plus className="size-4" />
-                    إضافة صنف
+                    {t("Add item")}
                   </Button>
                   <Button
                     type="button"
@@ -1030,7 +1202,7 @@ function OnlineOrderCard({
                     onClick={saveDetails}
                   >
                     <Save className="size-4" />
-                    حفظ
+                    {t("Save")}
                   </Button>
                 </div>
               </div>
@@ -1042,9 +1214,11 @@ function OnlineOrderCard({
       <ConfirmActionDialog
         open={cancelConfirmOpen}
         onOpenChange={setCancelConfirmOpen}
-        title="إلغاء هذا الطلب؟"
-        description="سيتم تحرير أي حجز مخزون مرتبط، ولا يمكن إعادة فتح الطلب الملغي."
-        confirmLabel="تأكيد الإلغاء"
+        title={t("Cancel this order?")}
+        description={t(
+          "Any linked inventory reservation will be released, and the cancelled order cannot be reopened.",
+        )}
+        confirmLabel={t("Confirm cancellation")}
         destructive
         onConfirm={async () => {
           setCancelConfirmOpen(false);

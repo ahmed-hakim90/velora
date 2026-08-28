@@ -17,6 +17,7 @@ import type { ReportContext } from "@/modules/reports/core/report-context";
 import type { Store } from "@/lib/types";
 import type { ProductProfitRow } from "@/modules/reports/services/profit-report.service";
 import type { CategoryMarginRow } from "@/modules/reports/services/executive-analytics.service";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface MarginsReportViewProps {
   filters: ReportFilters;
@@ -38,67 +39,68 @@ export function MarginsReportView({
   categories,
   canExcel,
 }: MarginsReportViewProps) {
+  const { t, language } = useTranslation();
   const [pending, startTransition] = useTransition();
   const topProduct = products[0];
   const topCategory = categories[0];
 
   const productColumns: ColumnDef<ProductProfitRow>[] = [
-    { header: "الصنف", accessorKey: "name" },
+    { header: t("Product"), accessorKey: "name" },
     {
       id: "qty",
-      header: "الكمية",
-      cell: ({ row }) => row.original.quantitySold.toLocaleString("ar-EG"),
+      header: t("Quantity"),
+      cell: ({ row }) => row.original.quantitySold.toLocaleString(language === "ar" ? "ar-EG" : "en-US"),
     },
     {
       id: "revenue",
-      header: "المبيعات",
+      header: t("Sales"),
       cell: ({ row }) => formatCurrency(row.original.revenue, currency),
     },
     {
       id: "cost",
-      header: "التكلفة",
+      header: t("Cost"),
       cell: ({ row }) => formatCurrency(row.original.cost, currency),
     },
     {
       id: "profit",
-      header: "الربح",
+      header: t("Profit"),
       cell: ({ row }) => formatCurrency(row.original.profit, currency),
     },
     {
       id: "margin",
-      header: "الهامش %",
+      header: t("Margin %"),
       cell: ({ row }) => `${row.original.margin.toFixed(1)}%`,
     },
   ];
 
   const categoryColumns: ColumnDef<CategoryMarginRow>[] = [
-    { header: "التصنيف", accessorKey: "categoryName" },
+    { header: t("Category"), accessorKey: "categoryName" },
     {
       id: "qty",
-      header: "الكمية",
-      cell: ({ row }) => row.original.quantitySold.toLocaleString("ar-EG"),
+      header: t("Quantity"),
+      cell: ({ row }) => row.original.quantitySold.toLocaleString(language === "ar" ? "ar-EG" : "en-US"),
     },
     {
       id: "revenue",
-      header: "المبيعات",
+      header: t("Sales"),
       cell: ({ row }) => formatCurrency(row.original.revenue, currency),
     },
     {
       id: "profit",
-      header: "الربح",
+      header: t("Profit"),
       cell: ({ row }) => formatCurrency(row.original.profit, currency),
     },
     {
       id: "margin",
-      header: "الهامش %",
+      header: t("Margin %"),
       cell: ({ row }) => `${row.original.margin.toFixed(1)}%`,
     },
   ];
 
   return (
     <ReportPage
-      title="ترتيب الهوامش"
-      description="أعلى هامش إجمالي للأصناف والتصنيفات (من تكلفة البنود)"
+      title="Margin ranking"
+      description="Highest product and category margins based on item cost"
       actions={
         <ExportButtonGroup
           canPrint={false}
@@ -117,9 +119,9 @@ export function MarginsReportView({
                   ) as Record<string, string>
                 );
                 downloadBase64Excel(result.base64, result.filename);
-                toast.success("تم تصدير Excel");
+                toast.success(t("Excel exported"));
               } catch {
-                toast.error("فشل التصدير");
+                toast.error(t("Export failed"));
               }
             });
           }}
@@ -133,14 +135,14 @@ export function MarginsReportView({
         columns={2}
         items={[
           {
-            label: "أعلى هامش صنف",
+            label: t("Highest product margin"),
             value: topProduct
               ? `${topProduct.name} (${topProduct.margin.toFixed(1)}%)`
               : "—",
             icon: <Percent className="size-5" />,
           },
           {
-            label: "أعلى هامش تصنيف",
+            label: t("Highest category margin"),
             value: topCategory
               ? `${topCategory.categoryName} (${topCategory.margin.toFixed(1)}%)`
               : "—",
@@ -149,8 +151,8 @@ export function MarginsReportView({
         ]}
       />
 
-      <ReportTable title="الأصناف حسب الهامش" columns={productColumns} data={products} />
-      <ReportTable title="التصنيفات حسب الهامش" columns={categoryColumns} data={categories} />
+      <ReportTable title={t("Products by margin")} columns={productColumns} data={products} />
+      <ReportTable title={t("Categories by margin")} columns={categoryColumns} data={categories} />
     </ReportPage>
   );
 }

@@ -6,6 +6,7 @@ import { OperationalCard } from "@/components/Velora/operational-card";
 import { StatusPill } from "@/components/Velora/status-pill";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import type { SupplierPriceSummary } from "@/modules/purchases/services/price-history.service";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface SupplierPriceHistoryProps {
   history: SupplierPriceSummary[];
@@ -13,10 +14,11 @@ interface SupplierPriceHistoryProps {
 }
 
 export function SupplierPriceHistory({ history, currency }: SupplierPriceHistoryProps) {
+  const { t } = useTranslation();
   if (history.length === 0) return null;
 
   return (
-    <OperationalCard title="سجل أسعار المورد" description="آخر تكلفة وحدة مستلمة">
+    <OperationalCard title={t("Supplier price history")} description={t("Latest received unit cost")}>
       <div className="grid gap-3">
         {history.slice(0, 6).map((item) => {
           const increased = (item.changePercent ?? 0) > 0;

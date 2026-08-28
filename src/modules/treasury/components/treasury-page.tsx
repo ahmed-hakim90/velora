@@ -18,9 +18,10 @@ import {
 } from "@/components/ui/select";
 import { Dialog } from "@/components/ui/dialog";
 import { StandardModalContent } from "@/components/Velora/standard-modal";
+import { DateRangeFilter } from "@/components/Velora/date-range-filter";
 import { PageHeader } from "@/components/Velora/page-header";
 import { OperationalCard } from "@/components/Velora/operational-card";
-import { EmptyStateBlock } from "@/components/Velora/state-blocks";
+import { EntityList, FilterBar, PageShell, StateView } from "@/components/Velora/page-patterns";
 import {
   Table,
   TableBody,
@@ -145,15 +146,15 @@ export function TreasuryPage({
   }
 
   return (
-    <div className="space-y-6">
+    <PageShell dir="rtl">
       <PageHeader
+        breadcrumb={<span>المالية · الخزائن</span>}
         title="الخزائن"
-        description="خزينة رئيسية للمنشأة وخزينة لكل فرع — توريد من أمانة الكاشير، تحويل، سحب فترة، وسجل حركات."
+        description="تابع أرصدة الخزائن وحوّل الأموال وراجع كل حركة مالية من سجل موحّد."
         action={
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
-              className="rounded-xl"
               onClick={() => {
                 setFromId(stores[0]?.id ?? "");
                 setToId(hq?.id ?? "");
@@ -168,7 +169,6 @@ export function TreasuryPage({
             <Button
               type="button"
               variant="outline"
-              className="rounded-xl"
               onClick={() => {
                 setSweepPeriodId(data.closedPeriods[0]?.id ?? "");
                 setNotes("");
@@ -180,7 +180,7 @@ export function TreasuryPage({
             </Button>
             <Link
               href="/sessions"
-              className="inline-flex h-9 items-center rounded-xl px-3 text-sm text-muted-foreground hover:text-foreground"
+              className="inline-flex h-9 items-center rounded-[var(--mds-radius-md)] px-3 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               ورديات الكاشير
             </Link>
@@ -188,44 +188,48 @@ export function TreasuryPage({
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <section aria-label="أرصدة الخزائن" className="grid gap-[var(--mds-space-4)] md:grid-cols-2 xl:grid-cols-3">
         {hq ? (
-          <OperationalCard className="p-4">
+          <OperationalCard className="p-[var(--mds-space-4)]">
             <div className="flex items-start gap-3">
-              <div className="flex size-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <div className="flex size-10 items-center justify-center rounded-[var(--mds-radius-md)] bg-[var(--mds-color-harbor-50)] text-primary">
                 <Landmark className="size-5" />
               </div>
               <div className="min-w-0">
                 <p className="text-sm text-muted-foreground">الخزينة الرئيسية</p>
-                <p className="text-2xl font-bold tabular-nums">{formatCurrency(hq.balance)}</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums">{formatCurrency(hq.balance)}</p>
               </div>
             </div>
           </OperationalCard>
         ) : null}
         {stores.map((store) => (
-          <OperationalCard key={store.id} className="p-4">
+          <OperationalCard key={store.id} className="p-[var(--mds-space-4)]">
             <div className="flex items-start gap-3">
-              <div className="flex size-10 items-center justify-center rounded-2xl bg-muted text-foreground">
+              <div className="flex size-10 items-center justify-center rounded-[var(--mds-radius-md)] bg-muted text-foreground">
                 <Wallet className="size-5" />
               </div>
               <div className="min-w-0">
                 <p className="text-sm text-muted-foreground">{store.label}</p>
-                <p className="text-2xl font-bold tabular-nums">{formatCurrency(store.balance)}</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums">{formatCurrency(store.balance)}</p>
               </div>
             </div>
           </OperationalCard>
         ))}
-      </div>
+      </section>
 
-      <OperationalCard className="space-y-4 p-4">
-        <div className="flex flex-wrap items-end gap-3">
+      <EntityList aria-label="سجل حركات الخزائن">
+        <div className="border-b border-border px-4 py-3">
+          <h2 className="font-semibold">سجل الحركات</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">فلتر الحركات حسب الخزينة أو النوع أو الفترة.</p>
+        </div>
+        <FilterBar className="grid grid-cols-2 items-end border-b sm:flex">
           <div className="space-y-1.5">
             <Label>الخزينة</Label>
             <Select
               value={filters.treasuryId || "all"}
               onValueChange={(v) => applyFilters({ treasuryId: v === "all" ? "" : (v ?? "") })}
             >
-              <SelectTrigger className="w-[220px] rounded-xl">
+              <SelectTrigger className="w-full sm:w-[220px]">
                 <SelectValue placeholder="كل الخزائن" />
               </SelectTrigger>
               <SelectContent>
@@ -244,7 +248,7 @@ export function TreasuryPage({
               value={filters.entryType || "all"}
               onValueChange={(v) => applyFilters({ entryType: v === "all" ? "" : (v ?? "") })}
             >
-              <SelectTrigger className="w-[200px] rounded-xl">
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue placeholder="كل الأنواع" />
               </SelectTrigger>
               <SelectContent>
@@ -257,35 +261,21 @@ export function TreasuryPage({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="treasury-from">من</Label>
-            <Input
-              id="treasury-from"
-              type="date"
-              className="rounded-xl"
-              value={filters.from}
-              onChange={(e) => applyFilters({ from: e.target.value })}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="treasury-to">إلى</Label>
-            <Input
-              id="treasury-to"
-              type="date"
-              className="rounded-xl"
-              value={filters.to}
-              onChange={(e) => applyFilters({ to: e.target.value })}
-            />
-          </div>
-        </div>
+          <DateRangeFilter
+            className="col-span-2"
+            value={{ from: filters.from, to: filters.to }}
+            onChange={(range) => applyFilters(range)}
+          />
+        </FilterBar>
 
         {data.ledger.length === 0 ? (
-          <EmptyStateBlock
+          <StateView
             title="مفيش حركات"
             description="لما تورّد من أمانة الكاشير أو تحوّل أو تصرف/تحصّل على خزينة، الحركات هتظهر هنا."
+            className="m-4"
           />
         ) : (
-          <div className="overflow-x-auto rounded-xl border">
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -322,7 +312,7 @@ export function TreasuryPage({
             </Table>
           </div>
         )}
-      </OperationalCard>
+      </EntityList>
 
       <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
         <StandardModalContent
@@ -469,6 +459,6 @@ export function TreasuryPage({
           </div>
         </StandardModalContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

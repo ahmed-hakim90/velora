@@ -17,6 +17,7 @@ import type { ReportContext } from "@/modules/reports/core/report-context";
 import type { InventoryKpi } from "@/modules/reports/services/inventory-report.service";
 import type { Store } from "@/lib/types";
 import type { ExpiryBatchRow } from "@/lib/repositories/report.repository";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface InventoryReportViewProps {
   filters: ReportFilters;
@@ -46,32 +47,33 @@ export function InventoryReportView({
   canExcel,
   canPdf,
 }: InventoryReportViewProps) {
+  const { t } = useTranslation();
   const [pending, startTransition] = useTransition();
   const printQs = reportFiltersToSearchParams(filters);
   const printHref = `/print/reports/inventory${printQs ? `?${printQs}` : ""}`;
 
   const valuationColumns: ColumnDef<(typeof valuation)[number]>[] = [
-    { header: "المنتج", accessorKey: "productName" },
-    { header: "الكمية", accessorKey: "quantity" },
+    { header: t("Product"), accessorKey: "productName" },
+    { header: t("Quantity"), accessorKey: "quantity" },
     {
       id: "totalValue",
-      header: "القيمة",
+      header: t("Value"),
       cell: ({ row }) => formatCurrency(row.original.totalValue, currency),
     },
   ];
 
   const expiryColumns: ColumnDef<ExpiryBatchRow>[] = [
-    { header: "المنتج", accessorKey: "productName" },
-    { header: "التشغيلة", accessorKey: "batchNumber" },
-    { header: "الانتهاء", accessorKey: "expiryDate" },
-    { header: "الكمية", accessorKey: "remainingQuantity" },
-    { header: "الأيام", accessorKey: "daysUntilExpiry" },
+    { header: t("Product"), accessorKey: "productName" },
+    { header: t("Batch"), accessorKey: "batchNumber" },
+    { header: t("Expiry date"), accessorKey: "expiryDate" },
+    { header: t("Quantity"), accessorKey: "remainingQuantity" },
+    { header: t("Days"), accessorKey: "daysUntilExpiry" },
   ];
 
   return (
     <ReportPage
-      title="تقرير المخزون"
-      description="التقييم والتشغيلات والانتهاء والهالك"
+      title="Inventory report"
+      description="Valuation, batches, expiry, and waste"
       actions={
         <ExportButtonGroup
           printHref={canPrint ? printHref : undefined}
@@ -88,9 +90,9 @@ export function InventoryReportView({
                   ) as Record<string, string>
                 );
                 downloadBase64Excel(result.base64, result.filename);
-                toast.success("تم تصدير Excel");
+                toast.success(t("Excel exported"));
               } catch {
-                toast.error("فشل التصدير");
+                toast.error(t("Export failed"));
               }
             });
           }}
@@ -100,14 +102,14 @@ export function InventoryReportView({
     >
       <ReportKpiGrid
         items={[
-          { label: "قيمة المخزون", value: formatCurrency(kpi.valuationEstimate, currency), icon: <Package className="size-5" /> },
-          { label: "أصناف مخزون منخفض", value: String(kpi.lowStockCount), icon: <AlertTriangle className="size-5" /> },
-          { label: "قريب من الانتهاء", value: String(nearExpiry.length), icon: <Boxes className="size-5" /> },
-          { label: "تشغيلات منتهية", value: String(expired.length), icon: <AlertTriangle className="size-5" /> },
+          { label: t("Inventory value"), value: formatCurrency(kpi.valuationEstimate, currency), icon: <Package className="size-5" /> },
+          { label: t("Low-stock products"), value: String(kpi.lowStockCount), icon: <AlertTriangle className="size-5" /> },
+          { label: t("Near expiry"), value: String(nearExpiry.length), icon: <Boxes className="size-5" /> },
+          { label: t("Expired batches"), value: String(expired.length), icon: <AlertTriangle className="size-5" /> },
         ]}
       />
-      <ReportTable title="تقييم المخزون" columns={valuationColumns} data={valuation.slice(0, 50)} />
-      <ReportTable title="الانتهاء والتشغيلات" columns={expiryColumns} data={expiryBatches.slice(0, 50)} />
+      <ReportTable title={t("Inventory valuation")} columns={valuationColumns} data={valuation.slice(0, 50)} />
+      <ReportTable title={t("Expiry and batches")} columns={expiryColumns} data={expiryBatches.slice(0, 50)} />
     </ReportPage>
   );
 }

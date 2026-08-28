@@ -3,17 +3,29 @@
 import { useAppRouter as useRouter } from "@/hooks/use-app-router";
 import { Label } from "@/components/ui/label";
 import type { Store } from "@/lib/types";
+import { DateRangeFilter } from "@/components/Velora/date-range-filter";
 
 interface SessionsStoreFilterProps {
   stores: Store[];
   value: string;
+  from?: string;
+  to?: string;
+  hideStore?: boolean;
 }
 
-export function SessionsStoreFilter({ stores, value }: SessionsStoreFilterProps) {
+export function SessionsStoreFilter({ stores, value, from = "", to = "", hideStore = false }: SessionsStoreFilterProps) {
   const router = useRouter();
 
+  function apply(patch: Record<string, string>) {
+    const params = new URLSearchParams(window.location.search);
+    Object.entries(patch).forEach(([key, next]) => next ? params.set(key, next) : params.delete(key));
+    const query = params.toString();
+    router.replace(query ? `/sessions?${query}` : "/sessions", { scroll: false });
+  }
+
   return (
-    <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
+    <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
+      {!hideStore ? <>
       <Label htmlFor="sessions-store-filter" className="sr-only">
         الفرع
       </Label>
@@ -22,14 +34,7 @@ export function SessionsStoreFilter({ stores, value }: SessionsStoreFilterProps)
         className="flex h-11 w-full min-w-0 rounded-xl border border-input bg-transparent px-3 text-sm sm:h-9 sm:w-auto"
         value={value}
         onChange={(e) => {
-          const params = new URLSearchParams(window.location.search);
-          if (e.target.value === "all") {
-            params.delete("storeId");
-          } else {
-            params.set("storeId", e.target.value);
-          }
-          const query = params.toString();
-          router.push(query ? `/sessions?${query}` : "/sessions");
+          apply({ storeId: e.target.value === "all" ? "" : e.target.value });
         }}
       >
         <option value="all">كل الفروع</option>
@@ -39,6 +44,8 @@ export function SessionsStoreFilter({ stores, value }: SessionsStoreFilterProps)
           </option>
         ))}
       </select>
+      </> : null}
+      <DateRangeFilter value={{ from, to }} onChange={(next) => apply(next)} />
     </div>
   );
 }

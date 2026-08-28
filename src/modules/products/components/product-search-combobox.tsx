@@ -5,6 +5,7 @@ import {
   useRef,
   useEffect,
   useLayoutEffect,
+  useImperativeHandle,
   useId,
   type KeyboardEvent,
   type Ref,
@@ -16,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/format";
 import { matchProducts } from "@/modules/products/lib/match-products";
 import type { Product } from "@/lib/types";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface ProductSearchComboboxProps {
   /** All available products */
@@ -28,7 +30,7 @@ interface ProductSearchComboboxProps {
   onSelect: (product: Product) => void;
   /** Currently selected product ID (if any) */
   selectedProductId?: string;
-  /** Label text (default: "باركود / بحث منتج") */
+  /** Label text (default: "Barcode / product search") */
   label?: string;
   /** Placeholder text */
   placeholder?: string;
@@ -57,14 +59,15 @@ export function ProductSearchCombobox({
   onChange,
   onSelect,
   selectedProductId,
-  label = "باركود / بحث منتج",
-  placeholder = "امسح باركود أو ابحث بالاسم…",
+  label = "Barcode / product search",
+  placeholder = "Scan barcode or search by name…",
   currency,
   className,
   autoFocus = false,
   inputRef,
   onHighlightChange,
 }: ProductSearchComboboxProps) {
+  const { t } = useTranslation();
   const [searchOpen, setSearchOpen] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(0);
   const [menuBox, setMenuBox] = useState<{
@@ -77,19 +80,12 @@ export function ProductSearchCombobox({
   const highlightIndexRef = useRef(0);
   const listboxId = useId();
 
+  useImperativeHandle(inputRef, () => localRef.current as HTMLInputElement);
+
   function setHighlight(next: number) {
     highlightIndexRef.current = next;
     setHighlightIndex(next);
     onHighlightChange?.(next);
-  }
-
-  function setRefs(node: HTMLInputElement | null) {
-    localRef.current = node;
-    if (typeof inputRef === "function") {
-      inputRef(node);
-    } else if (inputRef) {
-      inputRef.current = node;
-    }
   }
 
   useEffect(() => {
@@ -244,7 +240,7 @@ export function ProductSearchCombobox({
           >
             {searchMatches.length === 0 ? (
               <li className="px-3 py-3 text-sm text-muted-foreground">
-                لا يوجد منتج مطابق
+                {t("No matching product")}
               </li>
             ) : (
               searchMatches.map((p, index) => (
@@ -293,10 +289,10 @@ export function ProductSearchCombobox({
     <div className="relative">
       <Label className="mb-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
         <Barcode className="size-3.5" />
-        {label}
+        {t(label)}
       </Label>
       <Input
-        ref={setRefs}
+        ref={localRef}
         value={value}
         role="combobox"
         aria-expanded={showList}
@@ -319,7 +315,7 @@ export function ProductSearchCombobox({
           }, 150);
         }}
         onKeyDown={handleKeyDown}
-        placeholder={placeholder}
+        placeholder={t(placeholder)}
         autoComplete="off"
         enterKeyHint="next"
         className={className}

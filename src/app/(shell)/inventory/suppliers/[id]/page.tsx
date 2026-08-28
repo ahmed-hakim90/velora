@@ -7,7 +7,7 @@ export default async function SupplierDetailRoute({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ pay?: string }>;
+  searchParams: Promise<{ pay?: string; returnTo?: string }>;
 }) {
   const { id } = await params;
   const query = await searchParams;
@@ -22,6 +22,7 @@ export default async function SupplierDetailRoute({
       canEditSupplier={data.canEditSupplier}
       storeId={data.storeId}
       initialPayOpen={query.pay === "1" && data.canManagePayments}
+      returnHref={query.returnTo?.startsWith("/inventory/suppliers") ? query.returnTo : "/inventory/suppliers"}
     />
   );
 }

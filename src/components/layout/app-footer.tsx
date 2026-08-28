@@ -23,22 +23,17 @@ export function AppFooter() {
     return null;
   }
 
-  // Keep guest menu visually owned by the store theme (root Meridian chrome fights dark themes).
+  // The ordering surface already reserves the fixed cart bar + safe area.
+  // Adding a root spacer here would double the mobile bottom inset.
   if (isOnlineMenu) {
-    return (
-      <div
-        className="pointer-events-none shrink-0"
-        style={{ height: "calc(env(safe-area-inset-bottom) + 6.5rem)" }}
-        aria-hidden
-      />
-    );
+    return null;
   }
 
   const year = new Date().getFullYear();
 
   return (
     <footer
-      className="shrink-0 border-t border-border/60 bg-background/80 px-4 pt-3 text-center backdrop-blur-xl md:px-6 pb-[calc(env(safe-area-inset-bottom)+5rem)] md:pb-3"
+      className="shrink-0 border-t border-border/60 bg-background/80 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 text-center backdrop-blur-xl md:px-6 md:pb-3"
     >
       <div className="mx-auto flex max-w-lg flex-col items-center gap-1.5">
         <p className="text-xs text-muted-foreground">

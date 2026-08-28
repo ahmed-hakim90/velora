@@ -10,8 +10,8 @@ import { MobileEntityCard } from "@/components/Velora/mobile-entity-card";
 import { OperationalCard } from "@/components/Velora/operational-card";
 import { ResponsiveListLayout } from "@/components/Velora/responsive-list-layout";
 import { EmptyStateBlock } from "@/components/Velora/state-blocks";
+import { DateRangeFilter } from "@/components/Velora/date-range-filter";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -117,7 +117,7 @@ export function AccountLedgerPage({
       </div>
 
       {result ? (
-        <div className="mb-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <KpiCard
             label="رصيد افتتاحي"
             value={formatCurrency(result.openingBalance, currency)}
@@ -147,8 +147,8 @@ export function AccountLedgerPage({
       ) : null}
 
       <OperationalCard title="الفلاتر">
-        <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.1fr)_auto]">
-          <div className="min-w-0 space-y-1.5 sm:col-span-2 lg:col-span-1">
+        <div className="grid grid-cols-2 items-end gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.1fr)_auto]">
+          <div className="col-span-2 min-w-0 space-y-1.5 lg:col-span-1">
             <Label htmlFor="ledger-account">الحساب</Label>
             <Select
               value={selectedAccount}
@@ -179,26 +179,11 @@ export function AccountLedgerPage({
               </SelectContent>
             </Select>
           </div>
-          <div className="min-w-0 space-y-1.5">
-            <Label htmlFor="ledger-from">من</Label>
-            <Input
-              id="ledger-from"
-              type="date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-              className="w-full min-w-0"
-            />
-          </div>
-          <div className="min-w-0 space-y-1.5">
-            <Label htmlFor="ledger-to">إلى</Label>
-            <Input
-              id="ledger-to"
-              type="date"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              className="w-full min-w-0"
-            />
-          </div>
+          <DateRangeFilter
+            className="col-span-2 min-w-0"
+            value={{ from, to }}
+            onChange={(range) => { setFrom(range.from); setTo(range.to); }}
+          />
           <AccountingStoreSelect
             id="ledger-store"
             stores={stores}
@@ -207,7 +192,7 @@ export function AccountLedgerPage({
             allowAll
           />
           <div className="flex items-end">
-            <Button type="button" disabled={pending || !selectedAccount} onClick={applyFilters}>
+            <Button type="button" className="w-full" disabled={pending || !selectedAccount} onClick={applyFilters}>
               عرض
             </Button>
           </div>
@@ -226,7 +211,7 @@ export function AccountLedgerPage({
           title={`${result.account.code} — ${result.account.name}`}
           description={`${TYPE_LABELS[result.account.account_type] ?? result.account.account_type} · ${result.from} → ${result.to}`}
         >
-          <div className="mb-4 grid gap-3 sm:grid-cols-3">
+          <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-3 [&>*:last-child]:col-span-2 lg:[&>*:last-child]:col-span-1">
             <div className="rounded-xl border bg-muted/20 px-3 py-2">
               <div className="text-xs text-muted-foreground">رصيد افتتاحي</div>
               <div className="tabular-nums font-medium">

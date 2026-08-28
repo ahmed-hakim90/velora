@@ -36,24 +36,25 @@ import {
 } from "@/modules/accounting/actions/journal.actions";
 import { AccountingStoreSelect } from "@/modules/accounting/components/accounting-store-select";
 import { AccountingSubnav } from "@/modules/accounting/components/accounting-subnav";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 const STATUS_LABELS: Record<JournalEntryStatus, string> = {
-  draft: "مسودة",
-  posted: "مرحّل",
-  void: "ملغي",
+  draft: "Draft",
+  posted: "Posted",
+  void: "Void",
 };
 
 const SOURCE_LABELS: Record<string, string> = {
-  manual: "يدوي",
-  sale: "بيع",
-  expense: "مصروف",
-  purchase: "شراء",
-  customer_payment: "تحصيل عميل",
-  supplier_payment: "دفعة مورد",
-  refund: "مرتجع / إلغاء",
-  adjustment: "تسوية",
-  waste: "هالك",
-  customs_certificate: "شهادة جمركية",
+  manual: "Manual",
+  sale: "Sale",
+  expense: "Expense",
+  purchase: "Purchase",
+  customer_payment: "Customer payment",
+  supplier_payment: "Supplier payment",
+  refund: "Refund / reversal",
+  adjustment: "Adjustment",
+  waste: "Waste",
+  customs_certificate: "Customs certificate",
 };
 
 type DraftLine = {
@@ -84,6 +85,7 @@ export function JournalsPage({
   currency,
   canManage,
 }: JournalsPageProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
@@ -152,10 +154,10 @@ export function JournalsPage({
       return (
         entry.entry_number.includes(q) ||
         entry.memo.includes(q) ||
-        (SOURCE_LABELS[entry.source] ?? entry.source).includes(q)
+        t(SOURCE_LABELS[entry.source] ?? entry.source).includes(q)
       );
     });
-  }, [entries, query, sourceFilter, statusFilter, storeFilter]);
+  }, [entries, query, sourceFilter, statusFilter, storeFilter, t]);
 
   const draftFormTotals = useMemo(() => {
     let debit = 0;
@@ -203,7 +205,7 @@ export function JournalsPage({
         toast.error(result.error);
         return;
       }
-      toast.success("تم حفظ المسودة");
+      toast.success(t("Draft saved"));
       setOpen(false);
       resetForm();
       router.refresh();
@@ -217,7 +219,7 @@ export function JournalsPage({
         toast.error(result.error);
         return;
       }
-      toast.success("تم ترحيل القيد");
+      toast.success(t("Journal entry posted"));
       router.refresh();
     });
   };
@@ -233,7 +235,7 @@ export function JournalsPage({
       toast.error(result.error);
       throw new Error(result.error);
     }
-    toast.success("تم إلغاء القيد");
+    toast.success(t("Journal entry voided"));
     setVoidEntryId(null);
     router.refresh();
   };
@@ -242,7 +244,7 @@ export function JournalsPage({
     startTransition(async () => {
       const detail = await getJournalDetailAction(entry.id);
       if (!detail) {
-        toast.error("القيد غير موجود");
+        toast.error(t("Journal entry not found"));
         return;
       }
       setDetailEntry(detail);
@@ -258,12 +260,12 @@ export function JournalsPage({
   return (
     <>
       <PageHeader
-        title="القيود اليومية"
-        description="إنشاء وترحيل وإلغاء القيود اليدوية — والترحيل الأوتوماتيك من البيع والمشتريات والمصروفات يظهر هنا"
+        title={t("Journal entries")}
+        description={t("Create, post, and void manual entries. Automatic entries also appear here.")}
         action={
           canManage ? (
             <CompactAction
-              label="قيد جديد"
+              label={t("New entry")}
               icon={FilePenLine}
               variant="default"
               alwaysLabeled
@@ -277,53 +279,53 @@ export function JournalsPage({
         <AccountingSubnav />
       </div>
 
-      <div className="mb-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard
-          label="كل القيود"
+          label={t("All entries")}
           value={String(counts.total)}
-          change="آخر 200 قيد"
+          change={t("Latest 200 entries")}
           trend="neutral"
           icon={<ScrollText className="size-5" />}
         />
         <KpiCard
-          label="مرحلة"
+          label={t("Posted")}
           value={String(counts.posted)}
-          change={`${counts.auto} أوتوماتيك`}
+          change={`${counts.auto} ${t("automatic")}`}
           trend="up"
           icon={<Sparkles className="size-5" />}
         />
         <KpiCard
-          label="مسودات"
+          label={t("Drafts")}
           value={String(counts.draft)}
-          change={counts.draft > 0 ? "جاهزة للترحيل" : "مفيش معلّق"}
+          change={counts.draft > 0 ? t("Ready to post") : t("Nothing pending")}
           trend={counts.draft > 0 ? "down" : "neutral"}
           icon={<FilePenLine className="size-5" />}
         />
         <KpiCard
-          label="ملغاة"
+          label={t("Voided")}
           value={String(counts.voided)}
-          change="مراجعة عكسية"
+          change={t("Reversal review")}
           trend="neutral"
           icon={<XCircle className="size-5" />}
         />
       </div>
 
       <OperationalCard
-        title="سجل القيود"
-        description={`عرض ${visible.length} من ${entries.length}`}
+        title={t("Journal register")}
+        description={`${t("Showing")} ${visible.length} ${t("of")} ${entries.length}`}
       >
-        <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <div className="space-y-1.5">
-            <Label htmlFor="je-search">بحث</Label>
+            <Label htmlFor="je-search">{t("Search")}</Label>
             <Input
               id="je-search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="رقم القيد أو البيان"
+              placeholder={t("Entry number or memo")}
             />
           </div>
           <div className="min-w-0 space-y-1.5">
-            <Label>الفرع</Label>
+            <Label>{t("Store")}</Label>
             <Select
               value={storeFilter}
               onValueChange={(v) => {
@@ -335,30 +337,30 @@ export function JournalsPage({
                 <SelectValue>
                   {(value) =>
                     value === "all"
-                      ? "كل الفروع"
+                      ? t("All stores")
                       : value === "__none__"
-                        ? "بدون فرع"
+                        ? t("No store")
                         : selectLabelById(stores, value, (s) => s.name)
                   }
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" label="كل الفروع">
-                  كل الفروع
+                <SelectItem value="all" label={t("All stores")}>
+                  {t("All stores")}
                 </SelectItem>
                 {stores.map((store) => (
                   <SelectItem key={store.id} value={store.id} label={store.name}>
                     {store.name}
                   </SelectItem>
                 ))}
-                <SelectItem value="__none__" label="بدون فرع">
-                  بدون فرع
+                <SelectItem value="__none__" label={t("No store")}>
+                  {t("No store")}
                 </SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="min-w-0 space-y-1.5">
-            <Label>الحالة</Label>
+            <Label>{t("Status")}</Label>
             <Select
               value={statusFilter}
               onValueChange={(v) => {
@@ -370,29 +372,29 @@ export function JournalsPage({
                 <SelectValue>
                   {(value) =>
                     value === "all"
-                      ? "كل الحالات"
+                      ? t("All statuses")
                       : STATUS_LABELS[value as JournalEntryStatus] ?? null
                   }
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" label="كل الحالات">
-                  كل الحالات
+                <SelectItem value="all" label={t("All statuses")}>
+                  {t("All statuses")}
                 </SelectItem>
-                <SelectItem value="posted" label="مرحّل">
-                  مرحّل
+                <SelectItem value="posted" label={t("Posted")}>
+                  {t("Posted")}
                 </SelectItem>
-                <SelectItem value="draft" label="مسودة">
-                  مسودة
+                <SelectItem value="draft" label={t("Draft")}>
+                  {t("Draft")}
                 </SelectItem>
-                <SelectItem value="void" label="ملغي">
-                  ملغي
+                <SelectItem value="void" label={t("Void")}>
+                  {t("Void")}
                 </SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="min-w-0 space-y-1.5">
-            <Label>المصدر</Label>
+            <Label>{t("Source")}</Label>
             <Select
               value={sourceFilter}
               onValueChange={(v) => {
@@ -404,24 +406,24 @@ export function JournalsPage({
                 <SelectValue>
                   {(value) =>
                     value === "all"
-                      ? "كل المصادر"
+                      ? t("All sources")
                       : value
-                        ? (SOURCE_LABELS[String(value)] ?? String(value))
+                        ? t(SOURCE_LABELS[String(value)] ?? String(value))
                         : null
                   }
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" label="كل المصادر">
-                  كل المصادر
+                <SelectItem value="all" label={t("All sources")}>
+                  {t("All sources")}
                 </SelectItem>
                 {sources.map((source) => (
                   <SelectItem
                     key={source}
                     value={source}
-                    label={SOURCE_LABELS[source] ?? source}
+                    label={t(SOURCE_LABELS[source] ?? source)}
                   >
-                    {SOURCE_LABELS[source] ?? source}
+                    {t(SOURCE_LABELS[source] ?? source)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -431,13 +433,13 @@ export function JournalsPage({
 
         {entries.length === 0 ? (
           <EmptyStateBlock
-            title="مفيش قيود"
-            description="أنشئ قيدًا يدويًا أو انتظر الترحيل التلقائي من العمليات."
+            title={t("No journal entries")}
+            description={t("Create a manual entry or wait for automatic entries from operations.")}
           />
         ) : visible.length === 0 ? (
           <EmptyStateBlock
-            title="مفيش نتائج"
-            description="غيّر البحث أو الفلاتر."
+            title={t("No results")}
+            description={t("Change the search or filters.")}
           />
         ) : (
           <ResponsiveListLayout
@@ -456,26 +458,26 @@ export function JournalsPage({
                           : "secondary"
                     }
                   >
-                    {STATUS_LABELS[entry.status]}
+                    {t(STATUS_LABELS[entry.status])}
                   </Badge>
                 }
                 fields={[
-                  { label: "التاريخ", value: entry.entry_date },
+                  { label: t("Date"), value: entry.entry_date },
                   {
-                    label: "الفرع",
+                    label: t("Store"),
                     value: entry.store_id
-                      ? (storeMap.get(entry.store_id) ?? "فرع")
-                      : "كل الفروع",
+                      ? (storeMap.get(entry.store_id) ?? t("Store"))
+                      : t("All stores"),
                   },
                   {
-                    label: "المصدر",
-                    value: SOURCE_LABELS[entry.source] ?? entry.source,
+                    label: t("Source"),
+                    value: t(SOURCE_LABELS[entry.source] ?? entry.source),
                   },
                 ]}
                 footer={
                   <CompactActions className="w-full justify-end">
                     <CompactAction
-                      label="عرض"
+                      label={t("View")}
                       icon={FilePenLine}
                       variant="ghost"
                       disabled={pending}
@@ -483,7 +485,7 @@ export function JournalsPage({
                     />
                     {canManage && entry.status === "draft" ? (
                       <CompactAction
-                        label="ترحيل"
+                        label={t("Post")}
                         icon={Send}
                         disabled={pending}
                         onClick={() => onPost(entry.id)}
@@ -491,7 +493,7 @@ export function JournalsPage({
                     ) : null}
                     {canManage && entry.status === "posted" ? (
                       <CompactAction
-                        label="إلغاء"
+                        label={t("Void")}
                         icon={XCircle}
                         variant="ghost"
                         disabled={pending}
@@ -507,13 +509,13 @@ export function JournalsPage({
                 <table className="w-full min-w-[860px] text-sm">
                   <thead className="bg-muted/40 text-muted-foreground">
                     <tr>
-                      <th className="px-3 py-2 text-start font-medium">الرقم</th>
-                      <th className="px-3 py-2 text-start font-medium">التاريخ</th>
-                      <th className="px-3 py-2 text-start font-medium">الفرع</th>
-                      <th className="px-3 py-2 text-start font-medium">البيان</th>
-                      <th className="px-3 py-2 text-start font-medium">المصدر</th>
-                      <th className="px-3 py-2 text-start font-medium">الحالة</th>
-                      <th className="px-3 py-2 text-start font-medium">إجراءات</th>
+                      <th className="px-3 py-2 text-start font-medium">{t("Number")}</th>
+                      <th className="px-3 py-2 text-start font-medium">{t("Date")}</th>
+                      <th className="px-3 py-2 text-start font-medium">{t("Store")}</th>
+                      <th className="px-3 py-2 text-start font-medium">{t("Memo")}</th>
+                      <th className="px-3 py-2 text-start font-medium">{t("Source")}</th>
+                      <th className="px-3 py-2 text-start font-medium">{t("Status")}</th>
+                      <th className="px-3 py-2 text-start font-medium">{t("Actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -525,12 +527,12 @@ export function JournalsPage({
                         <td className="px-3 py-2 tabular-nums">{entry.entry_date}</td>
                         <td className="px-3 py-2 text-muted-foreground">
                           {entry.store_id
-                            ? (storeMap.get(entry.store_id) ?? "فرع")
-                            : "كل الفروع"}
+                            ? (storeMap.get(entry.store_id) ?? t("Store"))
+                            : t("All stores")}
                         </td>
                         <td className="px-3 py-2">{entry.memo || "—"}</td>
                         <td className="px-3 py-2 text-muted-foreground">
-                          {SOURCE_LABELS[entry.source] ?? entry.source}
+                          {t(SOURCE_LABELS[entry.source] ?? entry.source)}
                         </td>
                         <td className="px-3 py-2">
                           <Badge
@@ -542,7 +544,7 @@ export function JournalsPage({
                                   : "secondary"
                             }
                           >
-                            {STATUS_LABELS[entry.status]}
+                            {t(STATUS_LABELS[entry.status])}
                           </Badge>
                         </td>
                         <td className="px-3 py-2">
@@ -554,7 +556,7 @@ export function JournalsPage({
                               disabled={pending}
                               onClick={() => onOpenDetail(entry)}
                             >
-                              عرض
+                              {t("View")}
                             </Button>
                             {canManage && entry.status === "draft" ? (
                               <Button
@@ -564,7 +566,7 @@ export function JournalsPage({
                                 disabled={pending}
                                 onClick={() => onPost(entry.id)}
                               >
-                                ترحيل
+                                {t("Post")}
                               </Button>
                             ) : null}
                             {canManage && entry.status === "posted" ? (
@@ -575,7 +577,7 @@ export function JournalsPage({
                                 disabled={pending}
                                 onClick={() => onVoid(entry.id)}
                               >
-                                إلغاء
+                                {t("Void")}
                               </Button>
                             ) : null}
                           </div>
@@ -599,8 +601,8 @@ export function JournalsPage({
       >
         <StandardModalContent
           size="lg"
-          title="قيد يومية جديد"
-          description="أدخل تاريخ القيد والبيان والأسطر — المدين لازم يساوي الدائن."
+          title={t("New journal entry")}
+          description={t("Enter the date, memo, and lines. Debit must equal credit.")}
           footer={
             <>
               <Button
@@ -610,7 +612,7 @@ export function JournalsPage({
                 disabled={pending}
                 onClick={() => setOpen(false)}
               >
-                إلغاء
+                {t("Cancel")}
               </Button>
               <Button
                 type="button"
@@ -618,7 +620,7 @@ export function JournalsPage({
                 disabled={pending}
                 onClick={onCreate}
               >
-                حفظ مسودة
+                {t("Save draft")}
               </Button>
             </>
           }
@@ -634,7 +636,7 @@ export function JournalsPage({
                 }
               />
               <div className="min-w-0 space-y-1.5">
-                <Label htmlFor="je-date">التاريخ</Label>
+                <Label htmlFor="je-date">{t("Date")}</Label>
                 <Input
                   id="je-date"
                   type="date"
@@ -646,7 +648,7 @@ export function JournalsPage({
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="je-memo">البيان</Label>
+              <Label htmlFor="je-memo">{t("Memo")}</Label>
               <Input
                 id="je-memo"
                 value={form.memo}
@@ -656,13 +658,13 @@ export function JournalsPage({
 
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <Label>الأسطر</Label>
+                <Label>{t("Lines")}</Label>
                 <div className="flex items-center gap-3 text-xs tabular-nums">
                   <span>
-                    مدين {formatCurrency(draftFormTotals.debit, currency)}
+                    {t("Debit")} {formatCurrency(draftFormTotals.debit, currency)}
                   </span>
                   <span>
-                    دائن {formatCurrency(draftFormTotals.credit, currency)}
+                    {t("Credit")} {formatCurrency(draftFormTotals.credit, currency)}
                   </span>
                   <span
                     className={
@@ -671,7 +673,7 @@ export function JournalsPage({
                         : "text-destructive"
                     }
                   >
-                    {draftFormTotals.balanced ? "متوازن" : "مش متوازن"}
+                    {draftFormTotals.balanced ? t("Balanced") : t("Not balanced")}
                   </span>
                 </div>
                 <Button
@@ -682,7 +684,7 @@ export function JournalsPage({
                     setForm((f) => ({ ...f, lines: [...f.lines, emptyLine()] }))
                   }
                 >
-                  سطر إضافي
+                  {t("Add line")}
                 </Button>
               </div>
               {form.lines.map((line, index) => (
@@ -698,7 +700,7 @@ export function JournalsPage({
                     }}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="الحساب" />
+                      <SelectValue placeholder={t("Account")} />
                     </SelectTrigger>
                     <SelectContent>
                       {accounts.map((account) => (
@@ -710,7 +712,7 @@ export function JournalsPage({
                   </Select>
                   <Input
                     inputMode="decimal"
-                    placeholder="مدين"
+                    placeholder={t("Debit")}
                     value={line.debit}
                     onChange={(e) =>
                       updateLine(index, {
@@ -721,7 +723,7 @@ export function JournalsPage({
                   />
                   <Input
                     inputMode="decimal"
-                    placeholder="دائن"
+                    placeholder={t("Credit")}
                     value={line.credit}
                     onChange={(e) =>
                       updateLine(index, {
@@ -742,7 +744,7 @@ export function JournalsPage({
                       }))
                     }
                   >
-                    حذف
+                    {t("Delete")}
                   </Button>
                 </div>
               ))}
@@ -754,8 +756,8 @@ export function JournalsPage({
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <StandardModalContent
           size="md"
-          title={detailEntry?.entry_number ?? "تفاصيل القيد"}
-          description={detailEntry?.memo || "بدون بيان"}
+          title={detailEntry?.entry_number ?? t("Entry details")}
+          description={detailEntry?.memo || t("No memo")}
           footer={
             <Button
               type="button"
@@ -763,17 +765,17 @@ export function JournalsPage({
               className="h-11 rounded-xl"
               onClick={() => setDetailOpen(false)}
             >
-              إغلاق
+              {t("Close")}
             </Button>
           }
         >
-          <div className="grid gap-2 sm:grid-cols-3 text-sm">
+          <div className="grid grid-cols-2 gap-2 text-sm lg:grid-cols-3 [&>*:last-child]:col-span-2 lg:[&>*:last-child]:col-span-1">
             <div className="rounded-xl border bg-muted/20 px-3 py-2">
-              <div className="text-xs text-muted-foreground">التاريخ</div>
+              <div className="text-xs text-muted-foreground">{t("Date")}</div>
               <div className="tabular-nums">{detailEntry?.entry_date ?? "—"}</div>
             </div>
             <div className="rounded-xl border bg-muted/20 px-3 py-2">
-              <div className="text-xs text-muted-foreground">المصدر</div>
+              <div className="text-xs text-muted-foreground">{t("Source")}</div>
               <div>
                 {detailEntry
                   ? (SOURCE_LABELS[detailEntry.source] ?? detailEntry.source)
@@ -781,7 +783,7 @@ export function JournalsPage({
               </div>
             </div>
             <div className="rounded-xl border bg-muted/20 px-3 py-2">
-              <div className="text-xs text-muted-foreground">الحالة</div>
+              <div className="text-xs text-muted-foreground">{t("Status")}</div>
               <div>
                 {detailEntry ? STATUS_LABELS[detailEntry.status] : "—"}
               </div>
@@ -791,9 +793,9 @@ export function JournalsPage({
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2 text-start">الحساب</th>
-                  <th className="px-3 py-2 text-start">مدين</th>
-                  <th className="px-3 py-2 text-start">دائن</th>
+                  <th className="px-3 py-2 text-start">{t("Account")}</th>
+                  <th className="px-3 py-2 text-start">{t("Debit")}</th>
+                  <th className="px-3 py-2 text-start">{t("Credit")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -818,7 +820,7 @@ export function JournalsPage({
               </tbody>
               <tfoot>
                 <tr className="border-t bg-muted/30 font-medium">
-                  <td className="px-3 py-2">الإجمالي</td>
+                  <td className="px-3 py-2">{t("Total")}</td>
                   <td className="px-3 py-2 tabular-nums">
                     {formatCurrency(detailTotals.debit, currency)}
                   </td>
@@ -837,9 +839,9 @@ export function JournalsPage({
         onOpenChange={(open) => {
           if (!open) setVoidEntryId(null);
         }}
-        title="إلغاء ترحيل القيد"
-        description="تأكيد إلغاء ترحيل القيد؟ لا يمكن التراجع عن هذا الإجراء بسهولة."
-        confirmLabel="إلغاء الترحيل"
+        title={t("Void journal entry")}
+        description={t("Confirm voiding this posted entry? This action is difficult to reverse.")}
+        confirmLabel={t("Void entry")}
         destructive
         onConfirm={confirmVoid}
       />

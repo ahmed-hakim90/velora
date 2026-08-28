@@ -38,7 +38,7 @@ import {
   LogOut,
   Menu,
 } from "lucide-react";
-import { APP_NAME, APP_TAGLINE_AR } from "@/lib/constants";
+import { APP_NAME } from "@/lib/constants";
 import type { UserRole, PermissionKey } from "@/lib/constants";
 import type { FeatureFlag } from "@/lib/constants";
 import { filterNavByAccess, isNavHrefActive, ROLE_LABELS_AR } from "@/lib/auth/nav";
@@ -97,12 +97,8 @@ const ROLE_SUBTITLE: Record<UserRole, string> = {
   inventory: "مخزون ومشتريات",
 };
 
-/** Keep dense groups closed until the operator opens them (or lands inside). */
-const DEFAULT_COLLAPSED_NAV_GROUPS = new Set([
-  "Accounting",
-  "Reports",
-  "Administration",
-]);
+/** Keep navigation quiet by default; the current section always opens itself. */
+const DEFAULT_OPEN_NAV_GROUPS = new Set(["Dashboard", "Operations"]);
 
 function isNavGroupCollapsed(
   label: string,
@@ -113,7 +109,7 @@ function isNavGroupCollapsed(
   if (Object.prototype.hasOwnProperty.call(collapsedGroups, label)) {
     return Boolean(collapsedGroups[label]);
   }
-  return DEFAULT_COLLAPSED_NAV_GROUPS.has(label);
+  return !DEFAULT_OPEN_NAV_GROUPS.has(label);
 }
 
 export function AppSidebar({
@@ -153,7 +149,7 @@ export function AppSidebar({
       <aside
         className={cn(
           "flex h-full min-h-0 flex-col overflow-hidden border-e border-sidebar-border bg-sidebar text-sidebar-foreground shadow-[var(--mds-elevation-2)] transition-[width] duration-[var(--mds-motion-normal)] ease-[var(--mds-motion-easing-standard)]",
-          collapsed ? "w-[76px]" : "w-[17rem]",
+          collapsed ? "w-[72px]" : "w-[15.5rem]",
           className
         )}
       >
@@ -188,18 +184,18 @@ export function AppSidebar({
                 type="button"
                 variant="ghost"
                 size="icon-sm"
-                className="shrink-0 text-sidebar-foreground hover:bg-[var(--mds-sidebar-hover)] hover:text-sidebar-foreground"
+                className="shrink-0 border border-sidebar-border bg-[var(--mds-sidebar-hover)] text-sidebar-foreground shadow-sm hover:border-sidebar-primary/60 hover:bg-sidebar-accent hover:text-sidebar-primary"
                 onClick={toggleSidebar}
                 aria-label={t("Collapse sidebar")}
               >
-                <ChevronLeft className="size-4 rtl:rotate-180" />
+                <ChevronLeft className="size-5 rtl:rotate-180" />
               </Button>
             )}
           </div>
         )}
 
-        <ScrollArea className="min-h-0 flex-1 overflow-hidden px-2.5 py-4">
-          <nav className="space-y-5">
+        <ScrollArea className="min-h-0 flex-1 overflow-hidden px-2 py-2.5">
+          <nav className="space-y-1" aria-label={t("Main navigation")}>
             {navGroups.map((group) => {
               const groupHrefs = group.items.map((i) => i.href);
               const hasActiveItem = group.items.some((item) =>
@@ -213,7 +209,13 @@ export function AppSidebar({
               );
               const GroupIcon = iconMap[group.icon] ?? LayoutDashboard;
               return (
-                <div key={group.label}>
+                <div
+                  key={group.label}
+                  className={cn(
+                    "rounded-[var(--mds-radius-md)]",
+                    !collapsed && hasActiveItem && "bg-sidebar-accent/35"
+                  )}
+                >
                   {!collapsed && (
                     <button
                       type="button"
@@ -221,36 +223,42 @@ export function AppSidebar({
                         setGroupCollapsed(group.label, !groupCollapsed)
                       }
                       aria-expanded={!groupCollapsed}
+                      aria-controls={`sidebar-group-${group.label.replace(/\s+/g, "-").toLowerCase()}`}
                       className={cn(
-                        "mb-1.5 flex w-full items-center justify-between gap-2 rounded-[var(--mds-radius-sm)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] transition-colors hover:bg-[var(--mds-sidebar-hover)]",
-                        hasActiveItem && "text-sidebar-primary"
-                      )}
-                      style={
+                        "group mb-0.5 flex w-full items-center justify-between gap-2 rounded-[var(--mds-radius-md)] border px-2 py-1.5 text-start text-xs font-semibold transition-colors",
+                        forceExpanded ? "min-h-11" : "min-h-9",
                         hasActiveItem
-                          ? undefined
-                          : { color: "var(--mds-sidebar-muted)" }
-                      }
+                          ? "border-sidebar-primary/30 bg-sidebar-accent text-sidebar-primary"
+                          : "border-sidebar-border/70 bg-sidebar-foreground/[0.035] text-sidebar-foreground/85 hover:border-sidebar-primary/25 hover:bg-[var(--mds-sidebar-hover)] hover:text-sidebar-foreground"
+                      )}
                     >
                       <span className="flex min-w-0 items-center gap-2">
-                        <GroupIcon className="size-3.5 shrink-0 opacity-85" aria-hidden />
+                        <span className="flex size-6 shrink-0 items-center justify-center rounded-[var(--mds-radius-sm)] bg-sidebar-foreground/[0.07]">
+                          <GroupIcon className="size-3.5 opacity-90" aria-hidden />
+                        </span>
                         <span className="truncate">{t(group.label)}</span>
                       </span>
-                      <span className="flex items-center gap-1.5">
-                        <span className="tabular-nums opacity-70">
-                          {group.items.length}
+                      <span className="flex shrink-0 items-center">
+                        <span className="flex size-6 items-center justify-center rounded-[var(--mds-radius-sm)] border border-sidebar-border bg-sidebar/40 transition-colors group-hover:border-sidebar-primary/40">
+                          <ChevronDown
+                            className={cn(
+                              "size-4 shrink-0 transition-transform duration-200",
+                              groupCollapsed && "-rotate-90 rtl:rotate-90"
+                            )}
+                            aria-hidden
+                          />
                         </span>
-                        <ChevronDown
-                          className={cn(
-                            "size-3.5 shrink-0 transition-transform duration-200",
-                            groupCollapsed && "-rotate-90"
-                          )}
-                          aria-hidden
-                        />
                       </span>
                     </button>
                   )}
                   {(!groupCollapsed || collapsed) && (
-                    <ul className="space-y-1">
+                    <ul
+                      id={`sidebar-group-${group.label.replace(/\s+/g, "-").toLowerCase()}`}
+                      className={cn(
+                        "space-y-1",
+                        !collapsed && "ms-3.5 border-s border-sidebar-border/80 ps-2 pb-1.5"
+                      )}
+                    >
                       {group.items.map((item, index) => {
                         const Icon = iconMap[item.icon] ?? LayoutDashboard;
                         const active = isNavHrefActive(
@@ -278,14 +286,18 @@ export function AppSidebar({
                                 >
                                   <Icon className="size-4 shrink-0" />
                                 </TooltipTrigger>
-                                <TooltipContent side="left">{t(item.label)}</TooltipContent>
+                                <TooltipContent side="left">
+                                  <span className="text-muted-foreground">{t(group.label)} · </span>
+                                  {t(item.label)}
+                                </TooltipContent>
                               </Tooltip>
                             ) : (
                               <Link
                                 href={item.href}
                                 aria-current={active ? "page" : undefined}
                                 className={cn(
-                                  "relative flex items-center gap-3 rounded-[var(--mds-radius-md)] px-3 py-2.5 text-sm transition-colors",
+                                  "relative flex items-center gap-2 rounded-[var(--mds-radius-sm)] px-2 py-1.5 text-[12px] transition-colors",
+                                  forceExpanded ? "min-h-11" : "min-h-8",
                                   active
                                     ? "bg-sidebar-accent font-semibold text-sidebar-primary"
                                     : "font-medium text-sidebar-foreground/80 hover:bg-[var(--mds-sidebar-hover)] hover:text-sidebar-foreground"
@@ -297,7 +309,7 @@ export function AppSidebar({
                                     aria-hidden
                                   />
                                 ) : null}
-                                <Icon className="size-4 shrink-0 opacity-90" />
+                                <Icon className="size-3.5 shrink-0 opacity-80" />
                                 <span className="truncate">{t(item.label)}</span>
                               </Link>
                             )}
@@ -312,27 +324,31 @@ export function AppSidebar({
           </nav>
         </ScrollArea>
 
-        <div className="shrink-0 border-t border-sidebar-border px-3 py-3">
+        <div className="shrink-0 border-t border-sidebar-border bg-sidebar-foreground/[0.025] px-2.5 py-2">
           {!collapsed ? (
-            <div className="space-y-2">
-              <div>
-                <p className="text-xs font-medium text-sidebar-foreground">
-                  {ROLE_LABELS_AR[userRole]}
-                </p>
-                <p className="mt-0.5 text-[11px]" style={{ color: "var(--mds-sidebar-muted)" }}>
-                  {APP_TAGLINE_AR}
-                </p>
+            <div className="flex items-center gap-2">
+              <div className="flex min-w-0 flex-1 items-center gap-2 rounded-[var(--mds-radius-sm)] px-1.5 py-1">
+                <span className="size-1.5 shrink-0 rounded-full bg-sidebar-primary shadow-[0_0_0_3px_rgb(103_232_249/0.1)]" aria-hidden />
+                <div className="min-w-0">
+                  <p className="truncate text-[11px] font-semibold text-sidebar-foreground">
+                    {t(ROLE_LABELS_AR[userRole])}
+                  </p>
+                  <PoweredByHakimo
+                    compact
+                    tone="sidebar"
+                    className="mt-0.5 h-auto w-fit justify-start p-0 text-[9px] opacity-60 hover:bg-transparent hover:opacity-100"
+                  />
+                </div>
               </div>
-              <SidebarSignOut collapsed={false} label={t("Sign out")} />
-              <PoweredByHakimo tone="sidebar" className="justify-start px-0.5 py-0.5" />
+              <SidebarSignOut collapsed label={t("Sign out")} />
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center gap-1.5">
               <SidebarSignOut collapsed label={t("Sign out")} />
               <PoweredByHakimo
                 compact
                 tone="sidebar"
-                className="size-8 rounded-[var(--mds-radius-md)] hover:bg-[var(--mds-sidebar-hover)]"
+                className="size-7 rounded-[var(--mds-radius-sm)] opacity-70 hover:bg-[var(--mds-sidebar-hover)] hover:opacity-100"
               />
             </div>
           )}

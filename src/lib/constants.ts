@@ -504,8 +504,8 @@ export const NAV_GROUPS = [
       { label: "Warehouses", href: "/inventory/warehouses", icon: "Warehouse" },
       { label: "Stock Movements", href: "/inventory/movements", icon: "ClipboardList" },
       { label: "Transfers", href: "/inventory/transfers", icon: "ArrowLeftRight" },
-      { label: "Waste", href: "/inventory/waste", icon: "Trash2" },
       { label: "Stock Count", href: "/inventory/stock-count", icon: "ClipboardList" },
+      { label: "Waste", href: "/inventory/waste", icon: "Trash2" },
     ],
   },
   {
@@ -513,11 +513,11 @@ export const NAV_GROUPS = [
     icon: "Truck",
     items: [
       { label: "Purchasing Overview", href: "/purchasing", icon: "LayoutDashboard" },
+      { label: "Suppliers", href: "/inventory/suppliers", icon: "Building2" },
       { label: "Purchase Requests", href: "/inventory/purchase-requests", icon: "ClipboardList" },
       { label: "Purchase Orders", href: "/inventory/purchase-orders", icon: "FileSpreadsheet" },
       { label: "Purchases", href: "/inventory/purchases", icon: "Truck" },
       { label: "Purchase Returns", href: "/inventory/purchase-returns", icon: "ScrollText" },
-      { label: "Suppliers", href: "/inventory/suppliers", icon: "Building2" },
     ],
   },
   {

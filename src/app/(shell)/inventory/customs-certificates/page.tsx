@@ -13,8 +13,8 @@ export default async function CustomsCertificatesRoute() {
     if (!(await isFeatureEnabled("purchase_imports"))) {
       return (
         <AccessDenied
-          title="استيراد الحاويات مش مفعّل"
-          description="فعّل «استيراد الحاويات والشهادات» من إعدادات النظام — مش تبع أي نشاط تلقائي."
+          title="Container imports are disabled"
+          description="Enable container imports and certificates from system settings."
         />
       );
     }
@@ -34,7 +34,7 @@ export default async function CustomsCertificatesRoute() {
     );
   } catch (e) {
     if (e instanceof AuthError) {
-      return <AccessDenied title="غير مسموح" description={e.message} />;
+      return <AccessDenied title="Access denied" description={e.message} />;
     }
     throw e;
   }

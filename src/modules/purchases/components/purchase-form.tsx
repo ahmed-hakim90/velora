@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useAppRouter as useRouter } from "@/hooks/use-app-router";
-import { Plus, Tags, Trash2, X, Save, PackageCheck, FileText, Receipt, Undo2, Loader2, Send, MessageCircle, Settings } from "lucide-react";
+import { Plus, Tags, Trash2, X, Save, PackageCheck, FileText, Receipt, Undo2, Send, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import {
   backgroundMutationKey,
@@ -42,6 +42,11 @@ import { ConfirmActionDialog } from "@/components/Velora/confirm-action-dialog";
 import { CompactAction, CompactActions } from "@/components/Velora/compact-actions";
 import { OperatorShortcutHint } from "@/components/Velora/operator-shortcut-hint";
 import { OperationalCard } from "@/components/Velora/operational-card";
+import {
+  DocumentHeaderGrid,
+  DocumentLineComposer,
+  DocumentLinesSection,
+} from "@/components/Velora/commercial-document-form";
 import { EmptyStateBlock, LoadingStateBlock } from "@/components/Velora/state-blocks";
 import { DocumentPrintPreviewModal } from "@/components/print/document-print-preview-modal";
 import { CreateContainerInline } from "@/modules/purchases/components/containers-page";
@@ -136,7 +141,7 @@ function buildLocalPurchaseDraft(input: {
     store_id: "",
     warehouse_id: input.warehouseId,
     supplier_id: input.supplierId || null,
-    invoice_number: "مسودة جديدة",
+    invoice_number: "New draft",
     status: "draft",
     document_kind: input.documentKind,
     source_document_id: null,
@@ -151,7 +156,7 @@ function buildLocalPurchaseDraft(input: {
     created_by: "",
     created_at: now,
     lines: [],
-    supplierName: supplier?.name ?? (input.supplierId ? "" : "بدون مورد"),
+    supplierName: supplier?.name ?? (input.supplierId ? "" : "No supplier"),
     warehouseName: warehouse?.name ?? "",
     supplierAddress: supplier?.address ?? null,
     supplierTaxId: supplier?.tax_id ?? null,
@@ -214,11 +219,10 @@ export function PurchaseForm({
   currency,
   initialInvoiceId,
   documentKind = "purchase_invoice",
-  canManagePrintEngine = false,
   importsEnabled = false,
   onComplete,
 }: PurchaseFormProps) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [loading, setLoading] = useState(!!initialInvoiceId);
@@ -312,7 +316,11 @@ export function PurchaseForm({
   >(() => {});
   const { push: pushUndo, undo: undoLast, clear: clearUndo } = useUndoStack();
 
-  invoiceRef.current = invoice;
+  useEffect(() => {
+    invoiceRef.current = invoice;
+  }, [invoice]);
+
+  const currentInvoiceId = invoice?.id;
 
   const productMap = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
 
@@ -407,8 +415,8 @@ export function PurchaseForm({
     if (
       !importsEnabled ||
       documentKind !== "purchase_order" ||
-      !invoice ||
-      isLocalDraftId(invoice.id)
+      !currentInvoiceId ||
+      isLocalDraftId(currentInvoiceId)
     ) {
       return;
     }
@@ -417,7 +425,7 @@ export function PurchaseForm({
       const { listContainersAction } = await import(
         "@/modules/purchases/actions/purchase-import.actions"
       );
-      const result = await listContainersAction({ purchaseOrderId: invoice.id });
+      const result = await listContainersAction({ purchaseOrderId: currentInvoiceId });
       if (cancelled) return;
       if (result.ok) {
         setPoContainers(result.data);
@@ -427,12 +435,12 @@ export function PurchaseForm({
     return () => {
       cancelled = true;
     };
-  }, [importsEnabled, documentKind, invoice?.id]);
+  }, [importsEnabled, documentKind, currentInvoiceId]);
 
   useEffect(() => {
-    if (initialInvoiceId || !invoice || !isLocalDraftId(invoice.id)) return;
+    if (initialInvoiceId || !currentInvoiceId || !isLocalDraftId(currentInvoiceId)) return;
     setTimeout(() => productSearchRef.current?.focus(), 50);
-  }, [initialInvoiceId, invoice?.id]);
+  }, [initialInvoiceId, currentInvoiceId]);
 
   const ensurePersistedDraft = useCallback(async (): Promise<PurchaseWithLines | null> => {
     const current = invoiceRef.current;
@@ -442,11 +450,11 @@ export function PurchaseForm({
     const nextWarehouseId = warehouseId || current.warehouse_id;
     const nextSupplierId = supplierId || current.supplier_id || "";
     if (!nextWarehouseId) {
-      toast.error("اختار المخزن");
+      toast.error(t("Choose a warehouse"));
       return null;
     }
     if (documentKind !== "purchase_request" && !nextSupplierId) {
-      toast.error("اختار المورد");
+      toast.error(t("Choose a supplier"));
       return null;
     }
 
@@ -474,7 +482,7 @@ export function PurchaseForm({
       const persisted: PurchaseWithLines = {
         ...result.data,
         lines: [],
-        supplierName: supplier?.name ?? (nextSupplierId ? "" : "بدون مورد"),
+        supplierName: supplier?.name ?? (nextSupplierId ? "" : "No supplier"),
         warehouseName: warehouses.find((w) => w.id === nextWarehouseId)?.name ?? "",
         supplierAddress: supplier?.address ?? null,
         supplierTaxId: supplier?.tax_id ?? null,
@@ -500,6 +508,7 @@ export function PurchaseForm({
     importsEnabled,
     docCurrency,
     fxRate,
+    t,
   ]);
 
   const addLine = useCallback(
@@ -608,7 +617,7 @@ export function PurchaseForm({
           ...withLineTotals(nextLines, inv.extra_cost),
         });
         resetLineInputs();
-        toast.success(`تمت إضافة ${product.name}`);
+        toast.success(`${t("Added")} ${product.name}`);
 
         if (!isUndoingRef.current) {
           const priorQty = existing?.quantity ?? 0;
@@ -679,7 +688,7 @@ export function PurchaseForm({
         });
       })();
     },
-    [ensurePersistedDraft, productMap, pushUndo, importsEnabled, docCurrency, currency, fxRate]
+    [ensurePersistedDraft, productMap, pushUndo, importsEnabled, docCurrency, currency, fxRate, t]
   );
 
   const lookupBarcode = (code: string) => {
@@ -728,7 +737,7 @@ export function PurchaseForm({
     if (selectedProductId) {
       const product = productMap.get(selectedProductId);
       if (!product) {
-        toast.error("المنتج غير موجود");
+        toast.error(t("Product not found"));
         return;
       }
       addLine(
@@ -753,18 +762,18 @@ export function PurchaseForm({
       selectProduct(searchMatches[Math.min(highlightIndex, searchMatches.length - 1)]!);
       return;
     }
-    toast.error("المنتج غير موجود");
+    toast.error(t("Product not found"));
   };
 
   const handleReceive = () => {
     if (!invoice) return;
     const paid = parseFloat(amountPaidNow) || 0;
     if (paid < 0) {
-      toast.error("مبلغ الدفعة لازم يكون صفر أو أكبر");
+      toast.error(t("Payment amount must be zero or more"));
       return;
     }
     if (paid > invoice.total) {
-      toast.error("مبلغ الدفعة لا يمكن أن يتجاوز إجمالي الفاتورة");
+      toast.error(t("Payment amount cannot exceed invoice total"));
       return;
     }
 
@@ -778,7 +787,7 @@ export function PurchaseForm({
 
     runBackground({
       key: mutationKey,
-      label: "جاري استلام فاتورة الشراء…",
+      label: t("Receiving purchase invoice…"),
       execute: async () => {
         const result = await receivePurchaseAction(invoiceId, {
           amountPaid: paid,
@@ -790,13 +799,13 @@ export function PurchaseForm({
       successMessage: (data) => {
         const remaining = Number((invoiceTotal - data.amountPaid).toFixed(2));
         return data.amountPaid > 0
-          ? `تم الاستلام — دُفع ${formatCurrency(data.amountPaid, currency)}، الباقي ${formatCurrency(remaining, currency)}`
-          : "تم الحفظ النهائي — تم تحديث المخزون";
+          ? `${t("Received")} — ${t("Paid")} ${formatCurrency(data.amountPaid, currency)}، ${t("Remaining")} ${formatCurrency(remaining, currency)}`
+          : t("Finalized. Inventory updated.");
       },
       onSuccess: (data) => {
-        toast.message("تقدر تعمل قائمة أسعار من الفاتورة", {
+        toast.message(t("You can create a price list from this invoice"), {
           action: {
-            label: "قائمة أسعار",
+            label: t("Price list"),
             onClick: () => {
               router.push(`/inventory/purchases/price-list?invoice=${data.id}`);
             },
@@ -836,7 +845,7 @@ export function PurchaseForm({
         document_date: documentDate,
         document_notes: notesTrimmed,
         ...withLineTotals(invoice.lines, nextExtra),
-        supplierName: supplier?.name ?? (supplierId ? invoice.supplierName : "بدون مورد"),
+        supplierName: supplier?.name ?? (supplierId ? invoice.supplierName : "No supplier"),
         warehouseName: warehouse?.name ?? invoice.warehouseName,
         supplierAddress: supplier?.address ?? null,
         supplierTaxId: supplier?.tax_id ?? null,
@@ -852,7 +861,7 @@ export function PurchaseForm({
       document_date: documentDate,
       document_notes: notesTrimmed,
       ...withLineTotals(invoice.lines, nextExtra),
-      supplierName: supplier?.name ?? (supplierId ? invoice.supplierName : "بدون مورد"),
+      supplierName: supplier?.name ?? (supplierId ? invoice.supplierName : "No supplier"),
     });
 
     void (async () => {
@@ -1007,9 +1016,11 @@ export function PurchaseForm({
     })();
   };
 
-  removeLineRef.current = removeLine;
-  updateLineRef.current = updateLine;
-  addLineForUndoRef.current = addLine;
+  useEffect(() => {
+    removeLineRef.current = removeLine;
+    updateLineRef.current = updateLine;
+    addLineForUndoRef.current = addLine;
+  });
 
   useOperatorShortcuts({
     enabled: invoice?.status === "draft",
@@ -1024,7 +1035,7 @@ export function PurchaseForm({
           const persisted = await ensurePersistedDraft();
           if (!persisted) return;
         }
-        toast.success("تم الحفظ المؤقت — تابع لاحقًا من القائمة");
+        toast.success(t("Draft saved. Continue later from the list."));
         onComplete();
       })();
     },
@@ -1034,7 +1045,7 @@ export function PurchaseForm({
       if (last) removeLine(last.id);
     },
     onUndo: () => {
-      if (!undoLast()) toast.message("مفيش خطوة للتراجع");
+      if (!undoLast()) toast.message(t("Nothing to undo"));
     },
   });
 
@@ -1051,7 +1062,7 @@ export function PurchaseForm({
       throw new Error(result.error);
     }
     clearUndo();
-    toast.success("تم حذف فاتورة الشراء");
+    toast.success(t("Purchase invoice deleted"));
     onComplete();
   };
 
@@ -1069,11 +1080,11 @@ export function PurchaseForm({
     setExtraCost(
       result.data.extra_cost > 0 ? String(result.data.extra_cost) : ""
     );
-    toast.success("تم إلغاء الاستلام — رجعت مسودة. الأصناف اللي مكانش ليها رصيد تقدر تعدّلها وتستلم تاني");
+    toast.success(t("Receipt reversed. The document is a draft again."));
   };
 
   if (loading && !invoice) {
-    return <LoadingStateBlock label="جاري تحميل فاتورة الشراء…" />;
+    return <LoadingStateBlock label={t("Loading purchase invoice…")} />;
   }
 
   const subtotal = invoice?.lines.reduce((s, l) => s + l.line_total, 0) ?? 0;
@@ -1091,18 +1102,18 @@ export function PurchaseForm({
   const kindTitle =
     COMMERCIAL_DOCUMENT_KIND_LABELS[
       (kind ?? "purchase_invoice") as keyof typeof COMMERCIAL_DOCUMENT_KIND_LABELS
-    ] ?? "مستند مشتريات";
+    ] ?? "Purchase document";
   const statusLabels: Record<string, string> = {
-    draft: "مسودة",
-    received: "مستلمة",
-    cancelled: "ملغاة",
-    submitted: "مقدَّم",
-    approved: "معتمد",
-    rejected: "مرفوض",
-    sent: "مُرسل",
-    partial_invoiced: "فوترة جزئية",
-    invoiced: "محوَّل",
-    posted: "مرحَّل",
+    draft: "Draft",
+    received: "Received",
+    cancelled: "Cancelled",
+    submitted: "Submitted",
+    approved: "Approved",
+    rejected: "Rejected",
+    sent: "Sent",
+    partial_invoiced: "Partially invoiced",
+    invoiced: "Invoiced",
+    posted: "Posted",
   };
 
   const openImportPurchaseOrders = async () => {
@@ -1135,14 +1146,14 @@ export function PurchaseForm({
   if (!invoice) {
     return (
       <EmptyStateBlock
-        title="مفيش مخزن أو مورد جاهز"
+        title={t("No warehouse or supplier is ready")}
         description={
           documentKind === "purchase_request"
-            ? "راجع المخازن من إعدادات الفرع."
-            : "ضيف مورد ومخزن الأول، بعدين افتح فاتورة جديدة."
+            ? t("Check warehouses in store settings.")
+            : t("Add a supplier and warehouse before creating an invoice.")
         }
         action={
-          <CompactAction label="رجوع" icon={X} onClick={onComplete} />
+          <CompactAction label={t("Back")} icon={X} onClick={onComplete} />
         }
       />
     );
@@ -1177,7 +1188,7 @@ export function PurchaseForm({
               size="icon"
               className="size-11 shrink-0 text-destructive"
               onClick={() => removeLine(line.id)}
-              aria-label="حذف البند"
+              aria-label={t("Delete line")}
             >
               <Trash2 className="size-4" />
             </Button>
@@ -1185,7 +1196,7 @@ export function PurchaseForm({
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2">
           <div className="space-y-1">
-            <Label className="text-xs">الكمية</Label>
+            <Label className="text-xs">{t("Quantity")}</Label>
             {isDraft ? (
               <DraftDecimalInput
                 className="min-h-11"
@@ -1211,7 +1222,7 @@ export function PurchaseForm({
             )}
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">التكلفة</Label>
+            <Label className="text-xs">{t("Cost")}</Label>
             {isDraft ? (
               <DraftDecimalInput
                 className="min-h-11"
@@ -1236,7 +1247,7 @@ export function PurchaseForm({
             )}
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">خصم البند</Label>
+            <Label className="text-xs">{t("Line discount")}</Label>
             {isDraft ? (
               <DraftDecimalInput
                 className="min-h-11"
@@ -1262,7 +1273,7 @@ export function PurchaseForm({
           </div>
         </div>
         <div className="mt-2 flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">الإجمالي</span>
+          <span className="text-muted-foreground">{t("Total")}</span>
           <span className="font-semibold">
             {formatCurrency(line.landed_line_total ?? line.line_total, currency)}
           </span>
@@ -1272,28 +1283,28 @@ export function PurchaseForm({
   };
 
   return (
-    <div className="flex flex-col gap-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
+    <div className="flex flex-col gap-4 pb-16 lg:pb-12">
       <OperationalCard
         accent="var(--mds-color-action-primary)"
-        title={`${kindTitle} ${invoice.invoice_number}`}
+        title={`${t(kindTitle)} ${t(invoice.invoice_number)}`}
         description={
           isDraft
             ? isLocalDraft
-              ? "عدّل المورد والمخزن من هنا — المسودة تتسجل لما تضيف صنف أو تحفظ"
-              : "مسودة — كل بيانات الفاتورة ظاهرة هنا · الأزرار ثابتة تحت"
-            : `الحالة: ${statusLabels[invoice.status] ?? invoice.status}`
+              ? t("Choose the supplier and warehouse. The draft saves when you add an item or save.")
+              : t("Draft — all invoice details are shown here")
+            : `${t("Status")}: ${t(statusLabels[invoice.status] ?? invoice.status)}`
         }
       >
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
           {isDraft ? (
             <p className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground sm:text-sm">
-              مسودة محفوظة — المخزون لم يتحدث بعد. أي تعديل على الرأس بيتسجل تلقائي.
+              {t("Draft saved. Inventory has not been updated yet.")}
             </p>
           ) : null}
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <DocumentHeaderGrid className="lg:grid-cols-3">
             <div className="space-y-1.5">
-              <Label>المورد{isPurchaseRequest ? " (اختياري قبل التحويل)" : ""}</Label>
+              <Label>{t("Supplier")}{isPurchaseRequest ? ` ${t("(optional before conversion)")}` : ""}</Label>
               {canEditSupplier ? (
                 <Select
                   value={supplierId || (isPurchaseRequest ? "__none__" : "")}
@@ -1306,15 +1317,15 @@ export function PurchaseForm({
                     <SelectValue>
                       {(value) =>
                         value === "__none__" || !value
-                          ? "بدون مورد"
+                          ? t("No supplier")
                           : selectLabelById(suppliers, value, (s) => s.name)
                       }
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {isPurchaseRequest ? (
-                      <SelectItem value="__none__" label="بدون مورد">
-                        بدون مورد
+                      <SelectItem value="__none__" label={t("No supplier")}>
+                        {t("No supplier")}
                       </SelectItem>
                     ) : null}
                     {suppliers.map((s) => (
@@ -1326,12 +1337,12 @@ export function PurchaseForm({
                 </Select>
               ) : (
                 <p className="min-h-11 content-center text-sm font-medium">
-                  {invoice.supplierName || "بدون مورد"}
+                  {t(invoice.supplierName || "No supplier")}
                 </p>
               )}
             </div>
             <div className="space-y-1.5">
-              <Label>المخزن</Label>
+              <Label>{t("Warehouse")}</Label>
               {isDraft && isLocalDraft ? (
                 <Select
                   value={warehouseId}
@@ -1385,7 +1396,7 @@ export function PurchaseForm({
               )}
             </div>
             <div className="space-y-1.5">
-              <Label>رقم الفاتورة</Label>
+              <Label>{t("Invoice number")}</Label>
               {isDraft ? (
                 <Input
                   className="min-h-11"
@@ -1400,7 +1411,7 @@ export function PurchaseForm({
               )}
             </div>
             <div className="space-y-1.5">
-              <Label>تاريخ الفاتورة</Label>
+              <Label>{t("Invoice date")}</Label>
               {isDraft ? (
                 <Input
                   className="min-h-11"
@@ -1417,7 +1428,7 @@ export function PurchaseForm({
               )}
             </div>
             <div className="space-y-1.5">
-              <Label>تكلفة إضافية</Label>
+              <Label>{t("Additional cost")}</Label>
               {isDraft ? (
                 <Input
                   className="min-h-11"
@@ -1440,7 +1451,7 @@ export function PurchaseForm({
             {importsEnabled ? (
               <>
                 <div className="space-y-1.5">
-                  <Label>عملة المستند</Label>
+                  <Label>{t("Document currency")}</Label>
                   {isDraft ? (
                     <Select
                       value={docCurrency}
@@ -1465,7 +1476,7 @@ export function PurchaseForm({
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  <Label>سعر التحويل → {currency}</Label>
+                  <Label>{t("Exchange rate")} → {currency}</Label>
                   {isDraft ? (
                     <Input
                       className="min-h-11"
@@ -1485,13 +1496,13 @@ export function PurchaseForm({
               </>
             ) : null}
             <div className="space-y-1.5">
-              <Label>الإجمالي ({currency})</Label>
+              <Label>{t("Total")} ({currency})</Label>
               <p className="min-h-11 content-center text-base font-semibold tabular-nums">
                 {formatCurrency(invoice.total || subtotal, currency)}
               </p>
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>ملاحظات المستند</Label>
+              <Label>{t("Document notes")}</Label>
               {isDraft ? (
                 <Textarea
                   className="min-h-16"
@@ -1505,23 +1516,24 @@ export function PurchaseForm({
                 </p>
               )}
             </div>
-          </div>
+          </DocumentHeaderGrid>
 
           {isDraft && isPurchaseInvoice && zeroCostLineCount > 0 ? (
             <p className="rounded-[var(--mds-radius-lg)] border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100">
-              فيه {zeroCostLineCount} بند بدون تكلفة — عدّل سعر الفاتورة قبل الاستلام؛ سعر الفاتورة هو المعتمد في المخزون.
+              {zeroCostLineCount} {t("lines have no cost. Set invoice prices before receiving.")}
             </p>
           ) : null}
 
           {isDraft ? (
-            <>
-            <div className="space-y-3 border-t border-border/60 pt-4">
+            <DocumentLineComposer
+              hint={t("Scan a barcode or search for a product, then enter quantity and cost")}
+            >
             <form
               onSubmit={handleBarcodeSubmit}
               className={
                 selectedHasPacking
-                  ? "grid grid-cols-1 gap-2 sm:grid-cols-[1fr_7rem_5.5rem_6.5rem_5.5rem_auto] sm:items-end"
-                  : "grid grid-cols-1 gap-2 sm:grid-cols-[1fr_5.5rem_6.5rem_5.5rem_auto] sm:items-end"
+                  ? "grid grid-cols-1 gap-3 sm:grid-cols-[minmax(14rem,1fr)_7rem_5.5rem_6.5rem_5.5rem_auto] sm:items-end"
+                  : "grid grid-cols-1 gap-3 sm:grid-cols-[minmax(14rem,1fr)_5.5rem_6.5rem_5.5rem_auto] sm:items-end"
               }
             >
               <ProductSearchCombobox
@@ -1546,7 +1558,7 @@ export function PurchaseForm({
               />
               {selectedHasPacking ? (
                 <div>
-                  <Label className="mb-1.5 text-xs text-muted-foreground">وحدة</Label>
+                  <Label className="mb-1.5 text-xs text-muted-foreground">{t("Unit")}</Label>
                   <Select
                     value={entryUnit}
                     onValueChange={(v) =>
@@ -1576,7 +1588,7 @@ export function PurchaseForm({
                   htmlFor="purchase-line-quantity"
                   className="mb-1.5 text-xs text-muted-foreground"
                 >
-                  كمية
+                  {t("Quantity")}
                   {selectedProduct
                     ? ` (${formatUnit(selectedHasPacking ? entryUnit : selectedBaseUnit)})`
                     : ""}
@@ -1598,7 +1610,7 @@ export function PurchaseForm({
                   htmlFor="purchase-line-cost"
                   className="mb-1.5 text-xs text-muted-foreground"
                 >
-                  {allowZeroUnitCost ? "تكلفة (اختياري)" : "تكلفة"}
+                  {allowZeroUnitCost ? t("Cost (optional)") : t("Cost")}
                   {importsEnabled && docCurrency !== currency
                     ? ` (${docCurrency})`
                     : ""}
@@ -1616,10 +1628,10 @@ export function PurchaseForm({
                   onChange={(e) => setUnitCost(sanitizeDecimalInput(e.target.value))}
                   placeholder={
                     allowZeroUnitCost
-                      ? "بدون سعر"
+                      ? t("No price")
                       : suggestedEntryCost > 0
                         ? String(suggestedEntryCost)
-                        : "آخر تكلفة"
+                        : t("Last cost")
                   }
                 />
               </div>
@@ -1628,7 +1640,7 @@ export function PurchaseForm({
                   htmlFor="purchase-line-discount"
                   className="mb-1.5 text-xs text-muted-foreground"
                 >
-                  خصم البند
+                  {t("Line discount")}
                 </Label>
                 <Input
                   id="purchase-line-discount"
@@ -1643,7 +1655,7 @@ export function PurchaseForm({
               </div>
               <div className="flex items-end">
                 <CompactAction
-                  label="إضافة"
+                  label={t("Add")}
                   icon={Plus}
                   variant="default"
                   type="submit"
@@ -1653,23 +1665,23 @@ export function PurchaseForm({
             </form>
             {entryPreview ? (
               <p className="text-xs text-muted-foreground">
-                يتحوّل للمخزون: {entryPreview.quantity} {formatUnit(selectedBaseUnit)} ×{" "}
+                {t("Inventory conversion")}: {entryPreview.quantity} {formatUnit(selectedBaseUnit)} ×{" "}
                 {formatCurrency(entryPreview.unitCost, currency)} ={" "}
                 {formatCurrency(entryPreview.lineTotal, currency)}
               </p>
             ) : null}
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-1.5">
-                <Label>رقم التشغيلة</Label>
+                <Label>{t("Batch number")}</Label>
                 <Input
                   className="min-h-11"
                   value={batchNumber}
                   onChange={(e) => setBatchNumber(e.target.value)}
-                  placeholder="اختياري"
+                  placeholder={t("Optional")}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>تاريخ الإنتاج</Label>
+                <Label>{t("Production date")}</Label>
                 <Input
                   className="min-h-11"
                   type="date"
@@ -1678,7 +1690,7 @@ export function PurchaseForm({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>تاريخ الانتهاء</Label>
+                <Label>{t("Expiry date")}</Label>
                 <Input
                   className="min-h-11"
                   type="date"
@@ -1687,7 +1699,7 @@ export function PurchaseForm({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>صلاحية محسوبة</Label>
+                <Label>{t("Calculated expiry")}</Label>
                 <Input
                   className="min-h-11"
                   value={calculatedExpiryDate ?? "-"}
@@ -1695,27 +1707,21 @@ export function PurchaseForm({
                 />
               </div>
             </div>
-            </div>
-            </>
+            </DocumentLineComposer>
           ) : null}
 
-          <div className="space-y-3 border-t border-border/60 pt-4">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold">الأصناف ({invoice.lines.length})</h3>
-              {invoice.lines.length > 0 ? (
-                <p className="text-xs text-muted-foreground tabular-nums sm:text-sm">
-                  إجمالي البنود: {formatCurrency(invoice.total || subtotal, currency)}
-                </p>
-              ) : null}
-            </div>
+          <DocumentLinesSection
+            count={invoice.lines.length}
+            total={invoice.lines.length > 0 ? formatCurrency(invoice.total || subtotal, currency) : null}
+          >
 
             {invoice.lines.length === 0 ? (
               <EmptyStateBlock
-                title="مفيش أصناف في الفاتورة"
+                title={t("No items on this invoice")}
                 description={
                   isDraft
-                    ? "امسح باركود أو اختَر منتج من فوق عشان تضيف بند."
-                    : "الفاتورة بدون بنود."
+                    ? t("Scan a barcode or choose a product above to add a line.")
+                    : t("This invoice has no lines.")
                 }
               />
             ) : (
@@ -1728,12 +1734,12 @@ export function PurchaseForm({
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>المنتج</TableHead>
-                        <TableHead className="text-right">الكمية</TableHead>
-                        <TableHead className="text-right">تكلفة الوحدة</TableHead>
-                        <TableHead className="text-right">خصم</TableHead>
-                        {!isDraft && <TableHead className="text-right">بعد الإضافات</TableHead>}
-                        <TableHead className="text-right">الإجمالي</TableHead>
+                        <TableHead>{t("Product")}</TableHead>
+                        <TableHead className="text-right">{t("Quantity")}</TableHead>
+                        <TableHead className="text-right">{t("Unit cost")}</TableHead>
+                        <TableHead className="text-right">{t("Discount")}</TableHead>
+                        {!isDraft && <TableHead className="text-right">{t("After additional costs")}</TableHead>}
+                        <TableHead className="text-right">{t("Total")}</TableHead>
                         {isDraft && <TableHead />}
                       </TableRow>
                     </TableHeader>
@@ -1842,14 +1848,14 @@ export function PurchaseForm({
                 </div>
               </>
             )}
-          </div>
+          </DocumentLinesSection>
 
           {importsEnabled &&
           documentKind === "purchase_order" &&
           invoice &&
           !isLocalDraftId(invoice.id) ? (
             <div className="space-y-3 border-t border-border/60 pt-4">
-              <h3 className="text-sm font-semibold">الحاويات</h3>
+              <h3 className="text-sm font-semibold">{t("Containers")}</h3>
               {containersLoaded && poContainers.length > 0 ? (
                 <ul className="space-y-1 text-sm">
                   {poContainers.map((c) => (
@@ -1861,7 +1867,7 @@ export function PurchaseForm({
                 </ul>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  لسه مفيش حاويات على الأمر ده
+                  {t("No containers on this order yet")}
                 </p>
               )}
               <CreateContainerInline
@@ -1887,10 +1893,10 @@ export function PurchaseForm({
         </div>
       </OperationalCard>
 
-      <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-border/60 bg-background/95 px-3 py-2.5 backdrop-blur-xl md:bottom-0 md:pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pt-3 lg:ps-64">
+      <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-border/60 bg-background/95 px-3 py-2.5 backdrop-blur-xl lg:bottom-0 lg:pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:ps-64 lg:pt-3">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
           <div className="min-w-0 shrink">
-            <p className="text-xs text-muted-foreground sm:text-sm">{invoice.lines.length} بند</p>
+            <p className="text-xs text-muted-foreground sm:text-sm">{invoice.lines.length} {t("lines")}</p>
             <p className="truncate text-lg font-semibold tabular-nums sm:text-2xl">
               {formatCurrency(invoice.total || subtotal, currency)}
             </p>
@@ -1900,10 +1906,10 @@ export function PurchaseForm({
             <CompactAction
               label={
                 invoice.status === "cancelled"
-                  ? "رجوع"
+                  ? t("Back")
                   : isDraft
-                    ? "حفظ مؤقت"
-                    : "إغلاق"
+                    ? t("Save draft")
+                    : t("Close")
               }
               icon={isDraft ? Save : X}
               shortcut={isDraft ? OPERATOR_SHORTCUTS.save : undefined}
@@ -1921,7 +1927,7 @@ export function PurchaseForm({
                     const persisted = await ensurePersistedDraft();
                     if (!persisted) return;
                   }
-                  toast.success("تم الحفظ المؤقت — تابع لاحقًا من القائمة");
+                  toast.success(t("Draft saved. Continue later from the list."));
                   onComplete();
                 })();
               }}
@@ -1929,7 +1935,7 @@ export function PurchaseForm({
             {isDraft ? (
               <>
                 <CompactAction
-                  label="حذف"
+                  label={t("Delete")}
                   icon={Trash2}
                   variant="destructive"
                   onClick={() => setConfirmDelete(true)}
@@ -1937,7 +1943,7 @@ export function PurchaseForm({
                 {isPurchaseInvoice ? (
                 <>
                 <CompactAction
-                  label="استدعاء أمر توريد"
+                  label={t("Import purchase order")}
                   icon={FileText}
                   disabled={pending}
                   onClick={() => {
@@ -1945,7 +1951,7 @@ export function PurchaseForm({
                   }}
                 />
                 <CompactAction
-                  label="حفظ نهائي وتحديث المخزون"
+                  label={t("Finalize and update inventory")}
                   icon={PackageCheck}
                   variant="default"
                   disabled={invoice.lines.length === 0}
@@ -1959,7 +1965,7 @@ export function PurchaseForm({
                 ) : null}
                 {isPurchaseRequest ? (
                 <CompactAction
-                  label="تقديم الطلب"
+                  label={t("Submit request")}
                   icon={Send}
                   variant="default"
                   disabled={invoice.lines.length === 0}
@@ -1975,14 +1981,14 @@ export function PurchaseForm({
                         return;
                       }
                       setInvoice(result.data);
-                      toast.success("اتقدم طلب الشراء");
+                      toast.success(t("Purchase request submitted"));
                     });
                   }}
                 />
                 ) : null}
                 {isPurchaseOrder ? (
                 <CompactAction
-                  label="إرسال أمر التوريد"
+                  label={t("Send purchase order")}
                   icon={Send}
                   variant="default"
                   disabled={invoice.lines.length === 0 || !invoice.supplier_id}
@@ -1998,14 +2004,14 @@ export function PurchaseForm({
                         return;
                       }
                       setInvoice(result.data);
-                      toast.success("اتبعت أمر التوريد");
+                      toast.success(t("Purchase order sent"));
                     });
                   }}
                 />
                 ) : null}
                 {isPurchaseReturn ? (
                 <CompactAction
-                  label="ترحيل المرتجع"
+                  label={t("Post return")}
                   icon={PackageCheck}
                   variant="default"
                   disabled={invoice.lines.length === 0}
@@ -2017,7 +2023,7 @@ export function PurchaseForm({
                         return;
                       }
                       setInvoice(result.data);
-                      toast.success("تم ترحيل المرتجع — نزل المخزون ورصيد المورد");
+                      toast.success(t("Return posted. Inventory and supplier balance were updated."));
                     });
                   }}
                 />
@@ -2027,7 +2033,7 @@ export function PurchaseForm({
             {isPurchaseRequest && invoice.status === "submitted" ? (
               <>
                 <CompactAction
-                  label="اعتماد"
+                  label={t("Approve")}
                   icon={PackageCheck}
                   variant="default"
                   onClick={() => {
@@ -2042,12 +2048,12 @@ export function PurchaseForm({
                         return;
                       }
                       setInvoice(result.data);
-                      toast.success("تم اعتماد الطلب");
+                      toast.success(t("Request approved"));
                     });
                   }}
                 />
                 <CompactAction
-                  label="رفض"
+                  label={t("Reject")}
                   icon={Trash2}
                   variant="destructive"
                   onClick={() => {
@@ -2062,7 +2068,7 @@ export function PurchaseForm({
                         return;
                       }
                       setInvoice(result.data);
-                      toast.success("اترفض الطلب");
+                      toast.success(t("Request rejected"));
                     });
                   }}
                 />
@@ -2070,7 +2076,7 @@ export function PurchaseForm({
             ) : null}
             {isPurchaseRequest && invoice.status === "approved" ? (
               <CompactAction
-                label="تحويل لأمر توريد"
+                label={t("Convert to purchase order")}
                 icon={FileText}
                 variant="default"
                 disabled={!invoice.supplier_id}
@@ -2086,7 +2092,7 @@ export function PurchaseForm({
                       toast.error(result.error);
                       return;
                     }
-                    toast.success("اتفتح أمر توريد من الطلب");
+                    toast.success(t("Purchase order created from request"));
                     router.push(`/inventory/purchase-orders?invoice=${result.data.id}`);
                   });
                 }}
@@ -2095,7 +2101,7 @@ export function PurchaseForm({
             {isPurchaseOrder &&
             (invoice.status === "sent" || invoice.status === "partial_invoiced") ? (
               <CompactAction
-                label="استلام جزئي / فاتورة شراء"
+                label={t("Partial receipt / purchase invoice")}
                 icon={FileText}
                 variant="default"
                 onClick={() => {
@@ -2123,11 +2129,11 @@ export function PurchaseForm({
             {invoice.lines.length > 0 ? (
               <>
                 <CompactAction
-                  label="طباعة A4"
+                  label={t("Print A4")}
                   icon={FileText}
                   onClick={() =>
                     setPrintPreview({
-                      href: `/print/purchases/${invoice.id}?embed=1`,
+                      href: `/print/purchases/${invoice.id}?embed=1&lang=${language}`,
                       title:
                         COMMERCIAL_DOCUMENT_KIND_LABELS[
                           kind === "purchase_request" ||
@@ -2142,31 +2148,31 @@ export function PurchaseForm({
                 />
                 {isPurchaseOrder || isPurchaseRequest ? (
                   <CompactAction
-                    label="طباعة بدون أسعار"
+                    label={t("Print without prices")}
                     icon={FileText}
                     onClick={() =>
                       setPrintPreview({
-                        href: `/print/purchases/${invoice.id}?embed=1&hidePrices=1`,
-                        title: `${kindTitle} بدون أسعار`,
+                        href: `/print/purchases/${invoice.id}?embed=1&hidePrices=1&lang=${language}`,
+                        title: `${t(kindTitle)} ${t("without prices")}`,
                       })
                     }
                   />
                 ) : null}
                 {isPurchaseInvoice ? (
                 <CompactAction
-                  label="ريسيت"
+                  label={t("Receipt")}
                   icon={Receipt}
                   className="border-primary text-primary"
                   onClick={() =>
                     setPrintPreview({
-                      href: `/print/purchases/${invoice.id}/receipt?embed=1`,
-                      title: isDraft ? "ريسيت مشتريات مؤقت" : "ريسيت مشتريات",
+                      href: `/print/purchases/${invoice.id}/receipt?embed=1&lang=${language}`,
+                      title: isDraft ? t("Draft purchase receipt") : t("Purchase receipt"),
                     })
                   }
                 />
                 ) : null}
                 <CompactAction
-                  label="واتساب"
+                  label={t("WhatsApp")}
                   icon={MessageCircle}
                   disabled={!invoice.supplierContact}
                   onClick={() => {
@@ -2187,14 +2193,14 @@ export function PurchaseForm({
                         total: invoice.total,
                         currency,
                         lines: invoice.lines.map((line) => ({
-                          name: products.find((p) => p.id === line.product_id)?.name ?? "صنف",
+                          name: products.find((p) => p.id === line.product_id)?.name ?? t("Item"),
                           quantity: line.quantity,
                           lineTotal: line.line_total,
                         })),
                       })
                     );
                     if (!url) {
-                      toast.error("رقم المورد غير صالح لواتساب");
+                      toast.error(t("Supplier phone number is not valid for WhatsApp"));
                       return;
                     }
                     window.open(url, "_blank", "noopener,noreferrer");
@@ -2205,7 +2211,7 @@ export function PurchaseForm({
             {isReceived && isPurchaseInvoice ? (
               <>
                 <CompactAction
-                  label="مرتجع مشتريات"
+                  label={t("Purchase return")}
                   icon={Undo2}
                   onClick={() => {
                     startTransition(async () => {
@@ -2218,30 +2224,23 @@ export function PurchaseForm({
                         toast.error(result.error);
                         return;
                       }
-                      toast.success("اتفتح مرتجع من الفاتورة");
+                      toast.success(t("Purchase return created from invoice"));
                       router.push(`/inventory/purchase-returns?invoice=${result.data.id}`);
                     });
                   }}
                 />
                 <CompactAction
-                  label="إنشاء قائمة أسعار البيع"
+                  label={t("Create sales price list")}
                   icon={Tags}
                   variant="default"
                   href={`/inventory/purchases/price-list?invoice=${invoice.id}`}
                 />
                 <CompactAction
-                  label="إلغاء الاستلام"
+                  label={t("Reverse receipt")}
                   icon={Undo2}
                   onClick={() => setConfirmVoid(true)}
                 />
               </>
-            ) : null}
-            {canManagePrintEngine ? (
-              <CompactAction
-                label="تعديل القالب"
-                icon={Settings}
-                href="/settings?tab=print"
-              />
             ) : null}
           </CompactActions>
         </div>
@@ -2259,9 +2258,9 @@ export function PurchaseForm({
       <ConfirmActionDialog
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
-        title="حذف مسودة الشراء؟"
-        description="سيتم حذف الفاتورة وبنودها نهائيًا. المخزون لم يتم تحديثه بعد."
-        confirmLabel="حذف"
+        title={t("Delete purchase draft?")}
+        description={t("The invoice and its lines will be deleted permanently. Inventory has not been updated.")}
+        confirmLabel={t("Delete")}
         destructive
         onConfirm={handleDeleteDraft}
       />
@@ -2269,16 +2268,15 @@ export function PurchaseForm({
       <Dialog open={confirmReceive} onOpenChange={setConfirmReceive}>
         <DialogContent className="rounded-3xl sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>حفظ نهائي وتحديث المخزون؟</DialogTitle>
+            <DialogTitle>{t("Finalize and update inventory?")}</DialogTitle>
             <DialogDescription>
-              سيتم تأكيد الفاتورة وإضافة {invoice?.lines.length ?? 0} بند إلى المخزون.
-              الإجمالي {invoice ? formatCurrency(invoice.total, currency) : "—"}.
-              لو حصل غلط تقدّر تلغي الاستلام وتعدّل وترجع تستلم (مالك/مدير).
+              {t("The invoice will be confirmed and inventory will receive")} {invoice?.lines.length ?? 0} {t("lines")}.
+              {t("Total")} {invoice ? formatCurrency(invoice.total, currency) : "—"}.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
             <div className="space-y-2">
-              <Label>دفعت الآن (اختياري)</Label>
+              <Label>{t("Paid now (optional)")}</Label>
               <Input
                 type="number"
                 min="0"
@@ -2289,13 +2287,13 @@ export function PurchaseForm({
             </div>
             <div className="rounded-[var(--mds-radius-lg)] bg-muted/50 px-3 py-2 text-sm">
               <div className="flex justify-between gap-2">
-                <span className="text-muted-foreground">إجمالي الفاتورة</span>
+                <span className="text-muted-foreground">{t("Invoice total")}</span>
                 <span className="tabular-nums font-medium">
                   {invoice ? formatCurrency(invoice.total, currency) : "—"}
                 </span>
               </div>
               <div className="mt-1 flex justify-between gap-2">
-                <span className="text-muted-foreground">الباقي على المورد</span>
+                <span className="text-muted-foreground">{t("Remaining to supplier")}</span>
                 <span className="tabular-nums font-medium">
                   {formatCurrency(Math.max(0, receiveRemaining), currency)}
                 </span>
@@ -2303,7 +2301,7 @@ export function PurchaseForm({
             </div>
             {(parseFloat(amountPaidNow) || 0) > 0 ? (
               <div className="space-y-2">
-                <Label>طريقة الدفع</Label>
+                <Label>{t("Payment method")}</Label>
                 <Select
                   value={receivePaymentMethod}
                   onValueChange={(v) => setReceivePaymentMethod(v as PaymentMethod)}
@@ -2326,9 +2324,9 @@ export function PurchaseForm({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmReceive(false)}>
-              إلغاء
+              {t("Cancel")}
             </Button>
-            <Button onClick={handleReceive}>تأكيد وتحديث المخزون</Button>
+            <Button onClick={handleReceive}>{t("Confirm and update inventory")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -2336,9 +2334,9 @@ export function PurchaseForm({
       <ConfirmActionDialog
         open={confirmVoid}
         onOpenChange={setConfirmVoid}
-        title="إلغاء الاستلام؟"
-        description="هيتم عكس الكميات من المخزون وترجع الفاتورة مسودة عشان تعدّل وتستلم تاني. يتطلب مالكًا أو مديرًا."
-        confirmLabel="إلغاء وإعادة للمسودة"
+        title={t("Reverse receipt?")}
+        description={t("Inventory quantities will be reversed and the invoice will return to draft. Owner or manager access is required.")}
+        confirmLabel={t("Reverse to draft")}
         destructive
         onConfirm={handleVoid}
       />
@@ -2346,19 +2344,19 @@ export function PurchaseForm({
       <Dialog open={convertOpen} onOpenChange={setConvertOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>استلام جزئي من أمر التوريد</DialogTitle>
+            <DialogTitle>{t("Partial receipt from purchase order")}</DialogTitle>
             <DialogDescription>
-              حدّد الكمية اللي هتتحوّل لفاتورة شراء. المتبقي يفضل على الأمر.
+              {t("Choose the quantity to convert to a purchase invoice. The remainder stays on the order.")}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid max-h-[50vh] gap-3 overflow-y-auto">
+          <div className="grid max-h-[50dvh] gap-3 overflow-y-auto">
             {convertRows.map((row) => (
               <div key={row.sourceLineId} className="grid grid-cols-[1fr_7rem] items-end gap-2">
                 <div className="space-y-1">
                   <Label>
-                    {products.find((p) => p.id === row.productId)?.name ?? "صنف"}
+                    {products.find((p) => p.id === row.productId)?.name ?? t("Item")}
                   </Label>
-                  <p className="text-xs text-muted-foreground">المتبقي {row.remaining}</p>
+                  <p className="text-xs text-muted-foreground">{t("Remaining")} {row.remaining}</p>
                 </div>
                 <Input
                   type="text"
@@ -2378,7 +2376,7 @@ export function PurchaseForm({
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setConvertOpen(false)}>
-              إلغاء
+              {t("Cancel")}
             </Button>
             <Button
               type="button"
@@ -2392,7 +2390,7 @@ export function PurchaseForm({
                   }))
                   .filter((row) => row.quantity > 0);
                 if (lines.length === 0) {
-                  toast.error("اختار كمية واحدة على الأقل");
+                  toast.error(t("Choose at least one quantity"));
                   return;
                 }
                 startTransition(async () => {
@@ -2408,12 +2406,12 @@ export function PurchaseForm({
                     return;
                   }
                   setConvertOpen(false);
-                  toast.success("اتفتحت فاتورة شراء من أمر التوريد");
+                  toast.success(t("Purchase invoice created from purchase order"));
                   router.push(`/inventory/purchases?invoice=${result.data.id}`);
                 });
               }}
             >
-              إنشاء فاتورة الشراء
+              {t("Create purchase invoice")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2431,17 +2429,17 @@ export function PurchaseForm({
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>استدعاء أوامر توريد</DialogTitle>
+            <DialogTitle>{t("Import purchase orders")}</DialogTitle>
             <DialogDescription>
-              اختار أوامر مُرسلة (أو فوترة جزئية) لنفس المورد والمخزن. بعد الاستيراد تقدر تعدّل الكمية والسعر على الفاتورة.
+              {t("Choose sent or partially invoiced orders for the same supplier and warehouse.")}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid max-h-[50vh] gap-2 overflow-y-auto">
+          <div className="grid max-h-[50dvh] gap-2 overflow-y-auto">
             {importLoading ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">جاري التحميل…</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">{t("Loading…")}</p>
             ) : importableOrders.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">
-                مفيش أوامر توريد متاحة للاستيراد
+                {t("No purchase orders available to import")}
               </p>
             ) : (
               importableOrders.map((order) => {
@@ -2466,11 +2464,11 @@ export function PurchaseForm({
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-medium">{order.invoice_number}</span>
                       <span className="text-xs text-muted-foreground">
-                        {statusLabels[order.status] ?? order.status}
+                        {t(statusLabels[order.status] ?? order.status)}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {order.remainingLines} بند متبقي · كمية {order.remainingQty}
+                      {order.remainingLines} {t("remaining lines")} · {t("Quantity")} {order.remainingQty}
                       {order.supplierName ? ` · ${order.supplierName}` : ""}
                     </p>
                   </button>
@@ -2480,7 +2478,7 @@ export function PurchaseForm({
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setImportOpen(false)}>
-              إلغاء
+              {t("Cancel")}
             </Button>
             <Button
               type="button"
@@ -2504,11 +2502,11 @@ export function PurchaseForm({
                   }
                   setInvoice(result.data);
                   setImportOpen(false);
-                  toast.success("اتضافت بنود أوامر التوريد — عدّل السعر لو محتاج");
+                  toast.success(t("Purchase order lines imported. Adjust prices if needed."));
                 });
               }}
             >
-              استيراد البنود
+              {t("Import lines")}
             </Button>
           </DialogFooter>
         </DialogContent>

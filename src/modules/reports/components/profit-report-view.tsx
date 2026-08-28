@@ -42,6 +42,7 @@ import type {
   ProductProfitRow,
   PurchaseInvoiceProfitRow,
 } from "@/modules/reports/services/profit-report.service";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface ProfitReportViewProps {
   filters: ReportFilters;
@@ -75,118 +76,119 @@ export function ProfitReportView({
   canExcel,
   canPdf,
 }: ProfitReportViewProps) {
+  const { t, language } = useTranslation();
   const [pending, startTransition] = useTransition();
   const printQs = reportFiltersToSearchParams(filters);
   const printHref = `/print/reports/profit${printQs ? `?${printQs}` : ""}`;
 
   const invoiceColumns: ColumnDef<InvoiceProfitRow>[] = [
-    { header: "فاتورة البيع", accessorKey: "orderNumber" },
+    { header: t("Sales invoice"), accessorKey: "orderNumber" },
     {
       id: "createdAt",
-      header: "التاريخ",
-      cell: ({ row }) => new Date(row.original.createdAt).toLocaleString("ar-EG"),
+      header: t("Date"),
+      cell: ({ row }) => new Date(row.original.createdAt).toLocaleString(language === "ar" ? "ar-EG" : "en-US"),
     },
     {
       id: "revenue",
-      header: "المبيعات",
+      header: t("Sales"),
       cell: ({ row }) => formatCurrency(row.original.revenue, currency),
     },
     {
       id: "cost",
-      header: "التكلفة",
+      header: t("Cost"),
       cell: ({ row }) => formatCurrency(row.original.cost, currency),
     },
     {
       id: "profit",
-      header: "الربح المتوقع",
+      header: t("Expected profit"),
       cell: ({ row }) => formatCurrency(row.original.profit, currency),
     },
     {
       id: "margin",
-      header: "الهامش %",
+      header: t("Margin %"),
       cell: ({ row }) => `${row.original.margin.toFixed(1)}%`,
     },
   ];
 
   const purchaseInvoiceColumns: ColumnDef<PurchaseInvoiceProfitRow>[] = [
-    { header: "فاتورة الشراء", accessorKey: "invoiceNumber" },
+    { header: t("Purchase invoice"), accessorKey: "invoiceNumber" },
     {
       id: "receivedAt",
-      header: "تاريخ الاستلام",
-      cell: ({ row }) => new Date(row.original.receivedAt).toLocaleString("ar-EG"),
+      header: t("Received date"),
+      cell: ({ row }) => new Date(row.original.receivedAt).toLocaleString(language === "ar" ? "ar-EG" : "en-US"),
     },
     {
       id: "purchaseCost",
-      header: "تكلفة الشراء",
+      header: t("Purchase cost"),
       cell: ({ row }) => formatCurrency(row.original.purchaseCost, currency),
     },
     {
       id: "expectedSellValue",
-      header: "قيمة البيع المتوقعة",
+      header: t("Expected sale value"),
       cell: ({ row }) => formatCurrency(row.original.expectedSellValue, currency),
     },
     {
       id: "expectedProfit",
-      header: "الربح المتوقع",
+      header: t("Expected profit"),
       cell: ({ row }) => formatCurrency(row.original.expectedProfit, currency),
     },
     {
       id: "margin",
-      header: "الهامش %",
+      header: t("Margin %"),
       cell: ({ row }) => `${row.original.margin.toFixed(1)}%`,
     },
   ];
 
   const dayColumns: ColumnDef<DayProfitRow>[] = [
-    { header: "اليوم", accessorKey: "date" },
-    { header: "فواتير", accessorKey: "orders" },
+    { header: t("Day"), accessorKey: "date" },
+    { header: t("Invoices"), accessorKey: "orders" },
     {
       id: "revenue",
-      header: "المبيعات",
+      header: t("Sales"),
       cell: ({ row }) => formatCurrency(row.original.revenue, currency),
     },
     {
       id: "cost",
-      header: "التكلفة",
+      header: t("Cost"),
       cell: ({ row }) => formatCurrency(row.original.cost, currency),
     },
     {
       id: "profit",
-      header: "الربح",
+      header: t("Profit"),
       cell: ({ row }) => formatCurrency(row.original.profit, currency),
     },
     {
       id: "margin",
-      header: "الهامش %",
+      header: t("Margin %"),
       cell: ({ row }) => `${row.original.margin.toFixed(1)}%`,
     },
   ];
 
   const productColumns: ColumnDef<ProductProfitRow>[] = [
-    { header: "الصنف", accessorKey: "name" },
+    { header: t("Product"), accessorKey: "name" },
     {
       id: "qty",
-      header: "الكمية",
-      cell: ({ row }) => row.original.quantitySold.toLocaleString("ar-EG"),
+      header: t("Quantity"),
+      cell: ({ row }) => row.original.quantitySold.toLocaleString(language === "ar" ? "ar-EG" : "en-US"),
     },
     {
       id: "revenue",
-      header: "المبيعات",
+      header: t("Sales"),
       cell: ({ row }) => formatCurrency(row.original.revenue, currency),
     },
     {
       id: "cost",
-      header: "التكلفة",
+      header: t("Cost"),
       cell: ({ row }) => formatCurrency(row.original.cost, currency),
     },
     {
       id: "profit",
-      header: "الربح",
+      header: t("Profit"),
       cell: ({ row }) => formatCurrency(row.original.profit, currency),
     },
     {
       id: "margin",
-      header: "الهامش %",
+      header: t("Margin %"),
       cell: ({ row }) => `${row.original.margin.toFixed(1)}%`,
     },
   ];
@@ -198,8 +200,8 @@ export function ProfitReportView({
 
   return (
     <ReportPage
-      title="تقرير الأرباح"
-      description="ربح كل فاتورة، إجماليات الأيام والأصناف، وربح المخزون المتوقع"
+      title="Profit report"
+      description="Profit by invoice, daily and product totals, and expected inventory profit"
       actions={
         <ExportButtonGroup
           printHref={canPrint ? printHref : undefined}
@@ -219,9 +221,9 @@ export function ProfitReportView({
                   ) as Record<string, string>
                 );
                 downloadBase64Excel(result.base64, result.filename);
-                toast.success("تم تصدير Excel");
+                toast.success(t("Excel exported"));
               } catch {
-                toast.error("فشل التصدير");
+                toast.error(t("Export failed"));
               }
             });
           }}
@@ -233,65 +235,65 @@ export function ProfitReportView({
         columns={4}
         items={[
           {
-            label: "الإيراد",
+            label: t("Revenue"),
             value: formatCurrency(profit.revenue, currency),
             icon: <TrendingUp className="size-5" />,
           },
           {
-            label: "تكلفة البضاعة",
+            label: t("COGS"),
             value: formatCurrency(profit.cogs, currency),
             icon: <TrendingDown className="size-5" />,
           },
           {
-            label: "إجمالي الربح",
+            label: t("Gross profit"),
             value: formatCurrency(profit.grossProfit, currency),
             icon: <CircleDollarSign className="size-5" />,
           },
           {
-            label: "صافي الربح",
+            label: t("Net profit"),
             value: formatCurrency(profit.estimatedNetProfit, currency),
             icon: <CircleDollarSign className="size-5" />,
           },
-          { label: "المصروفات", value: formatCurrency(profit.totalExpenses, currency) },
+          { label: t("Expenses"), value: formatCurrency(profit.totalExpenses, currency) },
           {
-            label: "تكلفة الهالك",
+            label: t("Waste cost"),
             value: formatCurrency(profit.wasteCost, currency),
             icon: <Trash2 className="size-5" />,
           },
           {
-            label: "متوسط ربح الفاتورة",
+            label: t("Average invoice profit"),
             value: formatCurrency(profit.avgOrderProfit, currency),
             icon: <Receipt className="size-5" />,
           },
           {
-            label: "ربح متوقع من المخزون",
+            label: t("Expected inventory profit"),
             value: formatCurrency(profit.inventory.inventoryExpectedProfit, currency),
             icon: <Package className="size-5" />,
           },
         ]}
       />
 
-      <div className="grid gap-[var(--mds-space-4)] sm:grid-cols-3">
-        <OperationalCard title="مخزون — قيمة البيع">
+      <div className="grid grid-cols-2 gap-[var(--mds-space-3)] sm:gap-[var(--mds-space-4)] lg:grid-cols-3">
+        <OperationalCard title={t("Inventory — sale value")}>
           <p className="text-2xl font-semibold tabular-nums">
             {formatCurrency(profit.inventory.inventorySellValue, currency)}
           </p>
         </OperationalCard>
-        <OperationalCard title="مخزون — تكلفة الشراء">
+        <OperationalCard title={t("Inventory — purchase cost")}>
           <p className="text-2xl font-semibold tabular-nums">
             {formatCurrency(profit.inventory.inventoryCostValue, currency)}
           </p>
         </OperationalCard>
-        <OperationalCard title="مخزون — ربح متوقع">
+        <OperationalCard title={t("Inventory — expected profit")}>
           <p className="text-2xl font-semibold tabular-nums">
             {formatCurrency(profit.inventory.inventoryExpectedProfit, currency)}
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">فرق البيع والشراء للكميات الحالية</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("Sale value minus purchase cost for current quantities")}</p>
         </OperationalCard>
       </div>
 
       {chartData.length > 0 ? (
-        <ReportChartSection title="الربح حسب اليوم">
+        <ReportChartSection title={t("Profit by day")}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -301,15 +303,15 @@ export function ProfitReportView({
                 formatter={(value) => formatCurrency(Number(value ?? 0), currency)}
                 labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ""}
               />
-              <Bar dataKey="profit" name="الربح" fill="var(--mds-color-action-primary)" radius={4} />
-              <Bar dataKey="revenue" name="المبيعات" fill="var(--mds-color-harbor-300)" radius={4} />
+              <Bar dataKey="profit" name={t("Profit")} fill="var(--mds-color-action-primary)" radius={4} />
+              <Bar dataKey="revenue" name={t("Sales")} fill="var(--mds-color-harbor-300)" radius={4} />
             </BarChart>
           </ResponsiveContainer>
         </ReportChartSection>
       ) : null}
 
       <div className="grid gap-[var(--mds-space-4)] lg:grid-cols-2">
-        <OperationalCard title="أعلى أصناف ربحًا في البيع">
+        <OperationalCard title={t("Most profitable products")}>
           <ul className="space-y-2 text-sm">
             {rankings.highestProfit.map((p) => (
               <li key={p.productId} className="flex justify-between gap-2">
@@ -323,11 +325,11 @@ export function ProfitReportView({
               </li>
             ))}
             {rankings.highestProfit.length === 0 ? (
-              <p className="text-muted-foreground">لا توجد مبيعات في الفترة</p>
+              <p className="text-muted-foreground">{t("No sales in this period")}</p>
             ) : null}
           </ul>
         </OperationalCard>
-        <OperationalCard title="أعلى أصناف بيعًا والربح منها">
+        <OperationalCard title={t("Top-selling products and profit")}>
           <ul className="space-y-2 text-sm">
             {rankings.highestSelling.map((p) => (
               <li key={p.productId} className="flex justify-between gap-2">
@@ -337,48 +339,48 @@ export function ProfitReportView({
                 <span className="shrink-0 text-end tabular-nums">
                   <span className="font-medium">{formatCurrency(p.revenue, currency)}</span>
                   <span className="block text-xs text-muted-foreground">
-                    ربح {formatCurrency(p.profit, currency)}
+                    {t("Profit")} {formatCurrency(p.profit, currency)}
                   </span>
                 </span>
               </li>
             ))}
             {rankings.highestSelling.length === 0 ? (
-              <p className="text-muted-foreground">لا توجد مبيعات في الفترة</p>
+              <p className="text-muted-foreground">{t("No sales in this period")}</p>
             ) : null}
           </ul>
         </OperationalCard>
       </div>
 
       <ReportTable
-        title="الربح المتوقع لكل فاتورة بيع"
+        title={t("Expected profit by sales invoice")}
         columns={invoiceColumns}
         data={profit.invoices}
-        emptyMessage="لا توجد فواتير بيع مكتملة في الفترة"
+        emptyMessage={t("No completed sales invoices in this period")}
       />
 
       <ReportTable
-        title="الربح المتوقع لكل فاتورة شراء"
+        title={t("Expected profit by purchase invoice")}
         columns={purchaseInvoiceColumns}
         data={profit.purchaseInvoices}
-        emptyMessage="لا توجد فواتير شراء مستلمة في الفترة"
+        emptyMessage={t("No received purchase invoices in this period")}
       />
 
       <ReportTable
-        title="إجماليات حسب اليوم"
+        title={t("Totals by day")}
         columns={dayColumns}
         data={[...profit.byDay].reverse()}
-        emptyMessage="لا توجد أيام بمبيعات في الفترة"
+        emptyMessage={t("No days with sales in this period")}
       />
 
       <ReportTable
-        title="إجماليات الأصناف (مبيعات وتكلفة وربح)"
+        title={t("Product totals (sales, cost, and profit)")}
         columns={productColumns}
         data={profit.products}
-        emptyMessage="لا توجد أصناف مباعة في الفترة"
+        emptyMessage={t("No sold products in this period")}
       />
 
       <div className="grid gap-[var(--mds-space-4)] lg:grid-cols-2">
-        <OperationalCard title="أرصدة العملاء الآجلة">
+        <OperationalCard title={t("Customer credit balances")}>
           <ul className="space-y-2 text-sm">
             {outstanding.slice(0, 8).map((c) => (
               <li key={c.id} className="flex justify-between gap-2">
@@ -391,11 +393,11 @@ export function ProfitReportView({
               </li>
             ))}
             {outstanding.length === 0 ? (
-              <p className="text-muted-foreground">لا توجد أرصدة</p>
+              <p className="text-muted-foreground">{t("No balances")}</p>
             ) : null}
           </ul>
         </OperationalCard>
-        <OperationalCard title="أرصدة الموردين">
+        <OperationalCard title={t("Supplier balances")}>
           <ul className="space-y-2 text-sm">
             {supplierBalances.slice(0, 8).map((s) => (
               <li key={s.id} className="flex justify-between gap-2">
@@ -408,11 +410,11 @@ export function ProfitReportView({
               </li>
             ))}
             {supplierBalances.length === 0 ? (
-              <p className="text-muted-foreground">لا توجد أرصدة</p>
+              <p className="text-muted-foreground">{t("No balances")}</p>
             ) : null}
           </ul>
         </OperationalCard>
-        <OperationalCard title="المصروفات حسب مركز التكلفة">
+        <OperationalCard title={t("Expenses by cost center")}>
           <ul className="space-y-2 text-sm">
             {profit.expensesByCostCenter.slice(0, 8).map((c) => (
               <li key={c.name} className="flex justify-between gap-2">
@@ -425,7 +427,7 @@ export function ProfitReportView({
               </li>
             ))}
             {profit.expensesByCostCenter.length === 0 ? (
-              <p className="text-muted-foreground">لا توجد مصروفات</p>
+              <p className="text-muted-foreground">{t("No expenses")}</p>
             ) : null}
           </ul>
         </OperationalCard>

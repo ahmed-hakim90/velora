@@ -3,6 +3,7 @@
 import { formatCurrency } from "@/lib/format";
 import type { PriceListPrintPayload } from "@/modules/price-lists/lib/formats";
 import { firstGrapheme } from "@/lib/first-grapheme";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 export type PosterRow = PriceListPrintPayload["rows"][number];
 
@@ -23,8 +24,8 @@ type PriceListPosterProps = {
   className?: string;
 };
 
-function formatPriceBadge(value: number): string {
-  return formatCurrency(value, "EGP", "ar-EG", { compact: "egp-glyph" });
+function formatPriceBadge(value: number, language: "ar" | "en"): string {
+  return formatCurrency(value, "EGP", language === "ar" ? "ar-EG" : "en-US", { compact: "egp-glyph" });
 }
 
 function Sparkles({ color }: { color: string }) {
@@ -57,6 +58,7 @@ export function PriceListPoster({
   showUnitLine,
   className,
 }: PriceListPosterProps) {
+  const { t, language } = useTranslation();
   const cardBg = "#FFF9E6";
   const padX = Math.round(width * 0.055);
   const titleSize = Math.round(width * 0.055);
@@ -70,7 +72,7 @@ export function PriceListPoster({
 
   return (
     <div
-      dir="rtl"
+      dir={language === "ar" ? "rtl" : "ltr"}
       className={className}
       data-price-list-poster
       style={{
@@ -79,7 +81,7 @@ export function PriceListPoster({
         minHeight: height,
         background,
         color: accent,
-        fontFamily: "Cairo, Tahoma, Arial, sans-serif",
+        fontFamily: language === "ar" ? "Cairo, Tahoma, Arial, sans-serif" : "Arial, sans-serif",
         position: "relative",
         overflow: "visible",
         display: "flex",
@@ -187,7 +189,7 @@ export function PriceListPoster({
               marginTop: 40,
             }}
           >
-            مفيش أصناف في القائمة
+            {t("No products in the list")}
           </p>
         ) : (
           rows.map((row) => (
@@ -308,14 +310,14 @@ export function PriceListPoster({
                         fontWeight: 600,
                       }}
                     >
-                      {formatPriceBadge(row.oldPrice)}
+                      {formatPriceBadge(row.oldPrice, language)}
                     </span>
                     <span style={{ fontSize: Math.round(priceSize * 1.05) }}>
-                      {formatPriceBadge(row.displayPrice)}
+                      {formatPriceBadge(row.displayPrice, language)}
                     </span>
                   </>
                 ) : (
-                  <span>{formatPriceBadge(row.displayPrice)}</span>
+                  <span>{formatPriceBadge(row.displayPrice, language)}</span>
                 )}
               </div>
             </div>

@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useAppRouter as useRouter } from "@/hooks/use-app-router";
 import { Banknote, BookOpen, Landmark, Plus, Search, Truck } from "lucide-react";
 import { toast } from "sonner";
@@ -16,9 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { CompactAction, CompactActions } from "@/components/Velora/compact-actions";
 import { PageHeader } from "@/components/Velora/page-header";
-import { OperationalCard } from "@/components/Velora/operational-card";
 import { EmptyStateBlock } from "@/components/Velora/state-blocks";
-import { KpiCard } from "@/components/Velora/kpi-card";
+import { EntityList, FilterBar, PageShell } from "@/components/Velora/page-patterns";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import type { SupplierListSummary } from "@/lib/types";
 import type { AgingBuckets } from "@/modules/reports/lib/aging-buckets";
@@ -29,6 +29,7 @@ import {
   getSuppliersPageDataAction,
 } from "@/modules/suppliers/actions/supplier.actions";
 import { RecordPaymentDialog } from "@/modules/suppliers/components/record-payment-dialog";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface SuppliersPageProps {
   summaries: SupplierListSummary[];
@@ -48,13 +49,16 @@ export function SuppliersPage({
   glance = null,
 }: SuppliersPageProps) {
   const router = useRouter();
+  const { t, language } = useTranslation();
+  const locale = language === "ar" ? "ar-EG" : "en-EG";
+  const searchParams = useSearchParams();
   const [summaries, setSummaries] = useState(initial);
   const [paid30d, setPaid30d] = useState(glance?.paid30d ?? 0);
   const [agingBuckets, setAgingBuckets] = useState(glance?.agingBuckets ?? null);
   const [partiesWithBalance, setPartiesWithBalance] = useState(
     glance?.partiesWithBalance ?? 0
   );
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(searchParams.get("q") ?? "");
   const [showCreate, setShowCreate] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [paymentSupplierId, setPaymentSupplierId] = useState<string | undefined>();
@@ -85,12 +89,12 @@ export function SuppliersPage({
 
   const create = () => {
     if (!form.name.trim()) {
-      toast.error("الاسم مطلوب");
+      toast.error(t("Name is required"));
       return;
     }
     const opening = parseFloat(form.opening_balance) || 0;
     if (opening < 0) {
-      toast.error("رصيد مستحق سابق لازم يكون صفر أو أكبر");
+      toast.error(t("Opening balance must be zero or more"));
       return;
     }
     startTransition(async () => {
@@ -119,26 +123,27 @@ export function SuppliersPage({
       ]);
       setShowCreate(false);
       setForm({ name: "", contact_info: "", opening_balance: "0", address: "", tax_id: "" });
-      toast.success("تم إنشاء المورد");
+      toast.success(t("Supplier created"));
     });
   };
 
   return (
     <>
+      <PageShell dir={language === "ar" ? "rtl" : "ltr"}>
       <PageHeader
-        title="الموردون"
-        description="أرصدة الموردين وكشوف الحساب"
+        title="Suppliers"
+        description="Balances and account statements."
         action={
           <CompactActions>
             {canManagePayments && summaries.length > 0 ? (
               <CompactAction
-                label="تسجيل دفعة"
+                label="Record payment"
                 icon={Banknote}
                 onClick={() => openPayment()}
               />
             ) : null}
             <CompactAction
-              label="إضافة مورد"
+              label="Add Supplier"
               icon={Plus}
               variant="default"
               alwaysLabeled
@@ -148,177 +153,122 @@ export function SuppliersPage({
         }
       />
 
-      <div className="mb-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          label="إجمالي المستحقات"
-          value={formatCurrency(totalPayables, currency)}
-          change={
-            agingBuckets
-              ? `${partiesWithBalance} مورد عليهم رصيد`
-              : undefined
-          }
-          trend="neutral"
-          icon={<Landmark className="size-5" />}
-        />
-        <KpiCard label="الموردون" value={String(summaries.length)} />
-        <KpiCard
-          label="سداد (30 يوم)"
-          value={formatCurrency(paid30d, currency)}
-          icon={<Banknote className="size-5" />}
-        />
-        <KpiCard
-          label="نتائج البحث"
-          value={String(filtered.length)}
-          change={search.trim() ? "مطابقة للفلتر" : "كل الموردين"}
-          trend="neutral"
-        />
-      </div>
+      <section aria-label={t("Supplier summary")} className="overflow-hidden rounded-[var(--mds-radius-lg)] border border-border bg-card">
+        <dl className="grid grid-cols-2 lg:grid-cols-4">
+          <div className="border-b border-border px-4 py-4 lg:border-b-0"><dt className="text-xs font-medium text-muted-foreground">{t("Total payables")}</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{formatCurrency(totalPayables, currency, locale)}</dd><dd className="text-xs text-muted-foreground">{agingBuckets ? `${partiesWithBalance} ${t("suppliers with balance")}` : t("Current balance")}</dd></div>
+          <div className="border-b border-border px-4 py-4 sm:border-s lg:border-b-0"><dt className="text-xs font-medium text-muted-foreground">{t("Suppliers")}</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{summaries.length}</dd><dd className="text-xs text-muted-foreground">{t("Registered suppliers")}</dd></div>
+          <div className="border-b border-border px-4 py-4 lg:border-b-0 lg:border-s"><dt className="text-xs font-medium text-muted-foreground">{t("Paid in 30 days")}</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{formatCurrency(paid30d, currency, locale)}</dd><dd className="text-xs text-muted-foreground">{t("Valid payments")}</dd></div>
+          <div className="px-4 py-4 sm:border-s"><dt className="text-xs font-medium text-muted-foreground">{t("Search results")}</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{filtered.length}</dd><dd className="text-xs text-muted-foreground">{t(search.trim() ? "Matches current filter" : "All suppliers")}</dd></div>
+        </dl>
+      </section>
 
-      {agingBuckets ? (
-        <div className="mb-3">
-          <AgingBucketsChart
-            title="أعمار ذمم الموردين"
-            buckets={agingBuckets}
-            currency={currency}
-            barColor="#2563EB"
-          />
+      <FilterBar>
+        <div className="relative w-full sm:max-w-md">
+          <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={search} onChange={(e) => { const next = e.target.value; setSearch(next); const params = new URLSearchParams(searchParams.toString()); if (next.trim()) params.set("q", next); else params.delete("q"); const query = params.toString(); window.history.replaceState(null, "", query ? `/inventory/suppliers?${query}` : "/inventory/suppliers"); }} placeholder={t("Search suppliers...")} className="ps-10" />
         </div>
-      ) : null}
-
-      <div className="mb-3">
-        <ModuleAnalyticsQuickLinks
-          title="تحليل الموردين"
-          description="مديونية وكشف حساب ومشتريات"
-          links={[
-            {
-              href: "/reports/aging?side=suppliers",
-              label: "مديونية الموردين",
-              description: "أعمار الذمم والمستحقات",
-              icon: Landmark,
-            },
-            {
-              href: "/reports/statement?party=supplier",
-              label: "كشف حساب مورد",
-              description: "حركات مفصّلة على فترة",
-              icon: BookOpen,
-            },
-            {
-              href: "/inventory/purchases",
-              label: "المشتريات",
-              description: "فواتير الاستلام",
-              icon: Truck,
-            },
-          ]}
-        />
-      </div>
-
-      <div className="relative mb-3 max-w-md">
-        <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="ابحث عن موردين..."
-          className="ps-10"
-        />
-      </div>
+        <p className="text-xs text-muted-foreground">{t("Search by name or contact")}</p>
+      </FilterBar>
 
       {filtered.length === 0 ? (
         <div className="space-y-4">
           <EmptyStateBlock
-            title={search.trim() ? "لا نتائج" : "لا يوجد موردون"}
+            title={search.trim() ? "No results" : "No suppliers"}
             description={
               search.trim()
-                ? "جرّب اسم مورد مختلف."
-                : "أضف موردًا لتتبع المشتريات والمستحقات."
+                ? "Try a different supplier name."
+                : "Add a supplier to track purchases and balances."
             }
           />
           {!search.trim() ? (
             <div className="flex justify-center">
-              <Button onClick={() => setShowCreate(true)}>إضافة مورد</Button>
+              <Button onClick={() => setShowCreate(true)}>{t("Add Supplier")}</Button>
             </div>
           ) : null}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <EntityList className="divide-y divide-border">
           {filtered.map((s) => (
-            <OperationalCard key={s.id} className="transition-all hover:shadow-lg">
-              <Link href={`/inventory/suppliers/${s.id}`} className="block">
-                <div className="flex items-start justify-between gap-4">
+            <div key={s.id} className="flex flex-col gap-3 p-4 transition-colors hover:bg-muted/30 sm:flex-row sm:items-center">
+              <Link href={`/inventory/suppliers/${s.id}?returnTo=${encodeURIComponent(searchParams.toString() ? `/inventory/suppliers?${searchParams.toString()}` : "/inventory/suppliers")}`} className="min-w-0 flex-1 outline-none">
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
                   <div className="min-w-0">
                     <h3 className="font-semibold">{s.name}</h3>
                     {s.contact_info ? (
                       <p className="truncate text-sm text-muted-foreground">{s.contact_info}</p>
                     ) : null}
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {s.invoiceCount} فاتورة مستلمة
+                      {s.invoiceCount} {t("received invoices")}
                     </p>
                   </div>
-                  <div className="shrink-0 text-right">
-                    <p className="font-semibold">{formatCurrency(s.balanceDue, currency)}</p>
-                    <p className="text-xs text-muted-foreground">رصيد مستحق</p>
+                  <div className="shrink-0 sm:min-w-32">
+                    <p className="font-semibold">{formatCurrency(s.balanceDue, currency, locale)}</p>
+                    <p className="text-xs text-muted-foreground">{t("Balance due")}</p>
                   </div>
+                  <p className="text-xs text-muted-foreground sm:min-w-36">{s.lastActivityAt ? `${t("Last activity")} ${formatDateTime(s.lastActivityAt)}` : t("No activity yet")}</p>
                 </div>
-                {s.lastActivityAt ? (
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    آخر نشاط {formatDateTime(s.lastActivityAt)}
-                  </p>
-                ) : null}
               </Link>
               {canManagePayments ? (
-                <div className="mt-3 border-t border-border pt-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => openPayment(s.id)}
-                  >
-                    <Banknote className="size-4" /> تسجيل دفعة
-                  </Button>
-                </div>
+                <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={() => openPayment(s.id)}><Banknote className="size-4" /> {t("Record payment")}</Button>
               ) : null}
-            </OperationalCard>
+            </div>
           ))}
-        </div>
+        </EntityList>
       )}
+
+      {agingBuckets ? (
+        <AgingBucketsChart title={t("Supplier aging")} buckets={agingBuckets} currency={currency} barColor="var(--mds-color-feedback-info)" />
+      ) : null}
+
+      <ModuleAnalyticsQuickLinks
+        title="Supplier analysis"
+        description="Balances, statements, and purchases"
+        links={[
+          { href: "/reports/aging?side=suppliers", label: "Supplier aging", description: "Aging and payables", icon: Landmark },
+          { href: "/reports/statement?party=supplier", label: "Supplier statement", description: "Detailed activity by period", icon: BookOpen },
+          { href: "/inventory/purchases", label: "Purchases", description: "Received invoices", icon: Truck },
+        ]}
+      />
+
+      </PageShell>
 
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="rounded-3xl">
           <DialogHeader>
-            <DialogTitle>مورد جديد</DialogTitle>
+            <DialogTitle>{t("New Supplier")}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4">
             <div className="space-y-2">
-              <Label>الاسم</Label>
+              <Label>{t("Name")}</Label>
               <Input
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <Label>بيانات التواصل</Label>
+              <Label>{t("Contact")}</Label>
               <Input
                 value={form.contact_info}
                 onChange={(e) => setForm({ ...form, contact_info: e.target.value })}
-                placeholder="البريد أو الهاتف"
+                placeholder={t("Email or phone")}
               />
             </div>
             <div className="space-y-2">
-              <Label>العنوان</Label>
+              <Label>{t("Address")}</Label>
               <Input
                 value={form.address}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <Label>الرقم الضريبي</Label>
+              <Label>{t("Tax ID")}</Label>
               <Input
                 value={form.tax_id}
                 onChange={(e) => setForm({ ...form, tax_id: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <Label>رصيد مستحق سابق</Label>
+              <Label>{t("Opening balance due")}</Label>
               <Input
                 type="number"
                 min="0"
@@ -327,11 +277,11 @@ export function SuppliersPage({
                 onChange={(e) => setForm({ ...form, opening_balance: e.target.value })}
               />
               <p className="text-xs text-muted-foreground">
-                لو فيه مستحقات قديمة قبل النظام — اكتبها هنا.
+                {t("Enter any balance from before using the system.")}
               </p>
             </div>
             <Button onClick={create} disabled={pending}>
-              إنشاء
+              {t("Create")}
             </Button>
           </div>
         </DialogContent>

@@ -5,8 +5,8 @@ import { useAppRouter as useRouter } from "@/hooks/use-app-router";
 import { toast } from "sonner";
 import { BookOpen, Landmark, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DateRangeFilter } from "@/components/Velora/date-range-filter";
 import {
   Select,
   SelectContent,
@@ -225,42 +225,10 @@ export function PartyStatementReportView({
               </Select>
             </div>
 
-            <form
-              className="flex flex-wrap items-end gap-[var(--mds-space-2)]"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const fd = new FormData(e.currentTarget);
-                apply({
-                  from: fd.get("from")?.toString() || undefined,
-                  to: fd.get("to")?.toString() || undefined,
-                  days: undefined,
-                });
-              }}
-            >
-              <div className="space-y-[var(--mds-space-1)]">
-                <Label htmlFor="stmt-from">من</Label>
-                <Input
-                  id="stmt-from"
-                  name="from"
-                  type="date"
-                  defaultValue={filters.from ?? ""}
-                  className="rounded-[var(--mds-radius-md)]"
-                />
-              </div>
-              <div className="space-y-[var(--mds-space-1)]">
-                <Label htmlFor="stmt-to">إلى</Label>
-                <Input
-                  id="stmt-to"
-                  name="to"
-                  type="date"
-                  defaultValue={filters.to ?? ""}
-                  className="rounded-[var(--mds-radius-md)]"
-                />
-              </div>
-              <Button type="submit" size="sm" variant="secondary">
-                تطبيق الفترة
-              </Button>
-            </form>
+            <DateRangeFilter
+              value={{ from: filters.from ?? "", to: filters.to ?? "" }}
+              onChange={(range) => apply({ from: range.from || undefined, to: range.to || undefined, days: undefined })}
+            />
           </div>
         </div>
       }

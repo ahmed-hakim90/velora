@@ -19,7 +19,7 @@ export function ReportFooter({ generatedBy, generatedAt, filterSummary }: Report
         </span>
         {filterSummary ? (
           <span>
-            {t("Filters")}: {filterSummary}
+            {t("Filters")}: {t(filterSummary)}
           </span>
         ) : null}
       </div>

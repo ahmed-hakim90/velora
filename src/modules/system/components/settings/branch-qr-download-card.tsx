@@ -5,6 +5,8 @@ import { Download, ExternalLink, Printer, QrCode } from "lucide-react";
 import QRCode from "qrcode";
 import { Button } from "@/components/ui/button";
 import { firstGrapheme } from "@/lib/first-grapheme";
+import { useTranslation } from "@/lib/i18n/use-translation";
+import type { AppLanguage } from "@/lib/i18n/translations";
 
 interface BranchQrDownloadCardProps {
   storeName: string;
@@ -39,7 +41,10 @@ function truncateText(value: string, maxLength: number): string {
 }
 
 function paletteFor(value: string) {
-  const hash = Array.from(value).reduce((total, char) => total + char.charCodeAt(0), 0);
+  const hash = Array.from(value).reduce(
+    (total, char) => total + char.charCodeAt(0),
+    0,
+  );
   return PALETTES[hash % PALETTES.length]!;
 }
 
@@ -49,11 +54,18 @@ function buildPosterSvg(input: {
   address?: string | null;
   phone?: string | null;
   qrDataUrl: string;
+  language: AppLanguage;
 }): string {
   const palette = paletteFor(input.storeCode || input.storeName);
   const storeName = escapeXml(truncateText(input.storeName, 34));
   const storeCode = escapeXml(input.storeCode || "MENU");
-  const address = escapeXml(truncateText(input.address?.trim() || "امسح الكود وشوف المنيو", 58));
+  const isArabic = input.language === "ar";
+  const scanLabel = isArabic
+    ? "امسح الكود وشوف المنيو"
+    : "Scan to view the menu";
+  const address = escapeXml(
+    truncateText(input.address?.trim() || scanLabel, 58),
+  );
   const phone = escapeXml(input.phone?.trim() || "");
   const initial = escapeXml(firstGrapheme(input.storeName, "M"));
 
@@ -77,8 +89,8 @@ function buildPosterSvg(input: {
   <circle cx="1010" cy="210" r="190" fill="#FFFFFF" opacity="0.12"/>
   <circle cx="130" cy="1560" r="240" fill="#FFFFFF" opacity="0.10"/>
 
-  <g direction="rtl" unicode-bidi="plaintext" font-family="Arial, Tahoma, sans-serif">
-    <text x="600" y="190" text-anchor="middle" font-size="54" font-weight="800" fill="#FFFFFF">منيو الفرع</text>
+  <g direction="${isArabic ? "rtl" : "ltr"}" unicode-bidi="plaintext" font-family="Arial, Tahoma, sans-serif">
+    <text x="600" y="190" text-anchor="middle" font-size="54" font-weight="800" fill="#FFFFFF">${isArabic ? "منيو الفرع" : "Store menu"}</text>
     <text x="600" y="262" text-anchor="middle" font-size="104" font-weight="900" fill="#FFFFFF">${storeName}</text>
     <text x="600" y="330" text-anchor="middle" font-size="34" font-weight="700" fill="#FFFFFF" opacity="0.88">${address}</text>
 
@@ -88,12 +100,12 @@ function buildPosterSvg(input: {
       <image href="${input.qrDataUrl}" x="245" y="515" width="710" height="710"/>
       <circle cx="600" cy="870" r="82" fill="url(#bg)"/>
       <text x="600" y="900" text-anchor="middle" font-size="78" font-weight="900" fill="#FFFFFF">${initial}</text>
-      <text x="600" y="1340" text-anchor="middle" font-size="42" font-weight="800" fill="${palette.ink}">امسح الكود وشوف المنيو</text>
+      <text x="600" y="1340" text-anchor="middle" font-size="42" font-weight="800" fill="${palette.ink}">${scanLabel}</text>
     </g>
 
     <rect x="250" y="1460" width="700" height="92" rx="46" fill="#FFFFFF" opacity="0.18"/>
-    <text x="600" y="1522" text-anchor="middle" font-size="34" font-weight="800" fill="#FFFFFF">فرع ${storeCode}</text>
-    ${phone ? `<text x="600" y="1620" text-anchor="middle" font-size="32" font-weight="700" fill="#FFFFFF" opacity="0.9">للطلب: ${phone}</text>` : ""}
+    <text x="600" y="1522" text-anchor="middle" font-size="34" font-weight="800" fill="#FFFFFF">${isArabic ? "فرع" : "Store"} ${storeCode}</text>
+    ${phone ? `<text x="600" y="1620" text-anchor="middle" font-size="32" font-weight="700" fill="#FFFFFF" opacity="0.9">${isArabic ? "للطلب:" : "Order:"} ${phone}</text>` : ""}
   </g>
 </svg>`;
 }
@@ -116,8 +128,9 @@ export function BranchQrDownloadCard({
   phone,
   onlineMenuHref,
 }: BranchQrDownloadCardProps) {
+  const { t, language } = useTranslation();
   const [origin] = useState(() =>
-    typeof window !== "undefined" ? window.location.origin : ""
+    typeof window !== "undefined" ? window.location.origin : "",
   );
   const [qrDataUrl, setQrDataUrl] = useState("");
 
@@ -157,8 +170,9 @@ export function BranchQrDownloadCard({
       address,
       phone,
       qrDataUrl,
+      language,
     });
-  }, [address, phone, qrDataUrl, storeCode, storeName]);
+  }, [address, language, phone, qrDataUrl, storeCode, storeName]);
 
   const posterDataUrl = posterSvg
     ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(posterSvg)}`
@@ -187,7 +201,7 @@ export function BranchQrDownloadCard({
     const printWindow = window.open("", "_blank", "width=900,height=1200");
     if (!printWindow) return;
     printWindow.document.write(`<!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="${language}" dir="${language === "ar" ? "rtl" : "ltr"}">
   <head>
     <title>QR ${escapeXml(storeName)}</title>
     <style>
@@ -210,7 +224,11 @@ export function BranchQrDownloadCard({
       <div className="overflow-hidden rounded-[var(--mds-radius-md)] bg-muted shadow-[var(--mds-elevation-1)]">
         {posterDataUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={posterDataUrl} alt={`QR ${storeName}`} className="aspect-[2/3] w-full object-cover" />
+          <img
+            src={posterDataUrl}
+            alt={`QR ${storeName}`}
+            className="aspect-[2/3] w-full object-cover"
+          />
         ) : (
           <div className="flex aspect-[2/3] items-center justify-center text-muted-foreground">
             <QrCode className="size-10" />
@@ -219,9 +237,9 @@ export function BranchQrDownloadCard({
       </div>
       <div className="flex min-w-0 flex-col justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold">QR جاهز للطباعة</p>
+          <p className="text-sm font-semibold">{t("Print-ready QR")}</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            كارت عميل للمنيو العام الخاص بفرع {storeName}.
+            {t("Customer poster for the public menu of store")} {storeName}.
           </p>
           <p className="mt-2 break-all rounded-lg bg-background/70 px-3 py-2 font-mono text-xs text-muted-foreground">
             {menuUrl}
@@ -233,18 +251,31 @@ export function BranchQrDownloadCard({
             size="sm"
             variant="outline"
             nativeButton={false}
-            render={<a href={menuUrl} target="_blank" rel="noopener noreferrer" />}
+            render={
+              <a href={menuUrl} target="_blank" rel="noopener noreferrer" />
+            }
           >
             <ExternalLink className="size-4" />
-            فتح
+            {t("Open")}
           </Button>
-          <Button type="button" size="sm" onClick={downloadPng} disabled={!posterDataUrl}>
+          <Button
+            type="button"
+            size="sm"
+            onClick={downloadPng}
+            disabled={!posterDataUrl}
+          >
             <Download className="size-4" />
-            تحميل PNG
+            {t("Download PNG")}
           </Button>
-          <Button type="button" size="sm" variant="outline" onClick={printPoster} disabled={!posterDataUrl}>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={printPoster}
+            disabled={!posterDataUrl}
+          >
             <Printer className="size-4" />
-            طباعة
+            {t("Print")}
           </Button>
         </div>
       </div>

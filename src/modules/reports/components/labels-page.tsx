@@ -38,6 +38,7 @@ import { saveLabelSettingsAction } from "@/modules/reports/actions/label.actions
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Category, Product, ProductVariant } from "@/lib/types";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface LabelsPageProps {
   products: LabelStudioProduct[];
@@ -114,19 +115,20 @@ function WarningBadges({
   barcode: string;
   sku: string;
 }) {
+  const { t } = useTranslation();
   if (barcode.trim() && sku.trim()) return null;
   return (
     <div className="mt-1 flex flex-wrap gap-1">
       {!barcode.trim() ? (
         <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:text-amber-200">
           <AlertTriangle className="size-3" aria-hidden />
-          بدون Barcode
+          {t("No barcode")}
         </span>
       ) : null}
       {!sku.trim() ? (
         <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:text-amber-200">
           <AlertTriangle className="size-3" aria-hidden />
-          بدون SKU
+          {t("No SKU")}
         </span>
       ) : null}
     </div>
@@ -139,6 +141,7 @@ export function LabelsPage({
   currency,
   initialSettings,
 }: LabelsPageProps) {
+  const { t } = useTranslation();
   const [settings, setSettings] = useState(initialSettings);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [query, setQuery] = useState("");
@@ -215,7 +218,7 @@ export function LabelsPage({
     saveLabelPrintJob(job);
     const printWindow = window.open("/print/labels", "_blank", "noopener,noreferrer");
     if (!printWindow) {
-      toast.error("المتصفح منع فتح نافذة الطباعة — اسمح بالنوافذ المنبثقة");
+      toast.error(t("The browser blocked the print window. Allow pop-ups and try again."));
     }
   };
 
@@ -223,9 +226,9 @@ export function LabelsPage({
     setSaving(true);
     try {
       await saveLabelSettingsAction(settings);
-      toast.success("تم حفظ الإعدادات الافتراضية");
+      toast.success(t("Default settings saved."));
     } catch {
-      toast.error("تعذر حفظ الإعدادات");
+      toast.error(t("Could not save settings."));
     } finally {
       setSaving(false);
     }
@@ -233,8 +236,8 @@ export function LabelsPage({
 
   return (
     <ReportPage
-      title="ملصقات الباركود"
-      description="اختَر المنتجات، عدّل المحتوى، والطابعة هتطبّع نفس المعاينة"
+      title="Barcode Labels"
+      description="Choose products, adjust the label, then print the preview."
       actions={
         <Button
           variant="outline"
@@ -243,7 +246,7 @@ export function LabelsPage({
           onClick={openPrint}
         >
           <Printer className="me-2 size-4" />
-          معاينة الطباعة
+          {t("Print preview")}
         </Button>
       }
     >
@@ -251,7 +254,7 @@ export function LabelsPage({
         {/* Settings */}
         <aside className="space-y-[var(--mds-space-4)] rounded-[var(--mds-radius-lg)] border border-border bg-card p-[var(--mds-space-4)] shadow-[var(--mds-elevation-1)]">
           <div className="space-y-[var(--mds-space-2)]">
-            <Label>مقاس الملصق</Label>
+            <Label>{t("Label size")}</Label>
             <Select
               value={settings.preset}
               onValueChange={(preset) => {
@@ -260,12 +263,14 @@ export function LabelsPage({
               }}
             >
               <SelectTrigger className="rounded-[var(--mds-radius-md)]">
-                <SelectValue />
+                <SelectValue>
+                  {() => t(LABEL_PRESET_OPTIONS.find((opt) => opt.id === settings.preset)?.label ?? "Custom size")}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {LABEL_PRESET_OPTIONS.map((opt) => (
                   <SelectItem key={opt.id} value={opt.id}>
-                    {opt.label}
+                    {t(opt.label)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -275,7 +280,7 @@ export function LabelsPage({
           {settings.preset === "custom" ? (
             <div className="grid grid-cols-2 gap-[var(--mds-space-3)]">
               <div className="space-y-[var(--mds-space-2)]">
-                <Label>العرض (مم)</Label>
+                <Label>{t("Width (mm)")}</Label>
                 <Input
                   type="number"
                   min={20}
@@ -292,7 +297,7 @@ export function LabelsPage({
                 />
               </div>
               <div className="space-y-[var(--mds-space-2)]">
-                <Label>الارتفاع (مم)</Label>
+                <Label>{t("Height (mm)")}</Label>
                 <Input
                   type="number"
                   min={15}
@@ -312,7 +317,7 @@ export function LabelsPage({
           ) : (
             <div className="flex flex-row items-center justify-between gap-2">
               <p className="text-xs text-muted-foreground">
-                {settings.labelWidthMm}×{settings.labelHeightMm} مم — خط تلقائي
+                {settings.labelWidthMm}×{settings.labelHeightMm} {t("mm · Auto font")}
               </p>
               <Button
                 type="button"
@@ -321,28 +326,28 @@ export function LabelsPage({
                 className="h-9 shrink-0 px-2 text-xs"
                 onClick={() => setSettings((prev) => applyPreset("custom", prev))}
               >
-                مقاس مخصص
+                {t("Custom size")}
               </Button>
             </div>
           )}
 
           <div className="space-y-[var(--mds-space-3)] border-t border-border pt-[var(--mds-space-4)]">
-            <p className="text-sm font-medium">محتوى الملصق</p>
+            <p className="text-sm font-medium">{t("Label content")}</p>
             <ContentToggle
               id="show-name"
-              label="اسم المنتج"
+              label={t("Product name")}
               checked={settings.showName}
               onCheckedChange={(showName) => setSettings((s) => ({ ...s, showName }))}
             />
             <ContentToggle
               id="show-variant"
-              label="اسم المتغير"
+              label={t("Variant name")}
               checked={settings.showVariant}
               onCheckedChange={(showVariant) => setSettings((s) => ({ ...s, showVariant }))}
             />
             <ContentToggle
               id="show-price"
-              label="السعر"
+              label={t("Price")}
               checked={settings.showPrice}
               onCheckedChange={(showPrice) => setSettings((s) => ({ ...s, showPrice }))}
             />
@@ -354,13 +359,13 @@ export function LabelsPage({
             />
             <ContentToggle
               id="show-barcode"
-              label="الباركود"
+              label={t("Barcode")}
               checked={settings.showBarcode}
               onCheckedChange={(showBarcode) => setSettings((s) => ({ ...s, showBarcode }))}
             />
             <ContentToggle
               id="show-barcode-number"
-              label="رقم الباركود"
+              label={t("Barcode number")}
               checked={settings.showBarcodeNumber}
               onCheckedChange={(showBarcodeNumber) =>
                 setSettings((s) => ({ ...s, showBarcodeNumber }))
@@ -369,7 +374,7 @@ export function LabelsPage({
           </div>
 
           <div className="space-y-[var(--mds-space-2)] border-t border-border pt-[var(--mds-space-4)]">
-            <Label htmlFor="default-copies">النسخ الافتراضي لكل إضافة</Label>
+            <Label htmlFor="default-copies">{t("Default copies per item")}</Label>
             <Input
               id="default-copies"
               type="number"
@@ -392,7 +397,7 @@ export function LabelsPage({
             disabled={saving}
             onClick={() => void saveDefaults()}
           >
-            حفظ كافتراضي
+            {t("Save as default")}
           </Button>
         </aside>
 
@@ -400,21 +405,23 @@ export function LabelsPage({
         <section className="space-y-[var(--mds-space-4)]">
           <div className="grid gap-[var(--mds-space-3)] sm:grid-cols-[1fr_200px]">
             <Input
-              placeholder="ابحث بالاسم أو SKU أو الباركود…"
+              placeholder={t("Search by name, SKU, or barcode…")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              aria-label="بحث المنتجات"
+              aria-label={t("Search products")}
               className="rounded-[var(--mds-radius-md)]"
             />
             <Select
               value={categoryId}
               onValueChange={(value) => setCategoryId(value || "all")}
             >
-              <SelectTrigger className="rounded-[var(--mds-radius-md)]" aria-label="تصفية التصنيف">
-                <SelectValue placeholder="كل التصنيفات" />
+              <SelectTrigger className="rounded-[var(--mds-radius-md)]" aria-label={t("Filter by category")}>
+                <SelectValue placeholder={t("All categories")}>
+                  {() => categoryId === "all" ? t("All categories") : categoryNameById.get(categoryId) ?? t("All categories")}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">كل التصنيفات</SelectItem>
+                <SelectItem value="all">{t("All categories")}</SelectItem>
                 {categories.map((cat) => (
                   <SelectItem key={cat.id} value={cat.id}>
                     {cat.name}
@@ -424,10 +431,10 @@ export function LabelsPage({
             </Select>
           </div>
 
-          <div className="max-h-[min(520px,55vh)] overflow-y-auto rounded-[var(--mds-radius-lg)] border border-border bg-card shadow-[var(--mds-elevation-1)]">
+          <div className="max-h-[min(520px,55dvh)] overflow-y-auto rounded-[var(--mds-radius-lg)] border border-border bg-card shadow-[var(--mds-elevation-1)]">
             {filtered.length === 0 ? (
               <div className="grid place-items-center p-[var(--mds-space-8)] text-sm text-muted-foreground">
-                مفيش منتجات مطابقة للبحث
+                {t("No products match your search.")}
               </div>
             ) : (
               filtered.map((product) => {
@@ -453,7 +460,7 @@ export function LabelsPage({
                         size="icon"
                         variant="outline"
                         className="shrink-0"
-                        aria-label={`إضافة ${product.name}`}
+                        aria-label={`${t("Add")} ${product.name}`}
                         onClick={() => addToCart(product, null)}
                       >
                         <Plus className="size-4" />
@@ -477,7 +484,7 @@ export function LabelsPage({
                               size="icon"
                               variant="ghost"
                               className="shrink-0"
-                              aria-label={`إضافة ${variant.name}`}
+                              aria-label={`${t("Add")} ${variant.name}`}
                               onClick={() => addToCart(product, variant)}
                             >
                               <Plus className="size-4" />
@@ -495,14 +502,14 @@ export function LabelsPage({
         {/* Cart */}
         <aside className="flex min-h-[320px] flex-col rounded-[var(--mds-radius-lg)] border border-border bg-card shadow-[var(--mds-elevation-1)]">
           <div className="border-b border-border px-[var(--mds-space-4)] py-[var(--mds-space-3)]">
-            <p className="font-medium">سلة الطباعة</p>
-            <p className="text-xs text-muted-foreground">كمية مستقلة لكل منتج</p>
+            <p className="font-medium">{t("Print queue")}</p>
+            <p className="text-xs text-muted-foreground">{t("Set copies for each item")}</p>
           </div>
 
           <div className="flex-1 space-y-[var(--mds-space-2)] overflow-y-auto p-[var(--mds-space-3)]">
             {cart.length === 0 ? (
               <div className="grid h-full min-h-[160px] place-items-center text-center text-sm text-muted-foreground">
-                اضغط + من الكتالوج لإضافة منتجات
+                {t("Select + to add products.")}
               </div>
             ) : (
               cart.map((line) => (
@@ -529,7 +536,7 @@ export function LabelsPage({
                       type="button"
                       size="icon"
                       variant="ghost"
-                      aria-label="حذف"
+                      aria-label={t("Delete")}
                       onClick={() => removeLine(line.id)}
                     >
                       <Trash2 className="size-4 text-destructive" />
@@ -540,7 +547,7 @@ export function LabelsPage({
                       type="button"
                       size="icon"
                       variant="outline"
-                      aria-label="تقليل الكمية"
+                      aria-label={t("Decrease quantity")}
                       onClick={() => setCopies(line.id, line.copies - 1)}
                       disabled={line.copies <= 1}
                     >
@@ -553,13 +560,13 @@ export function LabelsPage({
                       value={line.copies}
                       onChange={(e) => setCopies(line.id, Number(e.target.value))}
                       className="h-9 w-16 text-center rounded-[var(--mds-radius-md)]"
-                      aria-label={`عدد نسخ ${line.productName}`}
+                      aria-label={`${t("Copies for")} ${line.productName}`}
                     />
                     <Button
                       type="button"
                       size="icon"
                       variant="outline"
-                      aria-label="زيادة الكمية"
+                      aria-label={t("Increase quantity")}
                       onClick={() => setCopies(line.id, line.copies + 1)}
                     >
                       <Plus className="size-4" />
@@ -572,11 +579,11 @@ export function LabelsPage({
 
           <div className="space-y-[var(--mds-space-3)] border-t border-border p-[var(--mds-space-4)]">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">المنتجات</span>
+              <span className="text-muted-foreground">{t("Products")}</span>
               <span className="font-medium tabular-nums">{productCount}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">إجمالي الملصقات</span>
+              <span className="text-muted-foreground">{t("Total labels")}</span>
               <span className="font-semibold tabular-nums">{labelCount}</span>
             </div>
 
@@ -585,13 +592,13 @@ export function LabelsPage({
                 role="status"
                 className="rounded-[var(--mds-radius-md)] border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-100"
               >
-                الطباعة متوقفة — فيه منتجات بدون باركود وظاهر «الباركود»:
+                {t("Printing is blocked because these items have no barcode:")}
                 <ul className="mt-1 list-disc pe-4">
                   {blockingBarcodes.slice(0, 5).map((b) => (
                     <li key={b.id}>{b.productName}</li>
                   ))}
                   {blockingBarcodes.length > 5 ? (
-                    <li>و {blockingBarcodes.length - 5} تانيين</li>
+                    <li>{t("And")} {blockingBarcodes.length - 5} {t("more")}</li>
                   ) : null}
                 </ul>
               </div>
@@ -599,7 +606,7 @@ export function LabelsPage({
 
             <Button className="w-full" disabled={!canPrint} onClick={openPrint}>
               <Printer className="me-2 size-4" />
-              طباعة الملصقات
+              {t("Print labels")}
             </Button>
           </div>
         </aside>
@@ -613,14 +620,14 @@ export function LabelsPage({
         )}
       >
         <div className="mb-[var(--mds-space-3)] flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-          <p className="text-sm font-medium">معاينة مباشرة</p>
+          <p className="text-sm font-medium">{t("Live preview")}</p>
           <p className="text-xs text-muted-foreground">
-            أي تغيير في المحتوى أو المقاس أو الكميات يتظبط هنا فورًا
+            {t("Changes to content, size, or copies appear here instantly.")}
           </p>
         </div>
         {cart.length === 0 ? (
           <div className="grid place-items-center py-10 text-sm text-muted-foreground">
-            المعاينة هتظهر بعد إضافة منتجات للسلة
+            {t("Add products to see the preview.")}
           </div>
         ) : (
           <div className="max-h-[420px] overflow-auto rounded-md bg-white p-3">

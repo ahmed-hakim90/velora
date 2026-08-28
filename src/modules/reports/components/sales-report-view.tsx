@@ -39,6 +39,7 @@ import {
 import type { ReportContext } from "@/modules/reports/core/report-context";
 import type { Store } from "@/lib/types";
 import { useAppRouter as useRouter } from "@/hooks/use-app-router";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface SalesReportViewProps {
   filters: ReportFilters;
@@ -84,6 +85,7 @@ export function SalesReportView({
   canPdf,
 }: SalesReportViewProps) {
   const router = useRouter();
+  const { t, language } = useTranslation();
   const [pending, startTransition] = useTransition();
   const printQs = reportFiltersToSearchParams(filters);
   const printHref = `/print/reports/sales${printQs ? `?${printQs}` : ""}`;
@@ -96,24 +98,24 @@ export function SalesReportView({
   const withQs = (path: string) => (entityQs ? `${path}?${entityQs}` : path);
 
   const orderColumns: ColumnDef<Order>[] = [
-    { header: "الطلب", accessorKey: "order_number" },
+    { header: t("Order"), accessorKey: "order_number" },
     {
       id: "total",
-      header: "الإجمالي",
+      header: t("Total"),
       cell: ({ row }) => formatCurrency(row.original.total, currency),
     },
-    { header: "الحالة", accessorKey: "status" },
+    { header: t("Status"), accessorKey: "status" },
     {
       id: "created_at",
-      header: "التاريخ",
-      cell: ({ row }) => new Date(row.original.created_at).toLocaleString(),
+      header: t("Date"),
+      cell: ({ row }) => new Date(row.original.created_at).toLocaleString(language === "ar" ? "ar-EG" : "en-US"),
     },
   ];
 
   const productColumns: ColumnDef<(typeof topProducts)[number]>[] = [
     {
       id: "name",
-      header: "المنتج",
+      header: t("Product"),
       cell: ({ row }) => (
         <Link
           href={`/reports/sales/product?productId=${row.original.id}${
@@ -127,12 +129,12 @@ export function SalesReportView({
     },
     {
       id: "qty",
-      header: "الكمية",
-      cell: ({ row }) => row.original.quantity.toLocaleString("ar-EG"),
+      header: t("Quantity"),
+      cell: ({ row }) => row.original.quantity.toLocaleString(language === "ar" ? "ar-EG" : "en-US"),
     },
     {
       id: "revenue",
-      header: "الإيراد",
+      header: t("Revenue"),
       cell: ({ row }) => formatCurrency(row.original.revenue, currency),
     },
   ];
@@ -152,8 +154,8 @@ export function SalesReportView({
 
   return (
     <ReportPage
-      title="تقرير المبيعات"
-      description="لوحة المبيعات: إيراد، اتجاهات، أصناف، وتقارير مصغّرة"
+      title="Sales report"
+      description="Revenue, trends, products, and quick reports"
       actions={
         <ExportButtonGroup
           printHref={canPrint ? printHref : undefined}
@@ -173,9 +175,9 @@ export function SalesReportView({
                   ) as Record<string, string>
                 );
                 downloadBase64Excel(result.base64, result.filename);
-                toast.success("تم تصدير Excel");
+                toast.success(t("Excel exported"));
               } catch {
-                toast.error("فشل التصدير");
+                toast.error(t("Export failed"));
               }
             });
           }}
@@ -192,17 +194,17 @@ export function SalesReportView({
       <ReportKpiGrid
         items={[
           {
-            label: "الإيراد",
+            label: t("Revenue"),
             value: formatCurrency(summary?.totalRevenue ?? 0, currency),
             icon: <DollarSign className="size-5" />,
           },
           {
-            label: "الطلبات",
+            label: t("Orders"),
             value: String(summary?.orderCount ?? 0),
             icon: <Receipt className="size-5" />,
           },
           {
-            label: "متوسط الطلب",
+            label: t("Average order"),
             value: formatCurrency(summary?.avgOrderValue ?? 0, currency),
             icon: <TrendingUp className="size-5" />,
           },
@@ -210,31 +212,31 @@ export function SalesReportView({
       />
 
       <ModuleAnalyticsQuickLinks
-        title="تقارير مصغّرة"
-        description="افتح تحليل لكيان واحد بسرعة"
+        title={t("Quick reports")}
+        description={t("Open a focused report quickly")}
         links={[
           {
             href: withQs("/reports/sales/product"),
-            label: "مبيعات منتج",
-            description: "كمية وإيراد صنف واحد",
+            label: t("Product sales"),
+            description: t("Quantity and revenue for one product"),
             icon: Package,
           },
           {
             href: withQs("/reports/sales/branch"),
-            label: "ملخص فرع",
-            description: "إيراد وأصناف وموظفين لفرع",
+            label: t("Branch summary"),
+            description: t("Revenue, products, and staff for one branch"),
             icon: Building2,
           },
           {
             href: withQs("/reports/sales/cashier"),
-            label: "ملخص موظف",
-            description: "أداء كاشير: إيراد وجلسات",
+            label: t("Cashier summary"),
+            description: t("Cashier revenue and sessions"),
             icon: UserRound,
           },
         ]}
       />
 
-      <ReportChartSection title="الإيراد حسب اليوم">
+      <ReportChartSection title={t("Revenue by day")}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -247,7 +249,7 @@ export function SalesReportView({
       </ReportChartSection>
 
       {storeChart.length > 1 ? (
-        <ReportChartSection title="الإيراد حسب الفرع" height={220}>
+        <ReportChartSection title={t("Revenue by branch")} height={220}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={storeChart}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -261,14 +263,14 @@ export function SalesReportView({
       ) : null}
 
       <ReportTable
-        title="أفضل الأصناف"
+        title={t("Top products")}
         columns={productColumns}
         data={topProducts}
-        emptyMessage="مفيش أصناف في الفترة"
+        emptyMessage={t("No products in this period")}
       />
 
       <ReportTable
-        title="آخر الطلبات"
+        title={t("Latest orders")}
         columns={orderColumns}
         data={orders}
         page={filters.page}

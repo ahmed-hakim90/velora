@@ -51,14 +51,17 @@ export function useOperatorShortcuts({
     onCustomer,
     onDiscount,
   });
-  handlersRef.current = {
-    onSave,
-    onDelete,
-    onUndo,
-    onHold,
-    onCustomer,
-    onDiscount,
-  };
+
+  useEffect(() => {
+    handlersRef.current = {
+      onSave,
+      onDelete,
+      onUndo,
+      onHold,
+      onCustomer,
+      onDiscount,
+    };
+  }, [onSave, onDelete, onUndo, onHold, onCustomer, onDiscount]);
 
   useEffect(() => {
     if (!enabled) return;

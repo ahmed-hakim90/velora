@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import type { Category } from "@/lib/types";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface CategoryRailProps {
   categories: Category[];
@@ -14,46 +16,71 @@ export function CategoryRail({
   selectedId,
   onSelect,
 }: CategoryRailProps) {
+  const { t } = useTranslation();
+  const buttonRefs = useRef(new Map<string, HTMLButtonElement>());
+  const selectedKey = selectedId ?? "all";
+
+  useEffect(() => {
+    const selectedButton = buttonRefs.current.get(selectedKey);
+    if (!selectedButton) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    selectedButton.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+  }, [selectedKey]);
+
+  function registerButton(key: string, node: HTMLButtonElement | null) {
+    if (node) buttonRefs.current.set(key, node);
+    else buttonRefs.current.delete(key);
+  }
+
+  if (categories.length === 0) return null;
+
   return (
     <div
-      className="flex gap-1.5 overflow-x-auto overscroll-x-contain scroll-ps-1 pb-1 [-webkit-overflow-scrolling:touch] scrollbar-none max-[390px]:gap-1"
-      role="tablist"
-      aria-label="تصنيفات المنتجات"
+      className="flex h-12 touch-pan-x gap-0.5 overflow-x-auto overscroll-x-contain rounded-lg border border-border/60 bg-card/70 p-0.5 scroll-px-0.5 scroll-ps-14 snap-x snap-proximity [-webkit-overflow-scrolling:touch] scrollbar-none"
+      role="group"
+      aria-label={t("Product categories")}
     >
       <button
+        ref={(node) => registerButton("all", node)}
         type="button"
-        role="tab"
-        aria-selected={selectedId === null}
+        aria-pressed={selectedId === null}
         onClick={() => onSelect(null)}
         className={cn(
-          "min-h-11 shrink-0 rounded-full px-3.5 text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 max-[390px]:px-3 max-[390px]:text-xs sm:px-5 sm:text-base",
+          "sticky start-0 z-10 h-11 shrink-0 snap-start rounded-md px-2.5 text-xs font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 sm:px-3 sm:text-sm",
           selectedId === null
-            ? "bg-primary text-primary-foreground shadow-sm font-semibold"
-            : "bg-card text-muted-foreground ring-1 ring-border/70 hover:bg-muted/80 hover:text-foreground"
+            ? "bg-primary text-primary-foreground shadow-sm"
+            : "bg-card text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground"
         )}
       >
-        الكل
+        {t("All")}
       </button>
       {categories.map((cat) => (
         <button
+          ref={(node) => registerButton(cat.id, node)}
           key={cat.id}
           type="button"
-          role="tab"
-          aria-selected={selectedId === cat.id}
+          aria-pressed={selectedId === cat.id}
           onClick={() => onSelect(cat.id)}
           className={cn(
-            "min-h-11 shrink-0 rounded-full px-3.5 text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 max-[390px]:px-3 max-[390px]:text-xs sm:px-5 sm:text-base",
+            "flex h-11 shrink-0 snap-start items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 sm:px-2.5 sm:text-sm",
             selectedId === cat.id
-              ? "font-semibold text-white shadow-sm"
-              : "bg-card text-muted-foreground ring-1 ring-border/70 hover:bg-muted/80 hover:text-foreground"
+              ? "bg-primary font-semibold text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
           )}
-          style={
-            selectedId === cat.id
-              ? { backgroundColor: cat.color }
-              : undefined
-          }
         >
-          {cat.name}
+          <span
+            className={cn(
+              "size-2 shrink-0 rounded-full ring-1 ring-black/10",
+              selectedId === cat.id && "ring-white/50"
+            )}
+            style={{ backgroundColor: cat.color }}
+            aria-hidden
+          />
+          <span className="max-w-28 truncate sm:max-w-36">{cat.name}</span>
         </button>
       ))}
     </div>

@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 /**
  * Fallback when register cookie is missing.
  * No device admin UI — bind silently or send operator to the slug POS hub.
  */
 export function PosDeviceGate() {
+  const { t } = useTranslation();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const started = useRef(false);
@@ -38,24 +40,24 @@ export function PosDeviceGate() {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background px-4">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-y-auto overscroll-y-contain bg-background px-3 py-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-4">
       <div className="w-full max-w-sm space-y-4 text-center">
         {pending || !error ? (
           <>
             <Loader2 className="mx-auto size-8 animate-spin text-primary" aria-hidden />
-            <p className="text-sm font-medium text-foreground">جاري تجهيز نقطة البيع…</p>
+            <p className="text-sm font-medium text-foreground">{t("Preparing POS…")}</p>
           </>
         ) : (
           <>
             <p className="text-sm font-medium text-destructive">{error}</p>
             <Button type="button" className="h-11 w-full rounded-xl" onClick={bind} disabled={pending}>
-              إعادة المحاولة
+              {t("Try again")}
             </Button>
             <Link
               href="/pos"
               className={cn(buttonVariants({ variant: "outline" }), "h-11 w-full rounded-xl")}
             >
-              اختيار رابط الفرع
+              {t("Choose store link")}
             </Link>
           </>
         )}

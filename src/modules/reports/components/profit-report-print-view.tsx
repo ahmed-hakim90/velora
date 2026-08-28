@@ -1,6 +1,9 @@
+"use client";
+
 import { PrintableDocument } from "@/modules/reports/components/printable-document";
 import { formatCurrency } from "@/lib/format";
 import type { ReportBranding } from "@/modules/reports/core/report-context";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 export interface ProfitReportPrintData {
   profit: {
@@ -60,23 +63,21 @@ export interface ProfitReportPrintData {
 }
 
 export function ProfitReportPrintView({ profit, rankings, context, currency }: ProfitReportPrintData) {
+  const { t } = useTranslation();
   const summaryRows = [
-    ["الإيراد", profit.revenue],
-    ["تكلفة البضاعة", profit.cogs],
-    ["إجمالي الربح", profit.grossProfit],
-    ["المصروفات", profit.totalExpenses],
-    ["تكلفة الهالك", profit.wasteCost],
-    ["صافي الربح", profit.estimatedNetProfit],
-    ["متوسط ربح الفاتورة", profit.avgOrderProfit],
-    ["مخزون — قيمة البيع", profit.inventory.inventorySellValue],
-    ["مخزون — تكلفة الشراء", profit.inventory.inventoryCostValue],
-    ["مخزون — ربح متوقع", profit.inventory.inventoryExpectedProfit],
+    ["Revenue", profit.revenue], ["COGS", profit.cogs],
+    ["Gross profit", profit.grossProfit], ["Expenses", profit.totalExpenses],
+    ["Waste cost", profit.wasteCost], ["Net profit", profit.estimatedNetProfit],
+    ["Average invoice profit", profit.avgOrderProfit],
+    ["Inventory sale value", profit.inventory.inventorySellValue],
+    ["Inventory cost value", profit.inventory.inventoryCostValue],
+    ["Expected inventory profit", profit.inventory.inventoryExpectedProfit],
   ] as const;
 
   return (
     <PrintableDocument
       branding={context}
-      title="تقرير الأرباح"
+      title="Profit Report"
       dateRange={context.filterSummary}
       generatedBy={context.generatedBy}
       generatedAt={context.generatedAt}
@@ -85,20 +86,20 @@ export function ProfitReportPrintView({ profit, rankings, context, currency }: P
         <tbody>
           {summaryRows.map(([label, value]) => (
             <tr key={label} className="border-b">
-              <td className="py-2 font-medium">{label}</td>
+              <td className="py-2 font-medium">{t(label)}</td>
               <td className="py-2 text-end">{formatCurrency(value, currency)}</td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      <h2 className="mb-2 text-base font-semibold">أعلى أصناف ربحًا</h2>
+      <h2 className="mb-2 text-base font-semibold">{t("Most profitable products")}</h2>
       <table className="mb-6 w-full text-sm">
         <thead>
           <tr className="border-b text-start">
-            <th className="py-1 font-medium">الصنف</th>
-            <th className="py-1 text-end font-medium">الربح</th>
-            <th className="py-1 text-end font-medium">الهامش</th>
+            <th className="py-1 font-medium">{t("Product")}</th>
+            <th className="py-1 text-end font-medium">{t("Profit")}</th>
+            <th className="py-1 text-end font-medium">{t("Margin")}</th>
           </tr>
         </thead>
         <tbody>
@@ -112,13 +113,13 @@ export function ProfitReportPrintView({ profit, rankings, context, currency }: P
         </tbody>
       </table>
 
-      <h2 className="mb-2 text-base font-semibold">أعلى أصناف بيعًا</h2>
+      <h2 className="mb-2 text-base font-semibold">{t("Top-selling products")}</h2>
       <table className="mb-6 w-full text-sm">
         <thead>
           <tr className="border-b text-start">
-            <th className="py-1 font-medium">الصنف</th>
-            <th className="py-1 text-end font-medium">المبيعات</th>
-            <th className="py-1 text-end font-medium">الربح</th>
+            <th className="py-1 font-medium">{t("Product")}</th>
+            <th className="py-1 text-end font-medium">{t("Sales")}</th>
+            <th className="py-1 text-end font-medium">{t("Profit")}</th>
           </tr>
         </thead>
         <tbody>
@@ -132,14 +133,14 @@ export function ProfitReportPrintView({ profit, rankings, context, currency }: P
         </tbody>
       </table>
 
-      <h2 className="mb-2 text-base font-semibold">الربح حسب اليوم</h2>
+      <h2 className="mb-2 text-base font-semibold">{t("Profit by day")}</h2>
       <table className="mb-6 w-full text-sm">
         <thead>
           <tr className="border-b text-start">
-            <th className="py-1 font-medium">اليوم</th>
-            <th className="py-1 text-end font-medium">فواتير</th>
-            <th className="py-1 text-end font-medium">مبيعات</th>
-            <th className="py-1 text-end font-medium">ربح</th>
+            <th className="py-1 font-medium">{t("Day")}</th>
+            <th className="py-1 text-end font-medium">{t("Invoices")}</th>
+            <th className="py-1 text-end font-medium">{t("Sales")}</th>
+            <th className="py-1 text-end font-medium">{t("Profit")}</th>
           </tr>
         </thead>
         <tbody>
@@ -154,14 +155,14 @@ export function ProfitReportPrintView({ profit, rankings, context, currency }: P
         </tbody>
       </table>
 
-      <h2 className="mb-2 text-base font-semibold">الربح المتوقع لكل فاتورة بيع</h2>
+      <h2 className="mb-2 text-base font-semibold">{t("Expected profit by sales invoice")}</h2>
       <table className="mb-6 w-full text-sm">
         <thead>
           <tr className="border-b text-start">
-            <th className="py-1 font-medium">الفاتورة</th>
-            <th className="py-1 text-end font-medium">المبيعات</th>
-            <th className="py-1 text-end font-medium">التكلفة</th>
-            <th className="py-1 text-end font-medium">الربح</th>
+            <th className="py-1 font-medium">{t("Invoice")}</th>
+            <th className="py-1 text-end font-medium">{t("Sales")}</th>
+            <th className="py-1 text-end font-medium">{t("Cost")}</th>
+            <th className="py-1 text-end font-medium">{t("Profit")}</th>
           </tr>
         </thead>
         <tbody>
@@ -176,14 +177,14 @@ export function ProfitReportPrintView({ profit, rankings, context, currency }: P
         </tbody>
       </table>
 
-      <h2 className="mb-2 text-base font-semibold">الربح المتوقع لكل فاتورة شراء</h2>
+      <h2 className="mb-2 text-base font-semibold">{t("Expected profit by purchase invoice")}</h2>
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b text-start">
-            <th className="py-1 font-medium">الفاتورة</th>
-            <th className="py-1 text-end font-medium">تكلفة الشراء</th>
-            <th className="py-1 text-end font-medium">قيمة البيع المتوقعة</th>
-            <th className="py-1 text-end font-medium">الربح المتوقع</th>
+            <th className="py-1 font-medium">{t("Invoice")}</th>
+            <th className="py-1 text-end font-medium">{t("Purchase cost")}</th>
+            <th className="py-1 text-end font-medium">{t("Expected sale value")}</th>
+            <th className="py-1 text-end font-medium">{t("Expected profit")}</th>
           </tr>
         </thead>
         <tbody>

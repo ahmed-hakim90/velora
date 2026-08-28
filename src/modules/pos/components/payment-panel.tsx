@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Banknote, CreditCard, Plus, Star, Trash2, UserCircle, Wallet, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,6 +55,8 @@ export function PaymentPanel({
   const setPaymentSplits = usePosStore((s) => s.setPaymentSplits);
   const [splitMode, setSplitMode] = useState(false);
   const [splits, setSplits] = useState<PaymentSplit[]>([]);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const useFixedTotal = fixedTotal !== null && fixedTotal !== undefined;
   const subtotal = useFixedTotal ? fixedTotal : getCartSubtotal(cart);
   const totalBeforeRedemption = useFixedTotal ? fixedTotal : getCartTotal(cart, discountAmount);
@@ -112,6 +114,52 @@ export function PaymentPanel({
       setPaymentMethod(methods[0].id);
     }
   }, [enabledMethods, methods, paymentMethod, setPaymentMethod]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    function handleDialogKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        if (loading) return;
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(
+        panelRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+        ) ?? []
+      ).filter((element) => !element.hidden && element.getClientRects().length > 0);
+      if (focusable.length === 0) return;
+
+      const first = focusable[0]!;
+      const last = focusable[focusable.length - 1]!;
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || !panelRef.current?.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (active === last || !panelRef.current?.contains(active))) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    window.addEventListener("keydown", handleDialogKeyDown);
+    return () => window.removeEventListener("keydown", handleDialogKeyDown);
+  }, [loading, onClose, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const frame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      previousFocus?.focus();
+    };
+  }, [open]);
 
   // Reset split UI whenever the panel is reopened (adjust state during render).
   const [splitResetForOpen, setSplitResetForOpen] = useState(open);
@@ -228,17 +276,33 @@ export function PaymentPanel({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 backdrop-blur-[2px] max-[390px]:p-0 sm:items-center sm:p-4">
-      <div className="flex max-h-[min(92dvh,100%)] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-card text-card-foreground shadow-2xl ring-1 ring-border/60 max-[390px]:max-h-[min(96dvh,100%)] max-[390px]:rounded-t-2xl max-[390px]:rounded-b-none">
-        <div className="flex shrink-0 items-center justify-between border-b border-border/50 px-5 py-4 max-[390px]:px-3 max-[390px]:py-3 sm:px-6">
-          <h2 className="font-heading text-xl font-semibold max-[390px]:text-lg">{t("Payment")}</h2>
-          <Button variant="ghost" size="icon" className="size-11 rounded-xl" aria-label="إغلاق" onClick={onClose}>
+      <div
+        ref={panelRef}
+        className="flex max-h-[min(92dvh,100%)] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-card text-card-foreground shadow-2xl ring-1 ring-border/60 max-[390px]:max-h-[min(96dvh,100%)] max-[390px]:rounded-t-2xl max-[390px]:rounded-b-none"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pos-payment-title"
+      >
+        <div className="flex shrink-0 items-center justify-between border-b border-border/50 px-3 py-2.5 sm:px-5 sm:py-3">
+          <h2 id="pos-payment-title" className="font-heading text-lg font-semibold sm:text-xl">
+            {t("Payment")}
+          </h2>
+          <Button
+            ref={closeButtonRef}
+            variant="ghost"
+            size="icon"
+            className="size-11 rounded-xl"
+            aria-label={t("Close")}
+            disabled={loading}
+            onClick={onClose}
+          >
             <X className="size-5" aria-hidden />
           </Button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-5 py-4 max-[390px]:px-3 max-[390px]:py-3 sm:px-6">
-        <div className="mb-4 rounded-xl border border-border/50 bg-muted/30 py-3 text-center max-[390px]:mb-3 max-[390px]:py-2.5">
-          <p className="text-4xl font-bold tabular-nums tracking-tight max-[390px]:text-3xl">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 py-3 sm:px-5 sm:py-4">
+        <div className="mb-3 rounded-xl border border-border/50 bg-muted/30 px-2 py-2 text-center sm:py-2.5">
+          <p className="text-2xl font-bold tabular-nums tracking-tight sm:text-3xl">
             {formatCurrency(total)}
           </p>
           {discountAmount > 0 || redemptionAmount > 0 ? (
@@ -273,34 +337,22 @@ export function PaymentPanel({
         ) : null}
 
         {!useFixedTotal && loyaltyAvailable ? (
-          <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-400/30 dark:bg-amber-400/10">
-            <p className="flex items-center gap-1.5 text-sm font-medium text-amber-800 dark:text-amber-200">
-              <Star className="size-4" />
+          <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-2.5 dark:border-amber-400/30 dark:bg-amber-400/10">
+            <p className="flex items-center gap-1.5 text-xs font-medium text-amber-800 dark:text-amber-200">
+              <Star className="size-3.5" />
               {t("Loyalty points")}: {loyaltyBalance}
             </p>
             {canRedeemLoyalty ? (
-              <>
-                <div className="mt-2 flex gap-1.5">
+                <div className="mt-1.5 flex items-center gap-1.5">
                   <Button
                     type="button"
                     size="sm"
-                    className="h-10 min-w-0 flex-1 rounded-xl text-xs sm:text-sm"
+                    className="h-11 shrink-0 rounded-lg px-2.5 text-xs"
                     variant={loyaltyRedemption ? "default" : "outline"}
                     onClick={() => applyRedemption(maxRedeemablePoints)}
                   >
-                    استخدم النقاط
+                    {t("Use points")}
                   </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="h-10 min-w-0 flex-1 rounded-xl text-xs sm:text-sm"
-                    variant={!loyaltyRedemption ? "default" : "outline"}
-                    onClick={() => setLoyaltyRedemption(null)}
-                  >
-                    بدون نقاط
-                  </Button>
-                </div>
-                <div className="mt-2 flex items-center gap-2">
                   <Input
                     type="number"
                     min={minimumLoyaltyRedeemPoints}
@@ -308,10 +360,15 @@ export function PaymentPanel({
                     value={loyaltyRedemption?.points ?? ""}
                     placeholder={t("Points to redeem")}
                     onChange={(e) => applyRedemption(Number(e.target.value))}
-                    className="h-10 rounded-xl bg-background"
+                    className="h-11 min-w-0 flex-1 rounded-lg bg-background px-2 text-end text-sm tabular-nums"
+                    inputMode="numeric"
                   />
+                  {loyaltyRedemption ? (
+                    <Button type="button" variant="ghost" size="icon" className="size-11 shrink-0 rounded-lg" onClick={() => setLoyaltyRedemption(null)} aria-label={t("No points")}>
+                      <X className="size-4" />
+                    </Button>
+                  ) : null}
                 </div>
-              </>
             ) : null}
             {loyaltyRedemption ? (
               <p className="mt-2 text-xs text-amber-800 dark:text-amber-200">
@@ -358,14 +415,14 @@ export function PaymentPanel({
           </Button>
         </div>
         {splitMode && creditEnabled ? (
-          <p className="mb-3 text-xs text-muted-foreground">
-            تقدر تدفع جزء وتخلي الباقي آجل على حساب العميل.
+          <p className="mb-2 text-xs text-muted-foreground">
+            {t("Pay part now and charge the rest to the customer account.")}
           </p>
         ) : null}
         {!splitMode ? (
         <div
           className={cn(
-            "mb-5 grid gap-2 max-[390px]:gap-1.5 sm:gap-3",
+            "mb-2.5 grid gap-1.5",
             methods.length <= 2
               ? "grid-cols-2"
               : methods.length === 3
@@ -395,22 +452,22 @@ export function PaymentPanel({
                 aria-label={methodLabel}
                 onClick={() => setPaymentMethod(id)}
                 className={cn(
-                  "flex h-12 min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl border-2 py-2 text-xs font-semibold transition active:scale-[0.98] sm:h-auto sm:min-h-24 sm:gap-1.5 sm:rounded-2xl sm:py-4 sm:text-sm",
+                  "flex h-11 min-h-11 flex-col items-center justify-center gap-0 rounded-lg border-2 px-1 text-[11px] font-semibold transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/60 sm:flex-row sm:gap-1.5 sm:px-1.5 sm:text-xs",
                   tone,
                   selected && "ring-2 ring-offset-2 ring-foreground/30"
                 )}
               >
-                <Icon className="size-5 sm:size-7" aria-hidden />
-                <span className="sr-only sm:not-sr-only">{methodLabel}</span>
+                <Icon className="size-4" aria-hidden />
+                <span className="truncate">{methodLabel}</span>
               </button>
             );
           })}
         </div>
         ) : (
-          <div className="mb-5 grid gap-2.5">
+          <div className="mb-3 grid gap-2">
             {syncedSplits.map((payment, index) => (
-              <div key={index} className="flex flex-wrap items-center gap-1.5">
-                <div className="flex min-w-0 flex-1 flex-wrap gap-1">
+              <div key={index} className="grid min-w-0 grid-cols-[minmax(0,1fr)_6rem_2.75rem] items-center gap-1.5">
+                <div className="scrollbar-none flex min-w-0 touch-pan-x flex-nowrap gap-1 overflow-x-auto overscroll-x-contain pb-0.5">
                   {methods.map(({ id, label, icon: Icon }) => {
                     const selected = payment.method === id;
                     return (
@@ -421,7 +478,7 @@ export function PaymentPanel({
                         aria-pressed={selected}
                         onClick={() => updateSplit(index, { method: id })}
                         className={cn(
-                          "flex size-11 shrink-0 items-center justify-center rounded-xl border-2 transition active:scale-[0.98]",
+                          "flex size-11 shrink-0 items-center justify-center rounded-xl border-2 transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/60",
                           selected
                             ? "border-foreground bg-foreground text-background"
                             : "border-border bg-card text-muted-foreground hover:border-muted-foreground/40"
@@ -438,14 +495,16 @@ export function PaymentPanel({
                   step="0.01"
                   value={payment.amount || ""}
                   onChange={(e) => updateSplit(index, { amount: Number(e.target.value) })}
-                  className="h-11 w-24 shrink-0 rounded-xl"
+                  className="h-11 min-w-0 rounded-xl px-2 text-end tabular-nums"
+                  inputMode="decimal"
+                  aria-label={`${t("Payment amount")} ${index + 1}`}
                 />
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
                   className="size-11 shrink-0 rounded-xl"
-                  aria-label="حذف الدفعة"
+                  aria-label={t("Delete payment")}
                   onClick={() => setSplits((current) => current.filter((_, i) => i !== index))}
                 >
                   <Trash2 className="size-4" aria-hidden />
@@ -473,7 +532,7 @@ export function PaymentPanel({
                     className="rounded-xl"
                     onClick={addCreditRemainder}
                   >
-                    الباقي آجل
+                    {t("Charge remainder")}
                   </Button>
                 ) : null}
                 <Button
@@ -494,9 +553,9 @@ export function PaymentPanel({
 
         </div>
 
-        <div className="shrink-0 border-t border-border/50 px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
+        <div className="shrink-0 border-t border-border/50 px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-2.5">
           <Button
-            className="h-14 w-full rounded-2xl text-base font-semibold"
+            className="h-12 w-full rounded-xl text-sm font-semibold"
             disabled={!canComplete}
             onClick={complete}
           >

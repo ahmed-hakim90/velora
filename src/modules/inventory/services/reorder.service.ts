@@ -116,7 +116,7 @@ export function buildReorderSuggestions(
     .map((level) =>
       stockLevelToReorderSuggestion(
         level,
-        warehouseMap.get(level.warehouse_id) ?? "مخزن غير معروف",
+        warehouseMap.get(level.warehouse_id) ?? "Unknown warehouse",
         usageByKey.get(getConsumptionKey(level)) ?? 0
       )
     )

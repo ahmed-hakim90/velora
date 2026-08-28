@@ -18,6 +18,7 @@ import { PosLogoutButton } from "@/modules/pos/components/pos-logout-button";
 import { PosSetupStepper } from "@/modules/pos/components/pos-setup-stepper";
 import { selectLabelById } from "@/lib/select-label";
 import type { Store as StoreType } from "@/lib/types";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface PosStoreGateProps {
   stores: StoreType[];
@@ -31,17 +32,18 @@ interface PosStoreGateProps {
 export function PosStoreGate({
   stores,
   activeStoreId,
-  title = "اختيار الفرع",
-  description = "اختر الفرع الذي ستعمل عليه في نقطة البيع.",
+  title = "Choose store",
+  description = "Choose the store where you will use the POS.",
   readinessState = "store_required",
 }: PosStoreGateProps) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [selectedId, setSelectedId] = useState(activeStoreId ?? stores[0]?.id ?? "");
   const [pending, startTransition] = useTransition();
 
   function handleContinue() {
     if (!selectedId) {
-      toast.error("اختر فرعًا للمتابعة");
+      toast.error(t("Choose a store to continue"));
       return;
     }
     startTransition(async () => {
@@ -49,7 +51,7 @@ export function PosStoreGate({
         await setActiveStoreAction(selectedId);
         router.refresh();
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "تعذر اختيار الفرع");
+        toast.error(t(error instanceof Error ? error.message : "Could not select store"));
       }
     });
   }
@@ -59,25 +61,25 @@ export function PosStoreGate({
       <header className="flex shrink-0 items-center justify-between gap-3 border-b px-3 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] sm:px-4 sm:py-3">
         <div className="flex min-w-0 items-center gap-2">
           <Store className="size-5 shrink-0 text-primary" />
-          <span className="truncate text-sm font-medium">{title}</span>
+          <span className="truncate text-sm font-medium">{t(title)}</span>
         </div>
         <PosLogoutButton />
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto overscroll-y-contain px-3 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:py-8">
-        <PosSetupStepper state={readinessState} className="mb-2" />
-        <div className="w-full max-w-md space-y-5 rounded-2xl border bg-card p-4 shadow-lg ring-1 ring-foreground/5 max-[390px]:rounded-xl max-[390px]:p-3.5 sm:space-y-6 sm:p-6">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto overscroll-y-contain px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-4 sm:py-6">
+        <PosSetupStepper state={readinessState} className="mb-1.5" />
+        <div className="w-full max-w-md space-y-3 rounded-xl border bg-card p-3 shadow-md ring-1 ring-foreground/5 sm:space-y-4 sm:p-4">
           <div className="space-y-1 text-center">
-            <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-            <p className="text-sm text-muted-foreground">{description}</p>
+            <h1 className="text-lg font-semibold tracking-tight">{t(title)}</h1>
+            <p className="text-xs text-muted-foreground">{t(description)}</p>
           </div>
 
           {stores.length === 0 ? (
             <p className="rounded-xl bg-muted/60 px-4 py-3 text-center text-sm text-muted-foreground">
-              لا يوجد فرع متاح لحسابك. اطلب من المدير إضافة صلاحية فرع.
+              {t("No store is available for your account. Ask a manager for access.")}
             </p>
           ) : stores.length <= 4 ? (
-            <div className="grid gap-2">
+            <div className="grid gap-1.5">
               {stores.map((store) => {
                 const selected = selectedId === store.id;
                 return (
@@ -87,25 +89,25 @@ export function PosStoreGate({
                     onClick={() => setSelectedId(store.id)}
                     className={
                       selected
-                        ? "flex min-h-14 items-center justify-between rounded-xl border-2 border-primary bg-primary/5 px-4 py-3 text-start"
-                        : "flex min-h-14 items-center justify-between rounded-xl border border-border bg-background px-4 py-3 text-start hover:bg-muted/50"
+                        ? "flex min-h-11 items-center justify-between rounded-lg border-2 border-primary bg-primary/5 px-3 py-2 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                        : "flex min-h-11 items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-start hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
                     }
                     aria-pressed={selected}
                   >
-                    <span className="truncate text-base font-semibold">{store.name}</span>
+                    <span className="truncate text-sm font-semibold">{store.name}</span>
                     {selected ? (
-                      <span className="shrink-0 text-xs font-medium text-primary">مختار</span>
+                      <span className="shrink-0 text-xs font-medium text-primary">{t("Selected")}</span>
                     ) : null}
                   </button>
                 );
               })}
             </div>
           ) : (
-            <div className="space-y-2">
-              <Label htmlFor="pos-store">الفرع</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor="pos-store">{t("Store")}</Label>
               <Select value={selectedId} onValueChange={(value) => setSelectedId(value ?? "")}>
-                <SelectTrigger id="pos-store" className="h-12 rounded-xl text-base">
-                  <SelectValue placeholder="اختر الفرع">
+                <SelectTrigger id="pos-store" className="h-11 rounded-lg text-sm">
+                  <SelectValue placeholder={t("Choose store")}>
                     {(value) => selectLabelById(stores, value, (s) => s.name)}
                   </SelectValue>
                 </SelectTrigger>
@@ -121,11 +123,11 @@ export function PosStoreGate({
           )}
 
           <Button
-            className="h-14 w-full rounded-xl text-base font-semibold"
+            className="h-12 w-full rounded-xl text-sm font-semibold"
             disabled={pending || !selectedId}
             onClick={handleContinue}
           >
-            {pending ? "جاري الحفظ…" : "متابعة"}
+            {pending ? t("Saving…") : t("Continue")}
           </Button>
         </div>
       </div>

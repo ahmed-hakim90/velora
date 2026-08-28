@@ -19,7 +19,7 @@ describe("print engine settings", () => {
   it("falls back to defaults for invalid payloads", () => {
     const parsed = parsePrintEngineSettings({ layout: "unknown", colors: "bad" });
     const template = resolvePrintTemplate(parsed);
-    expect(template.layout).toBe("classic");
+    expect(template.layout).toBe("executive");
     expect(template.fields.showAmountInWords).toBe(true);
   });
 
@@ -48,12 +48,12 @@ describe("print engine settings", () => {
   it("keeps named templates and per-kind assignment", () => {
     const parsed = parsePrintEngineSettings({
       ...DEFAULT_PRINT_ENGINE_SETTINGS,
-      defaultTemplateId: "classic",
-      assignments: { quotation: "modern" },
+      defaultTemplateId: "executive",
+      assignments: { quotation: "corporate" },
     });
-    expect(resolvePrintTemplate(parsed, "sales_invoice").id).toBe("classic");
-    expect(resolvePrintTemplate(parsed, "quotation").id).toBe("modern");
-    expect(resolvePrintTemplate(parsed, "quotation").layout).toBe("modern");
+    expect(resolvePrintTemplate(parsed, "sales_invoice").id).toBe("executive");
+    expect(resolvePrintTemplate(parsed, "quotation").id).toBe("corporate");
+    expect(resolvePrintTemplate(parsed, "quotation").layout).toBe("corporate");
   });
 
   it("normalizes missing print blocks to a full ordered list", () => {

@@ -6,8 +6,7 @@ import { useAppRouter as useRouter } from "@/hooks/use-app-router";
 import { Landmark, MapPin, Plus, ShoppingBag, Users, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { DateRangeFilter } from "@/components/Velora/date-range-filter";
 import { CompactAction, CompactActions } from "@/components/Velora/compact-actions";
 import { PageHeader } from "@/components/Velora/page-header";
 import { KpiCard } from "@/components/Velora/kpi-card";
@@ -53,6 +52,7 @@ interface CustomerDetailPageProps {
   creditSalesEnabled?: boolean;
   /** Open collect dialog from aging deep-link `?collect=1`. */
   initialCollectOpen?: boolean;
+  returnHref?: string;
 }
 
 export function CustomerDetailPage({
@@ -65,6 +65,7 @@ export function CustomerDetailPage({
   currency = "EGP",
   creditSalesEnabled = false,
   initialCollectOpen = false,
+  returnHref = "/customers/directory",
 }: CustomerDetailPageProps) {
   const router = useRouter();
   const [statement, setStatement] = useState(initialStatement);
@@ -97,10 +98,6 @@ export function CustomerDetailPage({
     });
   };
 
-  const applyFilter = () => {
-    refreshStatement(statementRange(from, to));
-  };
-
   const confirmVoidPayment = () => {
     if (!voidPaymentId) return;
     startTransition(async () => {
@@ -116,12 +113,6 @@ export function CustomerDetailPage({
     });
   };
 
-  const clearFilter = () => {
-    setFrom("");
-    setTo("");
-    refreshStatement();
-  };
-
   const printQs = new URLSearchParams();
   if (from) printQs.set("from", from);
   if (to) printQs.set("to", to);
@@ -133,7 +124,7 @@ export function CustomerDetailPage({
     <div className="flex flex-col gap-3" dir="rtl">
       <PageHeader
         breadcrumb={
-          <Link href="/customers/directory" className="text-primary hover:underline">
+          <Link href={returnHref} className="text-primary hover:underline">
             العملاء
           </Link>
         }
@@ -191,8 +182,8 @@ export function CustomerDetailPage({
       <div
         className={
           creditSalesEnabled
-            ? "grid gap-[var(--mds-space-4)] sm:grid-cols-2 lg:grid-cols-4"
-            : "grid gap-[var(--mds-space-4)] sm:grid-cols-2 lg:grid-cols-3"
+            ? "grid grid-cols-2 gap-[var(--mds-space-3)] sm:gap-[var(--mds-space-4)] lg:grid-cols-4"
+            : "grid grid-cols-2 gap-[var(--mds-space-3)] sm:gap-[var(--mds-space-4)] lg:grid-cols-3"
         }
       >
         {creditSalesEnabled || hasBalance ? (
@@ -238,49 +229,15 @@ export function CustomerDetailPage({
             hasDateFilter ? " · فترة مفلترة" : ""
           }`}
         >
-          <div className="mb-4 grid grid-cols-2 gap-2 rounded-[var(--mds-radius-md)] border border-border/60 bg-muted/30 p-3 sm:flex sm:flex-wrap sm:items-end sm:gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">من</Label>
-              <Input
-                type="date"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-                className="h-11 w-full bg-background sm:h-9 sm:w-[9.5rem]"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">إلى</Label>
-              <Input
-                type="date"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-                className="h-11 w-full bg-background sm:h-9 sm:w-[9.5rem]"
-              />
-            </div>
-            <Button
-              size="sm"
-              className="col-span-2 min-h-11 sm:col-auto sm:min-h-9"
-              onClick={applyFilter}
-              disabled={pending}
-            >
-              تطبيق
-            </Button>
-            {hasDateFilter ? (
-              <Button
-                size="sm"
-                variant="outline"
-                className="col-span-2 min-h-11 sm:col-auto sm:min-h-9"
-                onClick={clearFilter}
-                disabled={pending}
-              >
-                مسح
-              </Button>
-            ) : null}
-            {from && !to ? (
-              <p className="col-span-2 basis-full text-xs text-muted-foreground">
-                تاريخ النهاية يكون اليوم تلقائيًا عند تحديد تاريخ البداية فقط.
-              </p>
-            ) : null}
+          <div className="mb-4 rounded-[var(--mds-radius-md)] border border-border/60 bg-muted/30 p-3">
+            <DateRangeFilter
+              value={{ from, to }}
+              onChange={(range) => {
+                setFrom(range.from);
+                setTo(range.to);
+                refreshStatement(range.from || range.to ? statementRange(range.from, range.to) : undefined);
+              }}
+            />
           </div>
           <StatementTable
             currency={currency}

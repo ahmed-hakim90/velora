@@ -22,6 +22,7 @@ import {
 import type { ParsedImportResult } from "../services/import.service";
 import { productImportTemplateGroup } from "@/lib/business-activity-flags";
 import { toast } from "sonner";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 type ImportStage =
   | "idle"
@@ -63,6 +64,7 @@ export function ImportProductsDialog({
   onImported,
   activityType = "cafe",
 }: ImportProductsDialogProps) {
+  const { t } = useTranslation();
   const [parsed, setParsed] = useState<ParsedImportResult | null>(null);
   const [errors, setErrors] = useState<{ row: number; field: string; message: string }[]>([]);
   const [warnings, setWarnings] = useState<{ row: number; field: string; message: string }[]>([]);
@@ -76,33 +78,19 @@ export function ImportProductsDialog({
   const isSupermarket = templateGroup === "supermarket";
   const progressLabel =
     stage === "reading"
-      ? isSupermarket
-        ? "قراءة الملف…"
-        : "Reading spreadsheet"
+      ? t("Reading spreadsheet…")
       : stage === "parsing"
-        ? isSupermarket
-          ? "فحص المنتجات والأسعار…"
-          : "Checking products, variants, and recipes"
+        ? t("Checking products, variants, and recipes…")
         : stage === "ready"
-          ? isSupermarket
-            ? "جاهز للاستيراد"
-            : "Ready to import"
+          ? t("Ready to import")
           : stage === "importing"
-            ? isSupermarket
-              ? "جاري استيراد المنتجات…"
-              : "Importing products"
+            ? t("Importing products…")
             : stage === "imported"
-              ? isSupermarket
-                ? "تم الاستيراد"
-                : "Import completed"
+              ? t("Import completed")
                 : stage === "template"
-                ? isSupermarket
-                  ? "تجهيز القالب…"
-                  : "Preparing template"
+                ? t("Preparing template…")
                 : stage === "exporting"
-                  ? isSupermarket
-                    ? "تصدير الكتالوج…"
-                    : "Exporting catalog"
+                  ? t("Exporting catalog…")
                   : "";
 
   async function handleFile(file: File | null) {
@@ -130,7 +118,7 @@ export function ImportProductsDialog({
     } catch {
       setStage("idle");
       setProgress(0);
-      toast.error("Could not parse spreadsheet");
+      toast.error(t("Could not parse spreadsheet"));
     } finally {
       setBusy(false);
     }
@@ -147,9 +135,7 @@ export function ImportProductsDialog({
       const result = await importProductsAction(parsed);
       setProgress(100);
       setStage("imported");
-      const summary = isSupermarket
-        ? `أُضيف ${result.imported}، تحدّث ${result.updated}، بدون تغيير ${result.unchanged}، تم تخطي ${result.skipped}`
-        : `Added ${result.imported}, updated ${result.updated}, unchanged ${result.unchanged}, variants changed ${result.variantsImported + result.variantsUpdated}, variants unchanged ${result.variantsUnchanged}, skipped ${result.skipped}`;
+      const summary = `${t("Added")} ${result.imported}, ${t("updated")} ${result.updated}, ${t("unchanged")} ${result.unchanged}, ${t("variants changed")} ${result.variantsImported + result.variantsUpdated}, ${t("variants unchanged")} ${result.variantsUnchanged}, ${t("skipped")} ${result.skipped}`;
       setImportSummary(summary);
       setWarnings(result.warnings);
       toast.success(summary);
@@ -168,7 +154,7 @@ export function ImportProductsDialog({
     } catch {
       setStage("ready");
       setProgress(100);
-      toast.error("Import failed");
+      toast.error(t("Import failed"));
     } finally {
       setBusy(false);
     }
@@ -183,9 +169,9 @@ export function ImportProductsDialog({
       const { base64, filename } = await exportProductsTemplateAction();
       setProgress(100);
       downloadBase64(base64, filename);
-      toast.success("Template downloaded");
+      toast.success(t("Template downloaded"));
     } catch {
-      toast.error("Could not download template");
+      toast.error(t("Could not download template"));
     } finally {
       setStage(parsed ? "ready" : "idle");
       setProgress(parsed ? 100 : 0);
@@ -202,9 +188,9 @@ export function ImportProductsDialog({
       const { base64, filename } = await exportProductsDataAction();
       setProgress(100);
       downloadBase64(base64, filename);
-      toast.success("Catalog exported — edit prices or fields, then re-upload");
+      toast.success(t("Catalog exported. Edit prices or fields, then upload it again."));
     } catch {
-      toast.error("Could not export catalog");
+      toast.error(t("Could not export catalog"));
     } finally {
       setStage(parsed ? "ready" : "idle");
       setProgress(parsed ? 100 : 0);
@@ -216,15 +202,15 @@ export function ImportProductsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>استيراد / تصدير المنتجات</DialogTitle>
+          <DialogTitle>{t("Import / export products")}</DialogTitle>
           <DialogDescription>
             {activityType === "supermarket"
-              ? "صدّر الكتالوج أو نزّل قالب سوبر ماركت (قطعة / وزن / قطع داخل الكرتونة)، عدّل في Excel ثم ارفع الملف."
+              ? t("Export the catalog or download a supermarket template, edit it in Excel, then upload it.")
               : activityType === "retail" ||
                   activityType === "wholesale" ||
                   activityType === "mixed"
-                ? "صدّر الكتالوج أو نزّل قالب منتجات الرف، عدّل في Excel ثم ارفع الملف."
-                : "صدّر الكتالوج أو نزّل قالب المنيو (أحجام ووصفات)، عدّل في Excel ثم ارفع الملف."}
+                ? t("Export the catalog or download a retail template, edit it in Excel, then upload it.")
+                : t("Export the catalog or download a menu template with variants and recipes, edit it in Excel, then upload it.")}
           </DialogDescription>
         </DialogHeader>
 
@@ -232,18 +218,18 @@ export function ImportProductsDialog({
           <div className="grid gap-2 sm:grid-cols-2">
             <Button variant="outline" type="button" onClick={handleExportCatalog} disabled={busy}>
               <Download className="size-4" />
-              تصدير الكتالوج الحالي
+              {t("Export current catalog")}
             </Button>
             <Button variant="outline" type="button" onClick={handleTemplate} disabled={busy}>
               <Download className="size-4" />
-              تنزيل قالب فارغ
+              {t("Download empty template")}
             </Button>
           </div>
 
           <GlassPanel className="flex flex-col items-center gap-3 p-6 text-center">
             <Upload className="size-8 text-muted-foreground" />
             <label className="cursor-pointer text-sm font-medium text-primary hover:underline">
-              اختيار ملف Excel
+              {t("Choose Excel file")}
               <input
                 type="file"
                 accept=".xlsx,.xls"
@@ -255,10 +241,10 @@ export function ImportProductsDialog({
             {fileName ? <p className="text-xs text-muted-foreground">{fileName}</p> : null}
             <p className="max-w-sm text-xs text-muted-foreground">
               {templateGroup === "supermarket"
-                ? "ورقة المنتجات: قطعة بباركود، منتج وزني بسعر الكيلو، ووحدة شراء (كرتونة/كيس) مع عدد القطع أو الكيلو."
+                ? t("Products sheet supports pieces, weighted products, and purchase packaging.")
                 : templateGroup === "shelf"
-                  ? "ورقة المنتجات للرف/التجزئة. شيت Variants يظهر لو الأحجام مفعّلة في النشاط — بدون وصفات مطبخ."
-                  : "Use Products for items and ingredients, Variants for sizes and prices, and Recipes when you need inventory deduction."}
+                  ? t("Use the Products sheet for retail items. Variants are included when enabled.")
+                  : t("Use Products for items and ingredients, Variants for sizes and prices, and Recipes for inventory deduction.")}
             </p>
           </GlassPanel>
 
@@ -288,24 +274,20 @@ export function ImportProductsDialog({
             <div className="flex flex-wrap items-center gap-2">
               <StatusPill
                 label={
-                  isSupermarket
-                    ? `${parsed.rows.length} منتج`
-                    : `${parsed.rows.length} products`
+                  `${parsed.rows.length} ${t("products")}`
                 }
                 variant="info"
               />
               {!isSupermarket ? (
                 <>
-                  <StatusPill label={`${parsed.variants.length} variants`} variant="info" />
-                  <StatusPill label={`${parsed.recipes.length} recipe lines`} variant="info" />
+                  <StatusPill label={`${parsed.variants.length} ${t("variants")}`} variant="info" />
+                  <StatusPill label={`${parsed.recipes.length} ${t("recipe lines")}`} variant="info" />
                 </>
               ) : null}
               {warnings.length > 0 ? (
                 <StatusPill
                   label={
-                    isSupermarket
-                      ? `${warnings.length} تحذير`
-                      : `${warnings.length} warnings`
+                    `${warnings.length} ${t("warnings")}`
                   }
                   variant="warning"
                 />
@@ -313,12 +295,12 @@ export function ImportProductsDialog({
               {errors.length > 0 ? (
                 <StatusPill
                   label={
-                    isSupermarket ? `${errors.length} مشكلة` : `${errors.length} issues`
+                    `${errors.length} ${t("issues")}`
                   }
                   variant="warning"
                 />
               ) : (
-                <StatusPill label={isSupermarket ? "جاهز" : "Ready"} variant="success" />
+                <StatusPill label={t("Ready")} variant="success" />
               )}
             </div>
           ) : null}
@@ -333,7 +315,7 @@ export function ImportProductsDialog({
             <ul className="max-h-32 overflow-auto text-xs text-amber-800 dark:text-amber-200">
               {errors.slice(0, 8).map((e, i) => (
                 <li key={`${e.row}-${e.field}-${i}`}>
-                  Row {e.row} · {e.field}: {e.message}
+                  {t("Row")} {e.row} · {e.field}: {t(e.message)}
                 </li>
               ))}
             </ul>
@@ -343,7 +325,7 @@ export function ImportProductsDialog({
             <ul className="max-h-32 overflow-auto text-xs text-muted-foreground">
               {warnings.slice(0, 8).map((warning, i) => (
                 <li key={`${warning.row}-${warning.field}-${i}`}>
-                  Row {warning.row} · {warning.field}: {warning.message}
+                  {t("Row")} {warning.row} · {warning.field}: {t(warning.message)}
                 </li>
               ))}
             </ul>
@@ -352,7 +334,7 @@ export function ImportProductsDialog({
 
         <DialogFooter className="px-0 pb-0">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button
             disabled={
@@ -363,7 +345,7 @@ export function ImportProductsDialog({
             }
             onClick={handleImport}
           >
-            Import {parsed ? parsed.rows.length + parsed.variants.length : ""} rows
+            {t("Import")} {parsed ? parsed.rows.length + parsed.variants.length : ""} {t("rows")}
           </Button>
         </DialogFooter>
       </DialogContent>

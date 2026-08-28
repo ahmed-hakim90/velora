@@ -3,12 +3,16 @@
 import Link from "next/link";
 import type { BusinessActivityType } from "@/lib/constants";
 import { BUSINESS_ACTIVITY_TYPE_LABELS } from "@/lib/constants";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 const BASE_STEPS: { text: string; href?: string }[] = [
   { text: "أضف فرعًا واحفظ بياناته" },
   { text: "تأكد من مخزن افتراضي نشط" },
   { text: "أنشئ حسابات الكاشير", href: "/settings?tab=users" },
-  { text: "اضبط slug الفرع من تبويب المنيو (رابط الكاشير يظهر تلقائيًا)", href: "/settings?tab=branches" },
+  {
+    text: "اضبط slug الفرع من تبويب المنيو (رابط الكاشير يظهر تلقائيًا)",
+    href: "/settings?tab=branches",
+  },
   { text: "افتح /اسم-الفرع/pos واكتب PIN الكاشير", href: "/pos" },
   { text: "افتح جلسة ثم ابدأ البيع", href: "/pos" },
 ];
@@ -16,9 +20,7 @@ const BASE_STEPS: { text: string; href?: string }[] = [
 const ACTIVITY_EXTRA_STEPS: Partial<
   Record<BusinessActivityType, { text: string; href?: string }[]>
 > = {
-  supermarket: [
-    { text: "فعّل البيع بالوزن/المبلغ من تبويب النشاط" },
-  ],
+  supermarket: [{ text: "فعّل البيع بالوزن/المبلغ من تبويب النشاط" }],
   restaurant: [
     { text: "أضف إضافات (Modifiers) على منتجات المنيو", href: "/products" },
     { text: "افتح شاشة المطبخ لمتابعة الطلبات", href: "/kitchen" },
@@ -28,33 +30,51 @@ const ACTIVITY_EXTRA_STEPS: Partial<
     { text: "افتح شاشة المطبخ لمتابعة الطلبات", href: "/kitchen" },
   ],
   juice_bar: [
-    { text: "فعّل الوصفات للمكونات القابلة للخصم", href: "/settings?tab=features" },
+    {
+      text: "فعّل الوصفات للمكونات القابلة للخصم",
+      href: "/settings?tab=features",
+    },
     { text: "افتح شاشة المطبخ لمتابعة الطلبات", href: "/kitchen" },
   ],
   ice_cream: [
-    { text: "فعّل الوصفات وتتبع الصلاحية (FEFO)", href: "/settings?tab=activity" },
+    {
+      text: "فعّل الوصفات وتتبع الصلاحية (FEFO)",
+      href: "/settings?tab=activity",
+    },
     { text: "افتح شاشة المطبخ لمتابعة الطلبات", href: "/kitchen" },
   ],
   wholesale: [
     { text: "اضبط شرائح أسعار الجملة على المنتجات", href: "/products" },
-    { text: "فعّل البيع الآجل وحدود ائتمان العملاء", href: "/customers/directory" },
+    {
+      text: "فعّل البيع الآجل وحدود ائتمان العملاء",
+      href: "/customers/directory",
+    },
   ],
   mixed: [
     { text: "راجع صلاحية الجملة للكاشير (تحتاج مدير عادةً)" },
     { text: "فعّل البيع الآجل وحدود الائتمان", href: "/customers/directory" },
   ],
   bakery: [
-    { text: "فعّل الوصفات للإنتاج وتتبع الصلاحية", href: "/settings?tab=activity" },
+    {
+      text: "فعّل الوصفات للإنتاج وتتبع الصلاحية",
+      href: "/settings?tab=activity",
+    },
     { text: "فعّل الوزن إن كنت تبيع بالكيلو", href: "/settings?tab=activity" },
     { text: "افتح شاشة المطبخ لمتابعة الطلبات", href: "/kitchen" },
   ],
   pharmacy: [
-    { text: "طبّق إعدادات الصيدلية (دفعات + FEFO + منع بيع منتهي)", href: "/settings?tab=activity" },
+    {
+      text: "طبّق إعدادات الصيدلية (دفعات + FEFO + منع بيع منتهي)",
+      href: "/settings?tab=activity",
+    },
     { text: "أدخل تشغيلات بصلاحية عند الشراء/الجرد" },
     { text: "عند البيع: النظام يمنع التشغيلة المنتهية برسالة واضحة للكاشير" },
   ],
   retail: [
-    { text: "فعّل العروض/الولاء اختياريًا من الخصائص", href: "/settings?tab=features" },
+    {
+      text: "فعّل العروض/الولاء اختياريًا من الخصائص",
+      href: "/settings?tab=features",
+    },
   ],
 };
 
@@ -63,16 +83,17 @@ export function PosSetupGuide({
 }: {
   activityType?: BusinessActivityType;
 }) {
-  const extras = activityType ? ACTIVITY_EXTRA_STEPS[activityType] ?? [] : [];
+  const { t } = useTranslation();
+  const extras = activityType ? (ACTIVITY_EXTRA_STEPS[activityType] ?? []) : [];
   const steps = [...BASE_STEPS, ...extras];
 
   return (
     <details className="rounded-[var(--mds-radius-lg)] border border-border bg-card px-3 py-2 shadow-[var(--mds-elevation-1)]">
       <summary className="cursor-pointer select-none text-sm font-medium text-foreground">
-        دليل تجهيز الكاشير
+        {t("Cashier setup guide")}
         {activityType ? (
           <span className="ms-1 font-normal text-muted-foreground">
-            ({BUSINESS_ACTIVITY_TYPE_LABELS[activityType]})
+            ({t(BUSINESS_ACTIVITY_TYPE_LABELS[activityType])})
           </span>
         ) : null}
       </summary>
@@ -84,10 +105,10 @@ export function PosSetupGuide({
                 href={step.href}
                 className="font-medium text-primary underline-offset-4 hover:underline"
               >
-                {step.text}
+                {t(step.text)}
               </Link>
             ) : (
-              step.text
+              t(step.text)
             )}
           </li>
         ))}

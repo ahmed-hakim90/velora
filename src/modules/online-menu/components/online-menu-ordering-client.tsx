@@ -30,6 +30,7 @@ import { getMenuTheme } from "@/modules/online-menu/lib/menu-themes";
 import type { OnlineMenuData, OnlineMenuItem, OnlineMenuVariant } from "@/modules/online-menu/services/online-menu.service";
 import { formatCurrency } from "@/lib/format";
 import { resolveDisplayPriceRange } from "@/modules/products/lib/display-price-range";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 type CartLine = {
   id: string;
@@ -65,7 +66,7 @@ function lineId(productId: string, variantId: string | null) {
   return `${productId}:${variantId ?? ""}`;
 }
 
-function getMenuItemDisplayPrice(item: OnlineMenuItem, currency: string) {
+function getMenuItemDisplayPrice(item: OnlineMenuItem, currency: string, language: "ar" | "en") {
   const variantPrices = item.variants
     .map((variant) => variant.price)
     .filter((price) => Number.isFinite(price));
@@ -74,7 +75,7 @@ function getMenuItemDisplayPrice(item: OnlineMenuItem, currency: string) {
     variantPrices,
     baseAmount: item.price,
     currency,
-    rangeSeparator: "arabic",
+    rangeSeparator: language === "ar" ? "arabic" : "en-dash",
   });
   const min = [...variantPrices].sort((a, b) => a - b)[0];
   const max = [...variantPrices].sort((a, b) => a - b).at(-1);
@@ -82,8 +83,8 @@ function getMenuItemDisplayPrice(item: OnlineMenuItem, currency: string) {
   return {
     label: hasVariantPrice
       ? max != null && min != null && max > min
-        ? "من أقل سعر"
-        : "سعر الأحجام"
+        ? "From lowest price"
+        : "Variant price"
       : null,
     amount,
     range: rangeLabel,
@@ -128,6 +129,7 @@ interface OnlineMenuOrderingClientProps {
 }
 
 export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderingClientProps) {
+  const { t, language } = useTranslation();
   const theme = getMenuTheme(menu.store.theme);
   const isListLayout = theme.layout === "list";
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -183,24 +185,24 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
   function goToCheckoutDetails() {
     if (cart.length === 0) return;
     if (!fulfillmentConfig.pickupEnabled && !fulfillmentConfig.deliveryEnabled) {
-      toast.error("طرق الاستلام غير مُعدّة لهذا الفرع");
+      toast.error(t("Fulfillment methods are not configured for this store"));
       return;
     }
     if (fulfillment.type === "pickup" && !fulfillmentConfig.pickupEnabled) {
-      toast.error("الاستلام من الفرع غير متاح");
+      toast.error(t("Store pickup is unavailable"));
       return;
     }
     if (fulfillment.type === "delivery") {
       if (!fulfillmentConfig.deliveryEnabled) {
-        toast.error("التوصيل غير متاح");
+        toast.error(t("Delivery is unavailable"));
         return;
       }
       if (!fulfillment.zoneId) {
-        toast.error("اختر منطقة التوصيل");
+        toast.error(t("Choose a delivery zone"));
         return;
       }
       if (fulfillment.address.trim().length < 5) {
-        toast.error("اكتب عنوان التوصيل (٥ أحرف على الأقل)");
+        toast.error(t("Enter a delivery address of at least 5 characters"));
         return;
       }
     }
@@ -224,14 +226,14 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
           ...categories,
           {
             id: "other",
-            name: "أصناف أخرى",
+            name: t("Other items"),
             color: DEFAULT_CATEGORY_COLOR,
             icon: "",
             items: uncategorized,
           },
         ]
       : categories;
-  }, [menu.categories, menu.items]);
+  }, [menu.categories, menu.items, t]);
 
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const visibleGroups = useMemo<Group[]>(() => {
@@ -316,18 +318,18 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
     const customerName = customer.name.trim();
     const customerPhone = customer.phone.trim();
     if (customerPhone && customerPhone.length < 5) {
-      setCustomerPrompt("رقم الهاتف قصير. اكتبه بشكل صحيح أو امسحه وكمل بالاسم فقط.");
+      setCustomerPrompt(t("The phone number is too short. Correct it or continue with your name only."));
       setCheckoutStep("details");
       return;
     }
     if (!customerName) {
-      setCustomerPrompt("اكتب اسمك على الأقل علشان نجهز الطلب باسمك ونتجنب أي لخبطة.");
+      setCustomerPrompt(t("Enter your name so we can prepare the order correctly."));
       setCheckoutStep("details");
       return;
     }
     if (!customerPhone && !options.allowNameOnly && !phoneConfirmNeeded) {
       setCustomerPrompt(
-        "تقدر تكمل بالاسم فقط، ولو أضفت رقم الهاتف هنقدر نأكد الطلب ونسجلك كعميل."
+        t("You can continue with your name only. Adding a phone helps us confirm the order.")
       );
       setPhoneConfirmNeeded(true);
       setCheckoutStep("details");
@@ -335,24 +337,24 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
     }
 
     if (!fulfillmentConfig.pickupEnabled && !fulfillmentConfig.deliveryEnabled) {
-      toast.error("طرق الاستلام غير مُعدّة لهذا الفرع");
+      toast.error(t("Fulfillment methods are not configured for this store"));
       return;
     }
     if (fulfillment.type === "pickup" && !fulfillmentConfig.pickupEnabled) {
-      toast.error("الاستلام من الفرع غير متاح");
+      toast.error(t("Store pickup is unavailable"));
       return;
     }
     if (fulfillment.type === "delivery") {
       if (!fulfillmentConfig.deliveryEnabled) {
-        toast.error("التوصيل غير متاح");
+        toast.error(t("Delivery is unavailable"));
         return;
       }
       if (!fulfillment.zoneId) {
-        toast.error("اختر منطقة التوصيل");
+        toast.error(t("Choose a delivery zone"));
         return;
       }
       if (fulfillment.address.trim().length < 5) {
-        toast.error("اكتب عنوان التوصيل (٥ أحرف على الأقل)");
+        toast.error(t("Enter a delivery address of at least 5 characters"));
         return;
       }
     }
@@ -383,9 +385,9 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
         setPhoneConfirmNeeded(false);
         setLastOrder({ id: result.id, trackingPath: result.trackingPath });
         setCheckoutStep("success");
-        toast.success("شكراً لك، تم إرسال طلبك بنجاح");
+        toast.success(t("Thank you. Your order was sent successfully."));
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "تعذر إرسال الطلب");
+        toast.error(t(error instanceof Error ? error.message : "Could not send order"));
       }
     });
   }
@@ -403,7 +405,7 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
   return (
     <div
       id="online-menu-items"
-      className="pb-[calc(7rem+env(safe-area-inset-bottom))]"
+      className="pb-[calc(6rem+env(safe-area-inset-bottom))]"
       data-menu-layout={theme.layout}
       data-menu-theme={theme.slug}
     >
@@ -426,9 +428,9 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
           <Input
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="ابحث في المنيو..."
+            placeholder={t("Search menu…")}
             className="h-11 rounded-2xl bg-background/80 ps-10"
-            aria-label="البحث في المنيو"
+            aria-label={t("Search menu")}
           />
         </div>
 
@@ -442,7 +444,7 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                 className="h-9 shrink-0 rounded-full px-4"
                 render={<a href="#online-menu-items" />}
               >
-                الكل
+                {t("All")}
               </Button>
               {visibleGroups.map((group) => (
                 <Button
@@ -472,10 +474,9 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
 
       {lastOrder ? (
         <section className="mb-5 rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-100">
-          <p className="font-semibold">شكراً لك، استلمنا طلبك بنجاح.</p>
+          <p className="font-semibold">{t("Thank you. We received your order.")}</p>
           <p className="mt-1 text-sm">
-            رقم المتابعة: <span className="font-mono">{lastOrder.id.slice(0, 8)}</span>. تابع حالة
-            طلبك من الرابط الآمن.
+            {t("Tracking number")}: <span className="font-mono">{lastOrder.id.slice(0, 8)}</span>. {t("Track your order from the secure link.")}
           </p>
           <Button
             type="button"
@@ -485,7 +486,7 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
             nativeButton={false}
             render={<a href={lastOrder.trackingPath} />}
           >
-            تتبع الطلب
+            {t("Track order")}
           </Button>
         </section>
       ) : null}
@@ -493,11 +494,11 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
       <div className="space-y-6">
         {groups.length === 0 ? (
           <section className="rounded-3xl border border-dashed border-border/70 bg-card/70 p-8 text-center text-muted-foreground">
-            لا توجد أصناف متاحة في المنيو حالياً.
+            {t("No items are currently available on the menu.")}
           </section>
         ) : visibleGroups.length === 0 ? (
           <section className="rounded-3xl border border-dashed border-border/70 bg-card/70 p-8 text-center text-muted-foreground">
-            لا توجد نتائج مطابقة لـ <span className="font-medium">{searchQuery}</span>.
+            {t("No results match")} <span className="font-medium">{searchQuery}</span>.
           </section>
         ) : (
           visibleGroups.map((group, groupIndex) => {
@@ -555,7 +556,7 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                   <h2 className={titleClass}>
                     <span>{group.name}</span>
                     <span className="text-sm text-muted-foreground">
-                      {group.items.length} صنف
+                      {group.items.length} {t("items")}
                     </span>
                   </h2>
                 ) : (
@@ -564,11 +565,11 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                       <CategoryMark group={group} size="lg" />
                       <div className="min-w-0">
                         <h2 className="truncate text-xl font-semibold font-heading">{group.name}</h2>
-                        <p className="text-sm text-muted-foreground">{group.items.length} صنف</p>
+                        <p className="text-sm text-muted-foreground">{group.items.length} {t("items")}</p>
                       </div>
                     </div>
                     {normalizedSearchQuery ? (
-                      <Badge variant="outline">{group.items.length} نتيجة</Badge>
+                      <Badge variant="outline">{group.items.length} {t("results")}</Badge>
                     ) : null}
                   </>
                 )}
@@ -579,7 +580,8 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                   {group.items.map((item, itemIndex) => {
                     const displayPrice = getMenuItemDisplayPrice(
                       item,
-                      menu.organization.currency
+                      menu.organization.currency,
+                      language
                     );
                     const eagerImage = groupIndex === 0 && itemIndex < 2;
                     const isPremiumRow = theme.slug === "antika" || theme.slug === "soul";
@@ -696,7 +698,7 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                             size="sm"
                             className={addBtnClass}
                             onClick={() => addToCart(item)}
-                            aria-label="أضف للسلة"
+                            aria-label={t("Add to cart")}
                           >
                             {justAdded ? <Check className="size-4" /> : <Plus className="size-4" />}
                           </Button>
@@ -710,7 +712,8 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                 {group.items.map((item, itemIndex) => {
                   const displayPrice = getMenuItemDisplayPrice(
                     item,
-                    menu.organization.currency
+                    menu.organization.currency,
+                    language
                   );
                   const eagerImage = groupIndex === 0 && itemIndex < 2;
 
@@ -742,7 +745,7 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                         ) : null}
                         {item.isPopular ? (
                           <Badge variant="secondary" className="absolute start-2 top-2 rounded-full bg-background/90 shadow-sm backdrop-blur">
-                            الأكثر طلباً
+                            {t("Most ordered")}
                           </Badge>
                         ) : null}
                       </div>
@@ -775,7 +778,7 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
 
                         {item.variants.length > 0 ? (
                           <div className="mt-auto grid gap-2">
-                            <p className="text-xs font-medium text-muted-foreground">اختر الحجم</p>
+                            <p className="text-xs font-medium text-muted-foreground">{t("Choose size")}</p>
                             {item.variants.map((variant) => {
                               const variantLineId = lineId(item.id, variant.id);
                               const wasJustAdded = recentlyAddedLineId === variantLineId;
@@ -799,12 +802,12 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                                       {wasJustAdded ? (
                                         <>
                                           <Check className="size-3.5" />
-                                          تمت
+                                          {t("Added")}
                                         </>
                                       ) : (
                                         <>
                                           <Plus className="size-3.5" />
-                                          أضف
+                                          {t("Add")}
                                         </>
                                       )}
                                     </span>
@@ -823,12 +826,12 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                             {recentlyAddedLineId === lineId(item.id, null) ? (
                               <>
                                 <Check className="size-4" />
-                                تمت الإضافة
+                                {t("Added")}
                               </>
                             ) : (
                               <>
                                 <Plus className="size-4" />
-                                إضافة للطلب
+                                {t("Add to order")}
                               </>
                             )}
                           </Button>
@@ -874,27 +877,27 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                 </span>
                 <span className="block">
                   {checkoutStep === "review"
-                    ? "طلبك"
+                    ? t("Your order")
                     : checkoutStep === "details"
-                      ? "بيانات الإرسال"
-                      : "تم إرسال الطلب"}
+                      ? t("Contact details")
+                      : t("Order sent")}
                 </span>
               </span>
               {checkoutStep !== "success" ? (
                 <div className="flex shrink-0 flex-col items-end gap-1">
                   <Badge variant="outline" className="rounded-full">
-                    {checkoutStep === "review" ? "١ من ٢" : "٢ من ٢"}
+                    {checkoutStep === "review" ? t("1 of 2") : t("2 of 2")}
                   </Badge>
-                  <span className="text-xs text-muted-foreground">{cartItemCount} قطعة</span>
+                  <span className="text-xs text-muted-foreground">{cartItemCount} {t("items")}</span>
                 </div>
               ) : null}
             </DialogTitle>
             <DialogDescription className="text-start text-sm text-muted-foreground">
               {checkoutStep === "review"
-                ? "راجع الأصناف وطريقة الاستلام"
+                ? t("Review items and fulfillment method")
                 : checkoutStep === "details"
-                  ? "كمّل بياناتك عشان نبعت الطلب"
-                  : "احتفظ برابط التتبع"}
+                  ? t("Complete your details to send the order")
+                  : t("Keep the tracking link")}
             </DialogDescription>
           </DialogHeader>
 
@@ -904,13 +907,13 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                 <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-300">
                   <Check className="size-8" />
                 </div>
-                <p className="text-lg font-semibold">شكراً لك، استلمنا طلبك</p>
+                <p className="text-lg font-semibold">{t("Thank you. We received your order.")}</p>
                 <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-                  رقم المتابعة:{" "}
+                  {t("Tracking number")}:{" "}
                   <span className="font-mono font-medium text-foreground">
                     {lastOrder.id.slice(0, 8)}
                   </span>
-                  . تقدر تتابع حالة الطلب من الرابط الآمن.
+                  . {t("Track your order from the secure link.")}
                 </p>
                 <Button
                   type="button"
@@ -918,7 +921,7 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                   nativeButton={false}
                   render={<a href={lastOrder.trackingPath} />}
                 >
-                  تتبع الطلب
+                  {t("Track order")}
                 </Button>
               </div>
               <div className="shrink-0 border-t border-border/40 bg-card p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4">
@@ -928,7 +931,7 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                   className="h-12 w-full rounded-2xl"
                   onClick={closeCart}
                 >
-                  رجوع للمنيو
+                  {t("Back to menu")}
                 </Button>
               </div>
             </>
@@ -942,9 +945,9 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                     <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-background text-primary">
                       <ShoppingBag className="size-6" />
                     </div>
-                    <p className="text-sm font-medium">السلة فارغة</p>
+                    <p className="text-sm font-medium">{t("Cart is empty")}</p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      اختر منتجات من الكروت لإضافتها للطلب.
+                      {t("Choose products to add to your order.")}
                     </p>
                   </div>
                 ) : (
@@ -971,7 +974,7 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                             variant="ghost"
                             size="icon-xs"
                             className="size-8 rounded-xl text-muted-foreground hover:text-destructive"
-                            aria-label={`حذف ${line.name}`}
+                            aria-label={`${t("Delete")} ${line.name}`}
                             onClick={() => updateQuantity(line.id, 0)}
                           >
                             <Trash2 className="size-4" />
@@ -984,14 +987,14 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                               variant="ghost"
                               size="icon-xs"
                               className="size-8 rounded-xl"
-                              aria-label={`تقليل كمية ${line.name}`}
+                              aria-label={`${t("Decrease quantity")} ${line.name}`}
                               onClick={() => updateQuantity(line.id, line.quantity - 1)}
                             >
                               <Minus className="size-3.5" />
                             </Button>
                             <span
                               className="w-9 text-center text-sm font-semibold tabular-nums"
-                              aria-label={`كمية ${line.name}`}
+                              aria-label={`${t("Quantity")} ${line.name}`}
                             >
                               {line.quantity}
                             </span>
@@ -1000,7 +1003,7 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                               variant="ghost"
                               size="icon-xs"
                               className="size-8 rounded-xl"
-                              aria-label={`زيادة كمية ${line.name}`}
+                              aria-label={`${t("Increase quantity")} ${line.name}`}
                               onClick={() => updateQuantity(line.id, line.quantity + 1)}
                             >
                               <Plus className="size-3.5" />
@@ -1022,7 +1025,7 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                 cart.length > 0 &&
                 (fulfillmentConfig.pickupEnabled || fulfillmentConfig.deliveryEnabled) ? (
                   <div className="grid gap-2 rounded-2xl border border-border/50 p-3">
-                    <p className="text-sm font-semibold">طريقة الاستلام</p>
+                    <p className="text-sm font-semibold">{t("Fulfillment method")}</p>
                     <div className="grid gap-2 sm:grid-cols-2">
                       {fulfillmentConfig.pickupEnabled ? (
                         <Button
@@ -1033,7 +1036,7 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                             setFulfillment((current) => ({ ...current, type: "pickup" }))
                           }
                         >
-                          استلام من الفرع
+                          {t("Store pickup")}
                         </Button>
                       ) : null}
                       {fulfillmentConfig.deliveryEnabled ? (
@@ -1049,14 +1052,14 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                             }))
                           }
                         >
-                          توصيل
+                          {t("Delivery")}
                         </Button>
                       ) : null}
                     </div>
                     {fulfillment.type === "delivery" ? (
                       <div className="grid gap-2 pt-1">
                         <label className="grid gap-1 text-sm">
-                          <span className="text-muted-foreground">منطقة التوصيل</span>
+                          <span className="text-muted-foreground">{t("Delivery zone")}</span>
                           <select
                             className="h-10 rounded-xl border border-input bg-background px-3 text-sm"
                             value={fulfillment.zoneId}
@@ -1066,7 +1069,7 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                                 zoneId: event.target.value,
                               }))
                             }
-                            aria-label="منطقة التوصيل"
+                            aria-label={t("Delivery zone")}
                           >
                             {fulfillmentConfig.zones.map((zone) => (
                               <option key={zone.id} value={zone.id}>
@@ -1077,7 +1080,7 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                           </select>
                         </label>
                         <label className="grid gap-1 text-sm">
-                          <span className="text-muted-foreground">عنوان التوصيل</span>
+                          <span className="text-muted-foreground">{t("Delivery address")}</span>
                           <Textarea
                             value={fulfillment.address}
                             onChange={(event) =>
@@ -1086,7 +1089,7 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                                 address: event.target.value,
                               }))
                             }
-                            placeholder="الشارع، المبنى، علامة مميزة"
+                            placeholder={t("Street, building, landmark")}
                             className="min-h-16 rounded-xl"
                           />
                         </label>
@@ -1102,18 +1105,18 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                   className="flex w-full items-center justify-between gap-3 rounded-2xl bg-primary/10 px-4 py-3 text-start"
                   onClick={() => setCartDetailsOpen((open) => !open)}
                   aria-expanded={cartDetailsOpen}
-                  aria-label="تفاصيل الإجمالي"
+                  aria-label={t("Total details")}
                 >
                   <span>
                     <span className="block text-sm font-medium text-primary/80">
-                      الإجمالي النهائي
+                      {t("Final total")}
                     </span>
                     <span className="font-price block text-2xl font-bold tabular-nums text-primary">
                       {formatCurrency(orderTotal, menu.organization.currency)}
                     </span>
                   </span>
                   <span className="flex shrink-0 items-center gap-2 text-sm text-primary/80">
-                    {cartItemCount} قطعة
+                    {cartItemCount} {t("items")}
                     <ChevronDown
                       className={`size-4 transition ${cartDetailsOpen ? "rotate-180" : ""}`}
                     />
@@ -1123,14 +1126,14 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                 {cartDetailsOpen ? (
                   <div className="grid gap-1 rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3 text-sm">
                     <div className="flex items-center justify-between text-muted-foreground">
-                      <span>مجموع الأصناف</span>
+                      <span>{t("Items subtotal")}</span>
                       <span className="tabular-nums">
                         {formatCurrency(subtotal, menu.organization.currency)}
                       </span>
                     </div>
                     {deliveryFee > 0 ? (
                       <div className="flex items-center justify-between text-muted-foreground">
-                        <span>رسوم التوصيل</span>
+                        <span>{t("Delivery fee")}</span>
                         <span className="tabular-nums">
                           {formatCurrency(deliveryFee, menu.organization.currency)}
                         </span>
@@ -1146,7 +1149,7 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                     disabled={cart.length === 0}
                     onClick={goToCheckoutDetails}
                   >
-                    تأكيد ومتابعة
+                    {t("Confirm and continue")}
                   </Button>
                 ) : (
                   <p className="rounded-2xl bg-amber-50 p-3 text-center text-sm text-amber-950 dark:bg-amber-500/10 dark:text-amber-100">
@@ -1163,10 +1166,10 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                 <div className="mb-3 rounded-2xl border border-border/40 bg-muted/25 px-4 py-3">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold">ملخص سريع</p>
+                      <p className="text-sm font-semibold">{t("Quick summary")}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        {cartItemCount} قطعة ·{" "}
-                        {fulfillment.type === "delivery" ? "توصيل" : "استلام من الفرع"}
+                        {cartItemCount} {t("items")} ·{" "}
+                        {fulfillment.type === "delivery" ? t("Delivery") : t("Store pickup")}
                       </p>
                     </div>
                     <p className="font-price text-base font-bold tabular-nums text-primary">
@@ -1184,7 +1187,7 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                       setCheckoutStep("review");
                     }}
                   >
-                    تعديل الأصناف أو الاستلام
+                    {t("Edit items or fulfillment")}
                   </Button>
                 </div>
 
@@ -1199,14 +1202,14 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
 
                 <div className="grid gap-3">
                   <label className="grid gap-1.5 text-sm">
-                    <span className="font-medium">الاسم</span>
+                    <span className="font-medium">{t("Name")}</span>
                     <Input
                       value={customer.name}
                       onChange={(event) => {
                         setCustomer((current) => ({ ...current, name: event.target.value }));
                         setCustomerPrompt(null);
                       }}
-                      placeholder="اسمك كما نناديك"
+                      placeholder={t("Your name")}
                       aria-invalid={customerPrompt !== null && !customer.name.trim()}
                       className="h-11 rounded-xl"
                       autoComplete="name"
@@ -1214,8 +1217,8 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                   </label>
                   <label className="grid gap-1.5 text-sm">
                     <span className="font-medium">
-                      رقم الهاتف{" "}
-                      <span className="font-normal text-muted-foreground">(اختياري)</span>
+                      {t("Phone number")}{" "}
+                      <span className="font-normal text-muted-foreground">({t("Optional")})</span>
                     </span>
                     <Input
                       ref={phoneInputRef}
@@ -1225,7 +1228,7 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                         setCustomerPrompt(null);
                         if (event.target.value.trim()) setPhoneConfirmNeeded(false);
                       }}
-                      placeholder="مثال: 01xxxxxxxxx"
+                      placeholder={t("Example: 01xxxxxxxxx")}
                       inputMode="tel"
                       aria-invalid={
                         customerPrompt !== null &&
@@ -1238,28 +1241,28 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                   </label>
                   <label className="grid gap-1.5 text-sm">
                     <span className="font-medium">
-                      كود خصم{" "}
-                      <span className="font-normal text-muted-foreground">(اختياري)</span>
+                      {t("Coupon code")}{" "}
+                      <span className="font-normal text-muted-foreground">({t("Optional")})</span>
                     </span>
                     <Input
                       value={couponCode}
                       onChange={(event) => setCouponCode(event.target.value)}
-                      placeholder="أدخل الكود إن وجد"
+                      placeholder={t("Enter code if available")}
                       className="h-11 rounded-xl uppercase"
                       autoCapitalize="characters"
                     />
                   </label>
                   <label className="grid gap-1.5 text-sm">
                     <span className="font-medium">
-                      ملاحظات الطلب{" "}
-                      <span className="font-normal text-muted-foreground">(اختياري)</span>
+                      {t("Order notes")}{" "}
+                      <span className="font-normal text-muted-foreground">({t("Optional")})</span>
                     </span>
                     <Textarea
                       value={customer.notes}
                       onChange={(event) =>
                         setCustomer((current) => ({ ...current, notes: event.target.value }))
                       }
-                      placeholder="أي تفاصيل إضافية للطلب"
+                      placeholder={t("Any extra order details")}
                       className="min-h-24 rounded-xl"
                     />
                   </label>
@@ -1275,7 +1278,7 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                       disabled={isPending || !customer.name.trim() || cart.length === 0}
                       onClick={() => submitOrder({ allowNameOnly: true })}
                     >
-                      {isPending ? "جاري الإرسال..." : "إرسال بالاسم فقط"}
+                      {isPending ? t("Sending…") : t("Send with name only")}
                     </Button>
                     <Button
                       type="button"
@@ -1285,12 +1288,12 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                       onClick={() => {
                         setPhoneConfirmNeeded(false);
                         setCustomerPrompt(
-                          "أضف رقم الهاتف لو حابب نأكد الطلب ونسجلك كعميل، وبعدين اضغط إرسال الطلب."
+                          t("Add a phone number if you want order confirmation, then send the order.")
                         );
                         window.setTimeout(() => phoneInputRef.current?.focus(), 0);
                       }}
                     >
-                      هضيف رقم الهاتف
+                      {t("Add phone number")}
                     </Button>
                   </div>
                 ) : (
@@ -1306,7 +1309,7 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                         setCheckoutStep("review");
                       }}
                     >
-                      رجوع
+                      {t("Back")}
                     </Button>
                     <Button
                       type="button"
@@ -1314,7 +1317,7 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
                       disabled={isPending || cart.length === 0}
                       onClick={() => submitOrder()}
                     >
-                      {isPending ? "جاري الإرسال..." : "إرسال الطلب"}
+                      {isPending ? t("Sending…") : t("Send order")}
                     </Button>
                   </div>
                 )}
@@ -1357,18 +1360,18 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
             <ShoppingBag className="size-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold">السلة</p>
+            <p className="text-sm font-semibold">{t("Cart")}</p>
             {cart.length > 0 ? (
               <p className="truncate text-sm text-muted-foreground">
-                <span className="font-bold tabular-nums text-foreground">{cartItemCount}</span> قطعة ·{" "}
+                <span className="font-bold tabular-nums text-foreground">{cartItemCount}</span> {t("items")} ·{" "}
                 <span className="font-price font-bold tabular-nums text-primary">
                   {formatCurrency(orderTotal, menu.organization.currency)}
                 </span>
               </p>
             ) : lastOrder ? (
-              <p className="truncate text-sm text-muted-foreground">طلبك اتبعت · افتح للتتبع</p>
+              <p className="truncate text-sm text-muted-foreground">{t("Order sent · open to track")}</p>
             ) : (
-              <p className="truncate text-sm text-muted-foreground">أضف منتجات للطلب</p>
+              <p className="truncate text-sm text-muted-foreground">{t("Add products to your order")}</p>
             )}
           </div>
           <Button
@@ -1385,10 +1388,10 @@ export function OnlineMenuOrderingClient({ slug, token, menu }: OnlineMenuOrderi
             onClick={openCartFromBar}
           >
             {cart.length > 0
-              ? "مراجعة الطلب"
+              ? t("Review order")
               : lastOrder
-                ? "تتبع آخر طلب"
-                : "فتح السلة"}
+                ? t("Track last order")
+                : t("Open cart")}
           </Button>
         </div>
       </div>

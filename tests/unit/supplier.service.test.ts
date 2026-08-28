@@ -7,9 +7,11 @@ import {
 } from "@/modules/suppliers/services/supplier.service";
 import * as purchaseRepo from "@/lib/repositories/purchase.repository";
 import * as paymentRepo from "@/lib/repositories/supplier-payment.repository";
+import * as sessionRepo from "@/lib/repositories/session.repository";
 
 vi.mock("@/lib/repositories/purchase.repository");
 vi.mock("@/lib/repositories/supplier-payment.repository");
+vi.mock("@/lib/repositories/session.repository");
 vi.mock("@/lib/services/audit.service", () => ({
   writeAuditLog: vi.fn(),
 }));
@@ -89,6 +91,64 @@ describe("createSupplierPayment", () => {
         treasuryId: "tr-1",
         sessionId: null,
       })
+    );
+  });
+
+  it("links a drawer cash payment to the active session without a treasury", async () => {
+    vi.mocked(purchaseRepo.getSupplier).mockResolvedValue({
+      id: "s1",
+      org_id: "org-1",
+      name: "Supplier",
+      contact_info: "",
+      opening_balance: 0,
+      address: "",
+      tax_id: "",
+    });
+    vi.mocked(sessionRepo.getSession).mockResolvedValue({
+      id: "session-1",
+      store_id: "store-1",
+      device_id: null,
+      cashier_id: "u1",
+      opened_at: "2026-08-27T00:00:00.000Z",
+      closed_at: null,
+      opening_cash: 100,
+      expected_cash: null,
+      actual_cash: null,
+      variance: null,
+      status: "open",
+      notes: null,
+      closed_by: null,
+      close_reason: null,
+      force_closed: false,
+    });
+    vi.mocked(paymentRepo.insertSupplierPayment).mockResolvedValue({
+      id: "pay-drawer",
+      org_id: "org-1",
+      store_id: "store-1",
+      supplier_id: "s1",
+      session_id: "session-1",
+      amount: 50,
+      payment_method: "cash",
+      reference: "",
+      notes: "",
+      paid_at: "2026-08-27T00:00:00.000Z",
+      created_by: "u1",
+      created_at: "2026-08-27T00:00:00.000Z",
+      voided_at: null,
+      treasury_id: null,
+    });
+
+    await createSupplierPayment({
+      storeId: "store-1",
+      supplierId: "s1",
+      amount: 50,
+      paymentMethod: "cash",
+      createdBy: "u1",
+      sessionId: "session-1",
+    });
+
+    expect(paymentRepo.insertSupplierPayment).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: "session-1", treasuryId: null })
     );
   });
 });

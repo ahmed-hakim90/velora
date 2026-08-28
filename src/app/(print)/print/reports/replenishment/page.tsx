@@ -1,5 +1,6 @@
 import { getReplenishmentReportPageData } from "@/modules/reports/actions/replenishment-report.actions";
 import { PrintableDocument } from "@/modules/reports/components/printable-document";
+import { LocalizedText } from "@/components/Velora/localized-text";
 
 export default async function PrintReplenishmentReportPage({
   searchParams,
@@ -13,24 +14,24 @@ export default async function PrintReplenishmentReportPage({
   return (
     <PrintableDocument
       branding={data.context}
-      title="خطة الشراء من المبيعات"
+      title="Replenishment Plan"
       dateRange={r.monthLabel}
       generatedBy={data.context.generatedBy}
       generatedAt={data.context.generatedAt}
-      filterSummary={`تغطية ${r.coverageMonths} شهر · ${r.orderCount} طلب`}
+      filterSummary={`${r.coverageMonths} coverage months · ${r.orderCount} orders`}
     >
       <table className="mb-6 w-full text-sm">
         <tbody>
           <tr className="border-b">
-            <td className="py-2 font-medium">شهر الأساس</td>
+            <td className="py-2 font-medium"><LocalizedText text="Base month" /></td>
             <td className="py-2 text-end">{r.monthLabel}</td>
           </tr>
           <tr className="border-b">
-            <td className="py-2 font-medium">التغطية</td>
-            <td className="py-2 text-end">{r.coverageMonths} شهر</td>
+            <td className="py-2 font-medium"><LocalizedText text="Coverage" /></td>
+            <td className="py-2 text-end">{r.coverageMonths} <LocalizedText text="months" /></td>
           </tr>
           <tr className="border-b">
-            <td className="py-2 font-medium">محتاج شراء</td>
+            <td className="py-2 font-medium"><LocalizedText text="Items to buy" /></td>
             <td className="py-2 text-end">{r.summary.needBuyCount}</td>
           </tr>
         </tbody>
@@ -38,11 +39,11 @@ export default async function PrintReplenishmentReportPage({
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b">
-            <th className="py-2 text-start">الصنف</th>
-            <th className="py-2 text-end">استهلاك</th>
-            <th className="py-2 text-end">مطلوب</th>
-            <th className="py-2 text-end">رصيد</th>
-            <th className="py-2 text-end">شراء</th>
+            <th className="py-2 text-start"><LocalizedText text="Product" /></th>
+            <th className="py-2 text-end"><LocalizedText text="Usage" /></th>
+            <th className="py-2 text-end"><LocalizedText text="Required" /></th>
+            <th className="py-2 text-end"><LocalizedText text="On hand" /></th>
+            <th className="py-2 text-end"><LocalizedText text="Buy" /></th>
           </tr>
         </thead>
         <tbody>

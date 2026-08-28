@@ -29,15 +29,16 @@ import {
   togglePromotionAction,
   upsertPromotionAction,
 } from "@/modules/promotions/actions/promotion.actions";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 const RULE_TYPE_LABELS: Record<PromotionRuleType, string> = {
-  percent_off_item: "خصم % على منتج/فئة",
-  fixed_off_item: "خصم مبلغ على منتج",
-  scheduled_sale_price: "سعر عرض مجدول",
-  cart_percent: "خصم % على الفاتورة",
-  cart_fixed: "خصم مبلغ على الفاتورة",
-  bogo: "اشتري واحصل",
-  qty_threshold: "خصم عند كمية",
+  percent_off_item: "Percent off product / category",
+  fixed_off_item: "Fixed discount on product",
+  scheduled_sale_price: "Scheduled sale price",
+  cart_percent: "Percent off invoice",
+  cart_fixed: "Fixed discount on invoice",
+  bogo: "Buy and get",
+  qty_threshold: "Quantity discount",
 };
 
 type CatalogOption = { id: string; name: string; category_id?: string };
@@ -152,6 +153,7 @@ function buildConfig(form: FormState): Record<string, number | undefined> {
 }
 
 export function PromotionsPage({ rules, categories, products }: PromotionsPageProps) {
+  const { t, language } = useTranslation();
   const { requestConfirmation, confirmationDialog } = useConfirmationDialog();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
@@ -165,9 +167,9 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
       (r) =>
         r.name.toLowerCase().includes(q) ||
         (r.coupon_code ?? "").toLowerCase().includes(q) ||
-        RULE_TYPE_LABELS[r.rule_type].includes(q)
+        t(RULE_TYPE_LABELS[r.rule_type]).toLowerCase().includes(q)
     );
-  }, [rules, query]);
+  }, [rules, query, t]);
 
   const activeCount = useMemo(
     () => rules.filter((r) => r.is_active).length,
@@ -194,7 +196,7 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
         const saleModes: ("retail" | "wholesale")[] = [];
         if (form.saleRetail) saleModes.push("retail");
         if (form.saleWholesale) saleModes.push("wholesale");
-        if (saleModes.length === 0) throw new Error("اختار وضع بيع واحد على الأقل");
+        if (saleModes.length === 0) throw new Error(t("Select at least one sale mode"));
 
         await upsertPromotionAction({
           id: form.id,
@@ -213,10 +215,10 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
           config: buildConfig(form),
           usageLimitTotal: form.usageLimitTotal ? parseInt(form.usageLimitTotal, 10) : null,
         });
-        toast.success(form.id ? "تم تحديث العرض" : "تم إنشاء العرض");
+        toast.success(form.id ? t("Promotion updated") : t("Promotion created"));
         setOpen(false);
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "فشل حفظ العرض");
+        toast.error(e instanceof Error ? t(e.message) : t("Could not save promotion"));
       }
     });
   };
@@ -225,27 +227,27 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
     startTransition(async () => {
       try {
         await togglePromotionAction(rule.id, !rule.is_active);
-        toast.success(rule.is_active ? "العرض اتوقف" : "العرض اتفعّل");
+        toast.success(rule.is_active ? t("Promotion disabled") : t("Promotion enabled"));
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "فشل التحديث");
+        toast.error(e instanceof Error ? t(e.message) : t("Update failed"));
       }
     });
   };
 
   const remove = async (rule: PromotionRule) => {
     if (
-      !(await requestConfirmation(`حذف العرض «${rule.name}»؟`, {
-        title: "حذف العرض",
-        confirmLabel: "حذف",
+      !(await requestConfirmation(`${t("Delete promotion")} “${rule.name}”?`, {
+        title: t("Delete promotion"),
+        confirmLabel: t("Delete"),
         destructive: true,
       }))
     ) return;
     startTransition(async () => {
       try {
         await deletePromotionAction(rule.id);
-        toast.success("تم حذف العرض");
+        toast.success(t("Promotion deleted"));
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "فشل الحذف");
+        toast.error(e instanceof Error ? t(e.message) : t("Delete failed"));
       }
     });
   };
@@ -261,13 +263,13 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
     form.ruleType === "cart_percent" || form.ruleType === "cart_fixed";
 
   return (
-    <div className="flex flex-col gap-3" dir="rtl">
+    <div className="flex flex-col gap-3" dir={language === "ar" ? "rtl" : "ltr"}>
       <PageHeader
-        title="العروض"
-        description="قواعد خصم تلقائية وكوبونات بتشتغل على الكاشير والمنيو وفواتير الجملة"
+        title="Promotions"
+        description="Automatic discounts and coupons for POS, online menu, and wholesale invoices"
         action={
           <CompactAction
-            label="عرض جديد"
+            label={t("New promotion")}
             icon={Plus}
             variant="default"
             alwaysLabeled
@@ -276,38 +278,38 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
         }
       />
 
-      <div className="grid gap-[var(--mds-space-4)] sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-[var(--mds-space-3)] sm:gap-[var(--mds-space-4)] lg:grid-cols-3">
         <KpiCard
-          label="إجمالي العروض"
+          label={t("Total promotions")}
           value={String(rules.length)}
           icon={<Tag className="size-5" />}
         />
-        <KpiCard label="مفعّلة" value={String(activeCount)} />
+        <KpiCard label={t("Active")} value={String(activeCount)} />
         <KpiCard
-          label="مرات الاستخدام"
+          label={t("Usage count")}
           value={String(totalUsage)}
-          change="عداد التشغيل — مش أثر إيراد محسوب"
+          change={t("Usage counter, not calculated revenue impact")}
           trend="neutral"
         />
       </div>
 
-      <OperationalCard title="قائمة العروض">
+      <OperationalCard title={t("Promotions list")}>
         <div className="mb-4">
           <Input
-            placeholder="ابحث بالاسم أو الكود…"
+            placeholder={t("Search by name or code…")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            aria-label="بحث العروض"
+            aria-label={t("Search promotions")}
           />
         </div>
 
         {filtered.length === 0 ? (
           <EmptyStateBlock
-            title="مفيش عروض"
-            description="إنشئ عرض نسبة أو مبلغ أو كوبون أو اشتري واحصل"
+            title={t("No promotions")}
+            description={t("Create a percentage, fixed, coupon, or buy-and-get promotion.")}
             action={
               <CompactAction
-                label="عرض جديد"
+                label={t("New promotion")}
                 icon={Plus}
                 variant="default"
                 alwaysLabeled
@@ -326,39 +328,39 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{rule.name}</span>
                     <Badge variant={rule.is_active ? "default" : "secondary"}>
-                      {rule.is_active ? "مفعّل" : "متوقف"}
+                      {rule.is_active ? t("Active") : t("Disabled")}
                     </Badge>
-                    <Badge variant="outline">{RULE_TYPE_LABELS[rule.rule_type]}</Badge>
+                    <Badge variant="outline">{t(RULE_TYPE_LABELS[rule.rule_type])}</Badge>
                     {rule.coupon_code ? (
-                      <Badge variant="outline">كود: {rule.coupon_code}</Badge>
+                      <Badge variant="outline">{t("Code")}: {rule.coupon_code}</Badge>
                     ) : null}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    أولوية {rule.priority}
+                    {t("Priority")} {rule.priority}
                     {rule.starts_at || rule.ends_at
-                      ? ` · من ${rule.starts_at ? new Date(rule.starts_at).toLocaleString("ar-EG") : "—"} إلى ${rule.ends_at ? new Date(rule.ends_at).toLocaleString("ar-EG") : "—"}`
+                      ? ` · ${t("From")} ${rule.starts_at ? new Date(rule.starts_at).toLocaleString(language === "ar" ? "ar-EG" : "en-US") : "—"} ${t("To")} ${rule.ends_at ? new Date(rule.ends_at).toLocaleString(language === "ar" ? "ar-EG" : "en-US") : "—"}`
                       : ""}
                     {rule.usage_limit_total != null
-                      ? ` · استخدام ${rule.usage_count}/${rule.usage_limit_total}`
+                      ? ` · ${t("Usage")} ${rule.usage_count}/${rule.usage_limit_total}`
                       : ""}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <CompactActions>
                     <CompactAction
-                      label="تعديل"
+                      label={t("Edit")}
                       icon={Pencil}
                       disabled={pending}
                       onClick={() => openEdit(rule)}
                     />
                     <CompactAction
-                      label={rule.is_active ? "إيقاف" : "تفعيل"}
+                      label={rule.is_active ? t("Disable") : t("Enable")}
                       icon={Power}
                       disabled={pending}
                       onClick={() => toggle(rule)}
                     />
                     <CompactAction
-                      label="حذف"
+                      label={t("Delete")}
                       icon={Trash2}
                       variant="ghost"
                       disabled={pending}
@@ -375,22 +377,22 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
       <Dialog open={open} onOpenChange={setOpen}>
         <StandardModalContent
           size="lg"
-          title={form.id ? "تعديل عرض" : "عرض جديد"}
-          description="حدد النوع والنطاق والجدولة — الحساب النهائي بيحصل في السيرفر"
+          title={form.id ? t("Edit promotion") : t("New promotion")}
+          description={t("Set type, scope, and schedule. Final calculations run on the server.")}
           footer={
             <>
               <Button variant="outline" onClick={() => setOpen(false)} disabled={pending}>
-                إلغاء
+                {t("Cancel")}
               </Button>
               <Button onClick={save} disabled={pending}>
-                حفظ
+                {t("Save")}
               </Button>
             </>
           }
         >
-        <div className="grid max-h-[min(70vh,calc(100dvh-12rem))] gap-4 overflow-y-auto pe-1">
+        <div className="grid max-h-[min(70dvh,calc(100dvh-12rem))] gap-4 overflow-y-auto pe-1">
           <div className="grid gap-2">
-            <Label htmlFor="promo-name">الاسم</Label>
+            <Label htmlFor="promo-name">{t("Name")}</Label>
             <Input
               id="promo-name"
               value={form.name}
@@ -399,7 +401,7 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
           </div>
 
           <div className="grid gap-2">
-            <Label>نوع العرض</Label>
+            <Label>{t("Promotion type")}</Label>
             <Select
               value={form.ruleType}
               onValueChange={(v) => setForm({ ...form, ruleType: v as PromotionRuleType })}
@@ -408,9 +410,9 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {(Object.keys(RULE_TYPE_LABELS) as PromotionRuleType[]).map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {RULE_TYPE_LABELS[t]}
+                {(Object.keys(RULE_TYPE_LABELS) as PromotionRuleType[]).map((ruleType) => (
+                  <SelectItem key={ruleType} value={ruleType}>
+                    {t(RULE_TYPE_LABELS[ruleType])}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -421,7 +423,7 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
             form.ruleType === "cart_percent" ||
             form.ruleType === "qty_threshold") && (
             <div className="grid gap-2">
-              <Label htmlFor="promo-pct">نسبة الخصم %</Label>
+              <Label htmlFor="promo-pct">{t("Discount percent")}</Label>
               <Input
                 id="promo-pct"
                 type="number"
@@ -437,7 +439,7 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
             form.ruleType === "cart_fixed" ||
             form.ruleType === "qty_threshold") && (
             <div className="grid gap-2">
-              <Label htmlFor="promo-amt">مبلغ الخصم</Label>
+              <Label htmlFor="promo-amt">{t("Discount amount")}</Label>
               <Input
                 id="promo-amt"
                 type="number"
@@ -450,7 +452,7 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
 
           {form.ruleType === "scheduled_sale_price" && (
             <div className="grid gap-2">
-              <Label htmlFor="promo-sale">سعر العرض</Label>
+              <Label htmlFor="promo-sale">{t("Sale price")}</Label>
               <Input
                 id="promo-sale"
                 type="number"
@@ -464,7 +466,7 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
           {form.ruleType === "bogo" && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="grid gap-2">
-                <Label>اشتري</Label>
+                <Label>{t("Buy")}</Label>
                 <Input
                   type="number"
                   value={form.buyQty}
@@ -472,7 +474,7 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
                 />
               </div>
               <div className="grid gap-2">
-                <Label>احصل</Label>
+                <Label>{t("Get")}</Label>
                 <Input
                   type="number"
                   value={form.getQty}
@@ -480,7 +482,7 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
                 />
               </div>
               <div className="grid gap-2">
-                <Label>خصم %</Label>
+                <Label>{t("Discount percent")}</Label>
                 <Input
                   type="number"
                   value={form.getPercent}
@@ -492,7 +494,7 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
 
           {form.ruleType === "qty_threshold" && (
             <div className="grid gap-2">
-              <Label>الحد الأدنى للكمية</Label>
+              <Label>{t("Minimum quantity")}</Label>
               <Input
                 type="number"
                 value={form.minQty}
@@ -503,7 +505,7 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
 
           {showCartFields && (
             <div className="grid gap-2">
-              <Label>حد أدنى للإجمالي</Label>
+              <Label>{t("Minimum subtotal")}</Label>
               <Input
                 type="number"
                 value={form.minSubtotal}
@@ -515,7 +517,7 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
           {showItemScope && (
             <>
               <div className="grid gap-2">
-                <Label>النطاق</Label>
+                <Label>{t("Scope")}</Label>
                 <Select
                   value={form.scopeType}
                   onValueChange={(v) =>
@@ -526,9 +528,9 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">كل الأصناف</SelectItem>
-                    <SelectItem value="product">منتجات محددة</SelectItem>
-                    <SelectItem value="category">فئات محددة</SelectItem>
+                    <SelectItem value="all">{t("All items")}</SelectItem>
+                    <SelectItem value="product">{t("Selected products")}</SelectItem>
+                    <SelectItem value="category">{t("Selected categories")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -558,7 +560,7 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label>من</Label>
+              <Label>{t("From")}</Label>
               <Input
                 type="datetime-local"
                 value={form.startsAt}
@@ -566,7 +568,7 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
               />
             </div>
             <div className="grid gap-2">
-              <Label>إلى</Label>
+              <Label>{t("To")}</Label>
               <Input
                 type="datetime-local"
                 value={form.endsAt}
@@ -576,18 +578,18 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="promo-code">كود خصم (اختياري)</Label>
+            <Label htmlFor="promo-code">{t("Coupon code (optional)")}</Label>
             <Input
               id="promo-code"
               value={form.couponCode}
               onChange={(e) => setForm({ ...form, couponCode: e.target.value })}
-              placeholder="مثال: SAVE10"
+              placeholder={t("Example: SAVE10")}
             />
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label>أولوية</Label>
+              <Label>{t("Priority")}</Label>
               <Input
                 type="number"
                 value={form.priority}
@@ -595,12 +597,12 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
               />
             </div>
             <div className="grid gap-2">
-              <Label>حد استخدام الكود</Label>
+              <Label>{t("Coupon usage limit")}</Label>
               <Input
                 type="number"
                 value={form.usageLimitTotal}
                 onChange={(e) => setForm({ ...form, usageLimitTotal: e.target.value })}
-                placeholder="بدون حد"
+                placeholder={t("No limit")}
               />
             </div>
           </div>
@@ -611,28 +613,28 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
                 checked={form.saleRetail}
                 onCheckedChange={(v) => setForm({ ...form, saleRetail: v === true })}
               />
-              تجزئة
+              {t("Retail")}
             </label>
             <label className="flex items-center gap-2 text-sm">
               <Checkbox
                 checked={form.saleWholesale}
                 onCheckedChange={(v) => setForm({ ...form, saleWholesale: v === true })}
               />
-              جملة
+              {t("Wholesale")}
             </label>
             <label className="flex items-center gap-2 text-sm">
               <Checkbox
                 checked={form.stackableWithCart}
                 onCheckedChange={(v) => setForm({ ...form, stackableWithCart: v === true })}
               />
-              يسمح بتستيف مع خصم آخر
+              {t("Allow stacking with another discount")}
             </label>
             <label className="flex items-center gap-2 text-sm">
               <Checkbox
                 checked={form.isActive}
                 onCheckedChange={(v) => setForm({ ...form, isActive: v === true })}
               />
-              مفعّل
+              {t("Active")}
             </label>
           </div>
         </div>

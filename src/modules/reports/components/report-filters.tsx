@@ -1,10 +1,10 @@
 "use client";
 
-import { useId, useTransition } from "react";
+import { useTransition } from "react";
 import { useAppRouter as useRouter } from "@/hooks/use-app-router";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DateRangeFilter } from "@/components/Velora/date-range-filter";
 import {
   Select,
   SelectContent,
@@ -41,7 +41,6 @@ const DAY_PRESETS = [
 ] as const;
 
 const fieldLabelClass = "text-xs font-medium text-muted-foreground";
-const inputClass = "h-11 w-full min-w-0 rounded-[var(--mds-radius-md)] sm:h-9";
 const selectTriggerClass =
   "h-11 w-full min-w-0 rounded-[var(--mds-radius-md)] sm:h-9 data-[size=default]:h-11 sm:data-[size=default]:h-9";
 
@@ -52,9 +51,6 @@ export function ReportFiltersBar({
 }: ReportFiltersBarProps) {
   const router = useRouter();
   const { t } = useTranslation();
-  const id = useId();
-  const fromId = `${id}-from`;
-  const toId = `${id}-to`;
   const [pending, startTransition] = useTransition();
   const {
     showDateRange = true,
@@ -81,10 +77,10 @@ export function ReportFiltersBar({
   }
 
   return (
-    <div className="min-w-0 rounded-[var(--mds-radius-lg)] border border-border bg-card p-[var(--mds-space-3)] shadow-[var(--mds-elevation-1)] sm:p-[var(--mds-space-4)]">
-      <div className="flex min-w-0 flex-col gap-[var(--mds-space-4)]">
+    <div className="min-w-0 rounded-[var(--mds-radius-lg)] border border-border bg-card p-[var(--mds-space-2)] shadow-[var(--mds-elevation-1)] sm:p-[var(--mds-space-4)]">
+      <div className="flex min-w-0 flex-col gap-[var(--mds-space-3)] sm:gap-[var(--mds-space-4)]">
         {showDaysPresets || showDateRange ? (
-          <div className="flex min-w-0 flex-col gap-[var(--mds-space-4)] lg:flex-row lg:flex-wrap lg:items-end lg:gap-x-[var(--mds-space-5)] lg:gap-y-[var(--mds-space-4)]">
+          <div className="flex min-w-0 flex-col gap-[var(--mds-space-3)] sm:gap-[var(--mds-space-4)] lg:flex-row lg:flex-wrap lg:items-end lg:gap-x-[var(--mds-space-5)] lg:gap-y-[var(--mds-space-4)]">
             {showDaysPresets ? (
               <div
                 role="group"
@@ -92,7 +88,7 @@ export function ReportFiltersBar({
                 className="min-w-0 shrink-0"
               >
                 <p className={cn(fieldLabelClass, "mb-1.5")}>{t("Period")}</p>
-                <div className="grid grid-cols-3 gap-[var(--mds-space-2)] sm:inline-flex">
+                <div className="grid grid-cols-3 gap-1.5 sm:inline-flex sm:gap-[var(--mds-space-2)]">
                   {DAY_PRESETS.map((preset) => {
                     const selected = activePresetDays === preset.days;
                     return (
@@ -102,7 +98,7 @@ export function ReportFiltersBar({
                         size="sm"
                         aria-pressed={selected}
                         disabled={pending}
-                        className="min-h-11 rounded-[var(--mds-radius-md)] px-3 sm:min-h-9 sm:min-w-[4.75rem]"
+                        className="min-h-11 min-w-0 rounded-[var(--mds-radius-md)] px-2 sm:min-h-9 sm:min-w-[4.75rem] sm:px-3"
                         variant={selected ? "default" : "outline"}
                         onClick={() =>
                           apply({
@@ -121,60 +117,28 @@ export function ReportFiltersBar({
             ) : null}
 
             {showDateRange ? (
-              <form
+              <DateRangeFilter
                 className="min-w-0 flex-1"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const fd = new FormData(e.currentTarget);
+                value={{ from: filters.from ?? "", to: filters.to ?? "" }}
+                onChange={(range) =>
                   apply({
-                    from: fd.get("from")?.toString() || undefined,
-                    to: fd.get("to")?.toString() || undefined,
+                    from: range.from || undefined,
+                    to: range.to || undefined,
                     days: undefined,
-                  });
-                }}
-              >
-                <div className="grid grid-cols-2 items-end gap-[var(--mds-space-3)] md:grid-cols-[minmax(0,14rem)_minmax(0,14rem)_auto]">
-                  <div className="min-w-0 space-y-1.5">
-                    <Label htmlFor={fromId} className={fieldLabelClass}>
-                      {t("From")}
-                    </Label>
-                    <Input
-                      id={fromId}
-                      name="from"
-                      type="date"
-                      disabled={pending}
-                      defaultValue={filters.from ?? ""}
-                      className={inputClass}
-                    />
-                  </div>
-                  <div className="min-w-0 space-y-1.5">
-                    <Label htmlFor={toId} className={fieldLabelClass}>
-                      {t("To")}
-                    </Label>
-                    <Input
-                      id={toId}
-                      name="to"
-                      type="date"
-                      disabled={pending}
-                      defaultValue={filters.to ?? ""}
-                      className={inputClass}
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    disabled={pending}
-                    className="col-span-2 h-11 w-full rounded-[var(--mds-radius-md)] md:col-auto md:h-9 md:w-auto md:min-w-[5.75rem]"
-                  >
-                    {t("Apply")}
-                  </Button>
-                </div>
-              </form>
+                  })
+                }
+              />
             ) : null}
           </div>
         ) : null}
 
         {showStoreFilter || showPaymentMethod ? (
-          <div className="grid grid-cols-1 items-end gap-[var(--mds-space-3)] sm:grid-cols-2 lg:max-w-2xl">
+          <div
+            className={cn(
+              "grid items-end gap-[var(--mds-space-3)] lg:max-w-2xl",
+              showStoreFilter && showPaymentMethod ? "grid-cols-2" : "grid-cols-1",
+            )}
+          >
             {showStoreFilter ? (
               <div className="min-w-0 space-y-1.5">
                 <Label className={fieldLabelClass}>{t("Store")}</Label>

@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useConfirmationDialog } from "@/components/Velora/confirmation-dialog";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 type CategoryFormState = {
   name: string;
@@ -51,7 +52,7 @@ function toForm(category: Category): CategoryFormState {
 
 function buildPayload(form: CategoryFormState) {
   const name = form.name.trim();
-  if (!name) throw new Error("اسم التصنيف مطلوب");
+  if (!name) throw new Error("Category name is required.");
   return {
     name,
     color: form.color || DEFAULT_FORM.color,
@@ -67,6 +68,7 @@ export function CategoryManagerDialog({
   counts,
   onSaved,
 }: CategoryManagerDialogProps) {
+  const { t } = useTranslation();
   const { requestConfirmation, confirmationDialog } = useConfirmationDialog();
   const [form, setForm] = useState<CategoryFormState>(DEFAULT_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -108,7 +110,7 @@ export function CategoryManagerDialog({
     try {
       payload = buildPayload(form);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "تعذر حفظ التصنيف");
+      toast.error(error instanceof Error ? t(error.message) : t("Could not save category."));
       return;
     }
 
@@ -125,13 +127,13 @@ export function CategoryManagerDialog({
       void (async () => {
         try {
           const updated = await updateCategoryAction(editingId, payload);
-          if (!updated) throw new Error("التصنيف غير موجود");
+          if (!updated) throw new Error("Category not found.");
           setLocalCategories((prev) =>
             prev.map((category) => (category.id === editingId ? updated : category))
           );
         } catch (error) {
           if (snapshotRef.current) setLocalCategories(snapshotRef.current);
-          toast.error(error instanceof Error ? error.message : "تعذر حفظ التصنيف");
+          toast.error(error instanceof Error ? t(error.message) : t("Could not save category."));
         }
       })();
       return;
@@ -172,7 +174,7 @@ export function CategoryManagerDialog({
         });
       } catch (error) {
         if (snapshotRef.current) setLocalCategories(snapshotRef.current);
-        toast.error(error instanceof Error ? error.message : "تعذر حفظ التصنيف");
+        toast.error(error instanceof Error ? t(error.message) : t("Could not save category."));
       }
     })();
   }
@@ -181,12 +183,12 @@ export function CategoryManagerDialog({
     const productCount = counts[category.id] ?? 0;
     const message =
       productCount > 0
-        ? `حذف «${category.name}»؟ مستخدم في ${productCount} منتج.`
-        : `حذف «${category.name}»؟`;
+        ? `${t("Delete")} “${category.name}”? ${t("Used by")} ${productCount} ${t("product records")}.`
+        : `${t("Delete")} “${category.name}”?`;
     if (
       !(await requestConfirmation(message, {
-        title: "حذف التصنيف",
-        confirmLabel: "حذف",
+        title: t("Delete category"),
+        confirmLabel: t("Delete"),
         destructive: true,
       }))
     ) return;
@@ -206,7 +208,7 @@ export function CategoryManagerDialog({
         await deleteCategoryAction(category.id);
       } catch (error) {
         if (snapshotRef.current) setLocalCategories(snapshotRef.current);
-        toast.error(error instanceof Error ? error.message : "تعذر حذف التصنيف");
+        toast.error(error instanceof Error ? t(error.message) : t("Could not delete category."));
       }
     })();
   }
@@ -223,26 +225,26 @@ export function CategoryManagerDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <StandardModalContent
         size="lg"
-        title="إدارة التصنيفات"
-        description="أنشئ ورتّب وصمّم تصنيفات المنتجات."
+        title={t("Manage categories")}
+        description={t("Create, order, and style product categories.")}
       >
         <div className="grid gap-4 md:grid-cols-[240px_1fr]">
           <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
             <div className="space-y-1.5">
-              <Label htmlFor="category-name">الاسم</Label>
+              <Label htmlFor="category-name">{t("Name")}</Label>
               <Input
                 id="category-name"
                 value={form.name}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, name: event.target.value }))
                 }
-                placeholder="حلويات"
+                placeholder={t("Desserts")}
               />
             </div>
 
             <div className="grid grid-cols-[1fr_88px] gap-2">
               <div className="space-y-1.5">
-                <Label htmlFor="category-icon">أيقونة</Label>
+                <Label htmlFor="category-icon">{t("Icon")}</Label>
                 <Input
                   id="category-icon"
                   value={form.icon}
@@ -253,7 +255,7 @@ export function CategoryManagerDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="category-sort">الترتيب</Label>
+                <Label htmlFor="category-sort">{t("Order")}</Label>
                 <Input
                   id="category-sort"
                   type="number"
@@ -266,7 +268,7 @@ export function CategoryManagerDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="category-color">اللون</Label>
+              <Label htmlFor="category-color">{t("Color")}</Label>
               <div className="grid grid-cols-[42px_1fr] gap-2">
                 <Input
                   id="category-color"
@@ -278,7 +280,7 @@ export function CategoryManagerDialog({
                   }
                 />
                 <Input
-                  aria-label="قيمة لون التصنيف"
+                  aria-label={t("Category color value")}
                   value={form.color}
                   onChange={(event) =>
                     setForm((current) => ({ ...current, color: event.target.value }))
@@ -290,14 +292,14 @@ export function CategoryManagerDialog({
             <div className="flex gap-2">
               <Button className="flex-1" onClick={submit}>
                 {isEditing ? <Save className="size-4" /> : <Plus className="size-4" />}
-                {isEditing ? "حفظ" : "إضافة"}
+                {isEditing ? t("Save") : t("Add")}
               </Button>
               {isEditing ? (
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={resetForm}
-                  aria-label="إلغاء تعديل التصنيف"
+                  aria-label={t("Cancel category editing")}
                 >
                   <X className="size-4" />
                 </Button>
@@ -308,8 +310,8 @@ export function CategoryManagerDialog({
           <div className="min-h-[260px] space-y-2">
             {sortedCategories.length === 0 ? (
               <EmptyStateBlock
-                title="مفيش تصنيفات لسة"
-                description="أضف تصنيفًا من النموذج على اليمين عشان تنظّم المنتجات."
+                title={t("No categories yet")}
+                description={t("Add a category from the form to organize products.")}
                 className="min-h-[220px]"
               />
             ) : (
@@ -328,7 +330,7 @@ export function CategoryManagerDialog({
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{category.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {counts[category.id] ?? 0} منتج · ترتيب {category.sort_order}
+                      {counts[category.id] ?? 0} {t("product records")} · {t("Order")} {category.sort_order}
                     </p>
                   </div>
                   <Button
@@ -336,7 +338,7 @@ export function CategoryManagerDialog({
                     size="icon-sm"
                     onClick={() => editCategory(category)}
                     disabled={category.id.startsWith("temp-")}
-                    aria-label={`تعديل تصنيف ${category.name}`}
+                    aria-label={`${t("Edit category")} ${category.name}`}
                   >
                     <Edit2 className="size-4" />
                   </Button>
@@ -344,7 +346,7 @@ export function CategoryManagerDialog({
                     variant="ghost"
                     size="icon-sm"
                     onClick={() => removeCategory(category)}
-                    aria-label={`حذف تصنيف ${category.name}`}
+                    aria-label={`${t("Delete category")} ${category.name}`}
                   >
                     <Trash2 className="size-4 text-destructive" />
                   </Button>

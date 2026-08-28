@@ -12,6 +12,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 type ButtonVariant = NonNullable<VariantProps<typeof buttonVariants>["variant"]>;
 
@@ -75,14 +76,19 @@ export function CompactAction({
   alwaysLabeled = false,
   shortcut,
 }: CompactActionProps) {
+  const { t } = useTranslation();
+  const translatedLabel = t(label);
   const labelClass = alwaysLabeled ? undefined : "sr-only sm:not-sr-only";
-  const ariaLabel = shortcut ? `${label} (${shortcut})` : label;
-  const tooltipLabel = shortcut ? `${label} · ${shortcut}` : label;
+  const ariaLabel = shortcut ? `${translatedLabel} (${shortcut})` : translatedLabel;
+  const tooltipLabel = shortcut ? `${translatedLabel} · ${shortcut}` : translatedLabel;
+  const actionSizeClass = alwaysLabeled
+    ? "h-11 w-auto min-w-11 shrink-0 gap-1.5 px-3 touch-manipulation sm:h-9 sm:min-h-9"
+    : iconOnlyClass;
 
   const content = (
     <>
       <Icon className="size-4 shrink-0" aria-hidden />
-      <span className={labelClass}>{label}</span>
+      <span className={labelClass}>{translatedLabel}</span>
       {shortcutSuffix(shortcut)}
     </>
   );
@@ -92,7 +98,7 @@ export function CompactAction({
     const openInNewTab = isExternal || href.startsWith("/print/");
     const linkClass = cn(
       buttonVariants({ variant }),
-      iconOnlyClass,
+      actionSizeClass,
       "inline-flex items-center justify-center",
       className
     );
@@ -173,7 +179,7 @@ export function CompactAction({
         onClick={onClick}
         aria-label={ariaLabel}
         aria-keyshortcuts={shortcut}
-        className={cn(iconOnlyClass, className)}
+        className={cn(actionSizeClass, className)}
       >
         {content}
       </Button>

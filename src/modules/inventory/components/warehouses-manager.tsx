@@ -9,6 +9,8 @@ import { PageHeader } from "@/components/Velora/page-header";
 import { OperationalCard } from "@/components/Velora/operational-card";
 import { StatusPill } from "@/components/Velora/status-pill";
 import { CompactAction, CompactActions } from "@/components/Velora/compact-actions";
+import { MobileEntityCard } from "@/components/Velora/mobile-entity-card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   createWarehouseAction,
   setDefaultWarehouseAction,
@@ -83,6 +85,17 @@ export function WarehousesManager({ stores, warehouses }: WarehousesManagerProps
     });
   }
 
+  function warehouseActions(warehouse: Warehouse) {
+    if (editing?.id === warehouse.id) {
+      return <CompactActions><CompactAction label={t("Save")} icon={Check} variant="default" disabled={pending} onClick={saveRename} /><CompactAction label={t("Cancel")} icon={X} variant="ghost" onClick={() => setEditing(null)} /></CompactActions>;
+    }
+    return <CompactActions><CompactAction label={t("Rename")} icon={Pencil} disabled={pending} onClick={() => setEditing({ id: warehouse.id, name: warehouse.name })} />{!warehouse.is_default ? <><CompactAction label={t("Make default")} icon={Star} disabled={pending || !warehouse.is_active} onClick={() => makeDefault(warehouse)} /><CompactAction label={warehouse.is_active ? t("Disable") : t("Enable")} icon={Power} variant="ghost" disabled={pending} onClick={() => toggleActive(warehouse)} /></> : null}</CompactActions>;
+  }
+
+  function warehouseName(warehouse: Warehouse) {
+    return editing?.id === warehouse.id ? <Input value={editing.name} autoFocus className="h-8 min-h-8" aria-label={t("Warehouse name")} onChange={(event) => setEditing({ id: warehouse.id, name: event.target.value })} onKeyDown={(event) => { if (event.key === "Enter") saveRename(); if (event.key === "Escape") setEditing(null); }} /> : <span className="flex items-center gap-2 font-medium"><WarehouseIcon className="size-4 shrink-0 text-muted-foreground" />{warehouse.name}</span>;
+  }
+
   return (
     <>
       <PageHeader
@@ -96,89 +109,8 @@ export function WarehousesManager({ stores, warehouses }: WarehousesManagerProps
           return (
             <OperationalCard key={store.id} title={store.name}>
               <div className="grid gap-3">
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  {storeWarehouses.map((warehouse) => (
-                    <div
-                      key={warehouse.id}
-                      className="flex flex-col gap-3 rounded-2xl border border-border/60 p-4"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex min-w-0 items-center gap-2">
-                          <WarehouseIcon className="size-5 shrink-0 text-muted-foreground" />
-                          {editing?.id === warehouse.id ? (
-                            <Input
-                              value={editing.name}
-                              autoFocus
-                              className="h-9"
-                              onChange={(e) =>
-                                setEditing({ id: warehouse.id, name: e.target.value })
-                              }
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") saveRename();
-                                if (e.key === "Escape") setEditing(null);
-                              }}
-                            />
-                          ) : (
-                            <p className="truncate font-medium">{warehouse.name}</p>
-                          )}
-                        </div>
-                        <div className="flex shrink-0 items-center gap-1.5">
-                          {warehouse.is_default ? (
-                            <StatusPill variant="info" label={t("Default")} />
-                          ) : null}
-                          {!warehouse.is_active ? (
-                            <StatusPill variant="danger" label={t("Disabled")} />
-                          ) : null}
-                        </div>
-                      </div>
-                      <div className="mt-auto">
-                        {editing?.id === warehouse.id ? (
-                          <CompactActions className="justify-start">
-                            <CompactAction
-                              label={t("Save")}
-                              icon={Check}
-                              variant="default"
-                              disabled={pending}
-                              onClick={saveRename}
-                            />
-                            <CompactAction
-                              label={t("Cancel")}
-                              icon={X}
-                              variant="ghost"
-                              onClick={() => setEditing(null)}
-                            />
-                          </CompactActions>
-                        ) : (
-                          <CompactActions className="justify-start">
-                            <CompactAction
-                              label={t("Rename")}
-                              icon={Pencil}
-                              disabled={pending}
-                              onClick={() => setEditing({ id: warehouse.id, name: warehouse.name })}
-                            />
-                            {!warehouse.is_default ? (
-                              <>
-                                <CompactAction
-                                  label={t("Make default")}
-                                  icon={Star}
-                                  disabled={pending || !warehouse.is_active}
-                                  onClick={() => makeDefault(warehouse)}
-                                />
-                                <CompactAction
-                                  label={warehouse.is_active ? t("Disable") : t("Enable")}
-                                  icon={Power}
-                                  variant="ghost"
-                                  disabled={pending}
-                                  onClick={() => toggleActive(warehouse)}
-                                />
-                              </>
-                            ) : null}
-                          </CompactActions>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <div className="hidden overflow-hidden rounded-[var(--mds-radius-md)] border border-border md:block"><Table><TableHeader><TableRow><TableHead>{t("Warehouse")}</TableHead><TableHead>{t("Status")}</TableHead><TableHead>{t("Default")}</TableHead><TableHead className="text-center">{t("Actions")}</TableHead></TableRow></TableHeader><TableBody>{storeWarehouses.map((warehouse) => <TableRow key={warehouse.id}><TableCell className="min-w-52">{warehouseName(warehouse)}</TableCell><TableCell><StatusPill variant={warehouse.is_active ? "success" : "danger"} label={warehouse.is_active ? t("Active") : t("Disabled")} /></TableCell><TableCell>{warehouse.is_default ? <StatusPill variant="info" label={t("Default")} /> : "—"}</TableCell><TableCell><div className="flex justify-center">{warehouseActions(warehouse)}</div></TableCell></TableRow>)}</TableBody></Table></div>
+                <div className="grid gap-2 md:hidden">{storeWarehouses.map((warehouse) => <MobileEntityCard key={warehouse.id} title={warehouse.name} subtitle={store.name} badge={<StatusPill variant={warehouse.is_active ? "success" : "danger"} label={warehouse.is_active ? t("Active") : t("Disabled")} />} fields={[{ label: t("Default"), value: warehouse.is_default ? t("Yes") : t("No") }]} footer={editing?.id === warehouse.id ? <div className="grid w-full gap-2">{warehouseName(warehouse)}{warehouseActions(warehouse)}</div> : warehouseActions(warehouse)} />)}</div>
 
                 <form
                   className="flex w-full max-w-md flex-row items-center gap-2"
@@ -193,7 +125,7 @@ export function WarehousesManager({ stores, warehouses }: WarehousesManagerProps
                     onChange={(e) =>
                       setAddNames((current) => ({ ...current, [store.id]: e.target.value }))
                     }
-                    className="min-h-11 min-w-0 flex-1"
+                    className="h-9 min-h-9 min-w-0 flex-1"
                   />
                   <CompactAction
                     label={t("Add warehouse")}

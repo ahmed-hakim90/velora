@@ -22,6 +22,7 @@ import {
 import { updateProductAction } from "../actions/product.actions";
 import { updateVariantAction } from "../actions/variant.actions";
 import type { ProductGridItem } from "./product-grid";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 type PriceMode = "sale" | "cost";
 
@@ -54,13 +55,13 @@ interface ProductTableProps {
   toolbar?: ReactNode;
 }
 
-function formatProductUnits(product: Product): string {
+function formatProductUnits(product: Product, t: (text: string) => string): string {
   const sell =
     product.sales_unit_type === "weight"
-      ? "بالكيلو"
+      ? t("By kilogram")
       : product.sales_unit_type === "volume"
         ? formatUnit(product.sale_unit ?? product.unit)
-        : "بالقطعة";
+        : t("By piece");
   if (
     productHasPurchasePacking({
       unit: product.unit,
@@ -72,7 +73,7 @@ function formatProductUnits(product: Product): string {
     const packUnit = formatUnit(product.cost_unit);
     const count = product.units_per_purchase_unit ?? 1;
     const contentUnit = formatUnit(product.base_unit ?? product.unit);
-    return `${sell} · ${packUnit} فيها ${count} ${contentUnit}`;
+    return `${sell} · ${packUnit} ${t("contains")} ${count} ${contentUnit}`;
   }
   return sell;
 }
@@ -141,6 +142,7 @@ export function ProductTable({
   emptyAction,
   toolbar,
 }: ProductTableProps) {
+  const { t } = useTranslation();
   const selectable = typeof onSelectedIdsChange === "function";
   const [localItems, setLocalItems] = useState(items);
   const snapshotRef = useRef<ProductGridItem[] | null>(null);
@@ -164,20 +166,20 @@ export function ProductTable({
   if (localItems.length === 0) {
     return (
       <EmptyStateBlock
-        title="لا توجد منتجات مطابقة"
-        description="عدّل البحث أو التصنيف، أو أضف صنفًا جديدًا."
+        title={t("No matching products")}
+        description={t("Change the search or category, or add a new product.")}
         action={emptyAction}
       />
     );
   }
 
   const priceHeader = supermarketColumns
-    ? "سعر البيع / القطعة"
+    ? t("Sale price / piece")
     : priceMode === "cost"
-      ? "تكلفة الوحدة"
-      : "السعر";
-  const codeHeader = supermarketColumns ? "الباركود" : "الكود";
-  const purchaseHeader = "سعر الشراء / القطعة";
+      ? t("Unit cost")
+      : t("Price");
+  const codeHeader = supermarketColumns ? t("Barcode") : t("Code");
+  const purchaseHeader = t("Purchase price / piece");
 
   function toggleProduct(productId: string, checked: boolean) {
     if (!onSelectedIdsChange) return;
@@ -225,7 +227,7 @@ export function ProductTable({
   function savePrice(row: TableRowModel, raw: string, field: "sale" | "purchase" = "sale") {
     const next = raw.trim() === "" ? null : Number(raw);
     if (next != null && !Number.isFinite(next)) {
-      toast.error("السعر غير صالح");
+      toast.error(t("Invalid price."));
       return;
     }
     const current = field === "purchase" ? row.product.last_unit_cost : row.price;
@@ -267,7 +269,7 @@ export function ProductTable({
         }
       } catch (error) {
         if (snapshotRef.current) setLocalItems(snapshotRef.current);
-        toast.error(error instanceof Error ? error.message : "تعذر تحديث السعر");
+        toast.error(error instanceof Error ? t(error.message) : t("Could not update price."));
       }
     })();
   }
@@ -290,7 +292,7 @@ export function ProductTable({
         });
       } catch (error) {
         if (snapshotRef.current) setLocalItems(snapshotRef.current);
-        toast.error(error instanceof Error ? error.message : "تعذر تحديث التتبع");
+        toast.error(error instanceof Error ? t(error.message) : t("Could not update inventory tracking."));
       }
     })();
   }
@@ -305,14 +307,14 @@ export function ProductTable({
         await updateProductAction(product.id, { is_active: isActive });
       } catch (error) {
         if (snapshotRef.current) setLocalItems(snapshotRef.current);
-        toast.error(error instanceof Error ? error.message : "تعذر تحديث حالة المنتج");
+        toast.error(error instanceof Error ? t(error.message) : t("Could not update product status."));
       }
     })();
   }
 
   return (
     <DataTableShell
-      title={`جدول المنتجات · ${currency}`}
+      title={`${t("Products table")} · ${currency}`}
       actions={toolbar}
     >
       <Table className={supermarketColumns ? "min-w-[1100px]" : "min-w-[920px]"}>
@@ -323,19 +325,19 @@ export function ProductTable({
                 <Checkbox
                   checked={allVisibleSelected}
                   indeterminate={someVisibleSelected}
-                  aria-label="تحديد كل المنتجات الظاهرة"
+                  aria-label={t("Select all visible products")}
                   onCheckedChange={(value) => toggleAllVisible(value === true)}
                 />
               </TableHead>
             ) : null}
-            <TableHead className="h-10 text-xs font-semibold text-muted-foreground">الاسم</TableHead>
+            <TableHead className="h-10 text-xs font-semibold text-muted-foreground">{t("Name")}</TableHead>
             <TableHead className="h-10 text-xs font-semibold text-muted-foreground">
               {codeHeader}
             </TableHead>
-            <TableHead className="h-10 text-xs font-semibold text-muted-foreground">التصنيف</TableHead>
+            <TableHead className="h-10 text-xs font-semibold text-muted-foreground">{t("Category")}</TableHead>
             {supermarketColumns ? (
               <TableHead className="h-10 text-xs font-semibold text-muted-foreground">
-                الوحدات
+                {t("Units")}
               </TableHead>
             ) : null}
             {supermarketColumns ? (
@@ -347,13 +349,13 @@ export function ProductTable({
               {priceHeader}
             </TableHead>
             <TableHead className="h-10 text-end text-xs font-semibold text-muted-foreground">
-              المخزون المتاح
+              {t("Available stock")}
             </TableHead>
             <TableHead className="h-10 text-xs font-semibold text-muted-foreground">
-              تتبع المخزون
+              {t("Inventory tracking")}
             </TableHead>
-            <TableHead className="h-10 text-xs font-semibold text-muted-foreground">الحالة</TableHead>
-            <TableHead className="h-10 text-xs font-semibold text-muted-foreground">إجراءات</TableHead>
+            <TableHead className="h-10 text-xs font-semibold text-muted-foreground">{t("Status")}</TableHead>
+            <TableHead className="h-10 text-xs font-semibold text-muted-foreground">{t("Actions")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -372,13 +374,13 @@ export function ProductTable({
                     {isFirstProductRow ? (
                       <Checkbox
                         checked={selectedSet.has(row.product.id)}
-                        aria-label={`تحديد ${row.product.name}`}
+                        aria-label={`${t("Select")} ${row.product.name}`}
                         onCheckedChange={(value) =>
                           toggleProduct(row.product.id, value === true)
                         }
                       />
                     ) : (
-                      <span className="sr-only">تابع لـ {row.product.name}</span>
+                      <span className="sr-only">{t("Belongs to")} {row.product.name}</span>
                     )}
                   </TableCell>
                 ) : null}
@@ -389,7 +391,7 @@ export function ProductTable({
                 <TableCell className="text-muted-foreground">{row.categoryName}</TableCell>
                 {supermarketColumns ? (
                   <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                    {formatProductUnits(row.product)}
+                    {formatProductUnits(row.product, t)}
                   </TableCell>
                 ) : null}
                 {supermarketColumns ? (
@@ -403,7 +405,7 @@ export function ProductTable({
                       defaultValue={row.product.last_unit_cost ?? ""}
                       key={`${row.key}:cost:${row.product.last_unit_cost ?? "empty"}`}
                       disabled={row.kind === "variant"}
-                      aria-label={`سعر الشراء لـ ${row.label}`}
+                      aria-label={`${t("Purchase price for")} ${row.label}`}
                       onBlur={(event) => savePrice(row, event.target.value, "purchase")}
                       onKeyDown={(event) => {
                         if (event.key === "Enter") {
@@ -422,7 +424,7 @@ export function ProductTable({
                     className="h-8 tabular-nums"
                     defaultValue={row.price ?? ""}
                     key={`${row.key}:${row.price ?? "empty"}`}
-                    aria-label={`${priceHeader} لـ ${row.label}`}
+                    aria-label={`${priceHeader} ${t("for")} ${row.label}`}
                     onBlur={(event) => savePrice(row, event.target.value, "sale")}
                     onKeyDown={(event) => {
                       if (event.key === "Enter") {
@@ -433,7 +435,7 @@ export function ProductTable({
                 </TableCell>
                 <TableCell className="text-end tabular-nums">
                   {stock == null ? (
-                    <span className="text-muted-foreground" title="التتبع غير مفعّل">
+                    <span className="text-muted-foreground" title={t("Inventory tracking is off")}>
                       —
                     </span>
                   ) : (
@@ -449,14 +451,14 @@ export function ProductTable({
                   {isFirstProductRow ? (
                     <Checkbox
                       checked={row.product.track_inventory}
-                      aria-label={`تتبع مخزون ${row.product.name}`}
+                      aria-label={`${t("Track inventory for")} ${row.product.name}`}
                       onCheckedChange={(value) =>
                         setTracking(row.product, value === true)
                       }
                     />
                   ) : (
                     <span className="text-xs text-muted-foreground">
-                      {row.product.track_inventory ? "نعم" : "لا"}
+                      {row.product.track_inventory ? t("Yes") : t("No")}
                     </span>
                   )}
                 </TableCell>
@@ -467,21 +469,21 @@ export function ProductTable({
                         checked={row.product.is_active}
                         aria-label={
                           row.product.is_active
-                            ? `إيقاف ${row.product.name}`
-                            : `تفعيل ${row.product.name}`
+                            ? `${t("Deactivate")} ${row.product.name}`
+                            : `${t("Activate")} ${row.product.name}`
                         }
                         onCheckedChange={(value) =>
                           setActive(row.product, value === true)
                         }
                       />
                       <StatusPill
-                        label={row.product.is_active ? "نشط" : "متوقف"}
+                        label={row.product.is_active ? t("Active") : t("Inactive")}
                         variant={row.product.is_active ? "success" : "warning"}
                       />
                     </div>
                   ) : (
                     <StatusPill
-                      label={row.product.is_active ? "نشط" : "متوقف"}
+                      label={row.product.is_active ? t("Active") : t("Inactive")}
                       variant={row.product.is_active ? "success" : "warning"}
                     />
                   )}
@@ -494,7 +496,7 @@ export function ProductTable({
                         variant="ghost"
                         size="icon"
                         className="size-8"
-                        aria-label={`تعديل ${row.product.name}`}
+                        aria-label={`${t("Edit")} ${row.product.name}`}
                         onClick={() => onEdit(row.item)}
                       >
                         <Pencil className="size-3.5" />
@@ -505,7 +507,7 @@ export function ProductTable({
                       variant="ghost"
                       size="icon"
                       className="size-8 text-destructive"
-                      aria-label={`حذف ${row.product.name}`}
+                      aria-label={`${t("Delete")} ${row.product.name}`}
                       onClick={() => onDelete(row.product)}
                     >
                       <Trash2 className="size-3.5" />

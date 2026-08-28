@@ -6,16 +6,18 @@ import { GlassPanel } from "@/components/Velora/glass-panel";
 import { StatusPill } from "@/components/Velora/status-pill";
 import type { InventoryAlert } from "../services/alert.service";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface LowStockStripProps {
   alerts: InventoryAlert[];
 }
 
 export function LowStockStrip({ alerts }: LowStockStripProps) {
+  const { t } = useTranslation();
   if (alerts.length === 0) {
     return (
       <GlassPanel className="flex items-center gap-3 px-4 py-3 text-sm text-muted-foreground">
-        <span className="text-emerald-600">All stocked levels look healthy.</span>
+        <span className="text-emerald-600">{t("All stocked levels look healthy.")}</span>
       </GlassPanel>
     );
   }
@@ -23,9 +25,9 @@ export function LowStockStrip({ alerts }: LowStockStripProps) {
   return (
     <GlassPanel className="p-3">
       <div className="mb-2 flex items-center gap-2 px-1">
-        <AlertTriangle className="size-4 text-amber-600" />
+        <AlertTriangle className="size-4 text-amber-600" aria-hidden />
         <span className="text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">
-          Needs attention
+          {t("Needs attention")}
         </span>
       </div>
       <ScrollArea className="w-full">
@@ -39,7 +41,7 @@ export function LowStockStrip({ alerts }: LowStockStripProps) {
               <div className="flex items-start justify-between gap-2">
                 <p className="font-medium leading-tight">{alert.title}</p>
                 <StatusPill
-                  label={alert.type === "out_of_stock" ? "Out" : "Low"}
+                  label={alert.type === "out_of_stock" ? t("Out") : t("Low")}
                   variant={alert.severity === "danger" ? "danger" : "warning"}
                 />
               </div>

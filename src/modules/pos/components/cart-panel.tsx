@@ -38,31 +38,31 @@ const METHOD_META: Record<
   }
 > = {
   cash: {
-    label: "نقدي",
+    label: "Cash",
     icon: Banknote,
     className:
       "border-emerald-300 bg-emerald-600 text-white hover:bg-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-600 dark:hover:bg-emerald-500",
   },
   card: {
-    label: "كارت",
+    label: "Card",
     icon: CreditCard,
     className:
       "border-sky-300 bg-sky-600 text-white hover:bg-sky-700 dark:border-sky-400/40 dark:bg-sky-600 dark:hover:bg-sky-500",
   },
   wallet: {
-    label: "محفظة",
+    label: "Wallet",
     icon: Wallet,
     className:
       "border-violet-300 bg-violet-600 text-white hover:bg-violet-700 dark:border-violet-400/40 dark:bg-violet-600 dark:hover:bg-violet-500",
   },
   other: {
-    label: "أخرى",
+    label: "Other",
     icon: Banknote,
     className:
       "border-slate-300 bg-slate-700 text-white hover:bg-slate-800 dark:border-slate-400/40 dark:bg-slate-600 dark:hover:bg-slate-500",
   },
   credit: {
-    label: "آجل",
+    label: "On account",
     icon: UserCircle,
     className:
       "border-amber-300 bg-amber-500 text-amber-950 hover:bg-amber-400 dark:border-amber-400/40 dark:bg-amber-500 dark:text-amber-950 dark:hover:bg-amber-400",
@@ -210,7 +210,7 @@ export function CartPanel({
     if (payDisabled) return;
     if (method === "credit" && !customer) {
       playPosErrorSound();
-      toast.error("اربط عميلًا أولًا للبيع الآجل");
+      toast.error(t("Attach a customer first for an on-account sale"));
       setAttachExpanded(true);
       return;
     }
@@ -232,39 +232,39 @@ export function CartPanel({
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-2 max-[390px]:px-1.5 [-webkit-overflow-scrolling:touch]">
         {!hasCart ? (
           <EmptyStateBlock
-            title="السلة فاضية"
-            description="اضغط على المنتجات لإضافة أصناف"
-            className="mx-2 my-6 border-border/60 bg-transparent p-4 py-8 max-[390px]:my-3 max-[390px]:py-6"
+            title={t("Cart is empty")}
+            description={t("Tap products to add items")}
+            className="mx-1.5 my-3 border-border/60 bg-transparent p-3 py-5"
           />
         ) : (
-          <ul className="space-y-1.5 py-2 max-[390px]:space-y-1 max-[390px]:py-1.5">
+          <ul className="space-y-1 py-1.5">
             {cart.map((line) => (
               <li
                 key={line.id}
-                className="rounded-xl bg-muted/40 px-3 py-2.5 ring-1 ring-border/40 max-[390px]:rounded-lg max-[390px]:px-2.5 max-[390px]:py-2 lg:flex lg:items-start lg:gap-3"
+                className="rounded-lg bg-muted/40 px-2.5 py-2 ring-1 ring-border/40 max-[390px]:px-2 max-[390px]:py-1.5 lg:flex lg:items-start lg:gap-2"
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2 lg:block">
-                    <p className="text-sm font-medium leading-snug lg:truncate lg:text-base">
+                    <p className="line-clamp-2 text-[13px] font-medium leading-snug lg:line-clamp-1 lg:text-sm">
                       {line.name}
                     </p>
                     <p className="shrink-0 text-sm font-semibold tabular-nums lg:hidden">
                       {formatCurrency(line.lineTotal)}
                     </p>
                   </div>
-                  <p className="mt-0.5 text-sm text-muted-foreground">
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
                     {formatCurrency(line.unitPrice)} {line.saleUnit ? `/${line.saleUnit}` : t("each")}
                     {line.saleInputMode === "by_amount" && line.enteredAmount != null
-                      ? ` · بالمبلغ ${formatCurrency(line.enteredAmount)}`
+                      ? ` · ${t("Amount")} ${formatCurrency(line.enteredAmount)}`
                       : null}
                   </p>
                 </div>
-                <div className="mt-2.5 flex items-center justify-between gap-2 lg:mt-0 lg:flex-col lg:items-end lg:gap-1">
+                <div className="mt-1.5 flex items-center justify-between gap-2 lg:mt-0 lg:flex-col lg:items-end lg:gap-1">
                   <div className="flex items-center gap-1 lg:gap-1.5">
                     {line.saleInputMode ? (
-                      <span className="px-2 text-sm font-medium tabular-nums">
+                      <span className="max-w-32 truncate px-2 text-sm font-medium tabular-nums">
                         {line.saleUnit === "kg"
-                          ? `${line.quantity.toFixed(3)} كجم`
+                          ? `${line.quantity.toFixed(3)} ${t("kg")}`
                           : line.quantity}
                       </span>
                     ) : (
@@ -273,7 +273,7 @@ export function CartPanel({
                       variant="outline"
                       size="icon"
                       className="size-11 rounded-xl"
-                      aria-label="تقليل الكمية"
+                      aria-label={t("Decrease quantity")}
                       onClick={() => updateQuantity(line.id, line.quantity - 1)}
                     >
                       <Minus className="size-4" />
@@ -285,7 +285,7 @@ export function CartPanel({
                       variant="outline"
                       size="icon"
                       className="size-11 rounded-xl"
-                      aria-label="زيادة الكمية"
+                      aria-label={t("Increase quantity")}
                       onClick={() => updateQuantity(line.id, line.quantity + 1)}
                     >
                       <Plus className="size-4" />
@@ -296,7 +296,7 @@ export function CartPanel({
                       variant="ghost"
                       size="icon"
                       className="size-11 rounded-xl"
-                      aria-label="حذف الصنف"
+                      aria-label={t("Remove item")}
                       onClick={() => removeItem(line.id)}
                     >
                       <Trash2 className="size-4 text-muted-foreground" />
@@ -312,19 +312,19 @@ export function CartPanel({
         )}
       </div>
 
-      <div className="shrink-0 border-t border-border/60 bg-card p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] max-[390px]:p-2 max-[390px]:pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <div className="shrink-0 border-t border-border/60 bg-card p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] max-[390px]:p-2 max-[390px]:pb-[max(0.5rem,env(safe-area-inset-bottom))] md:pb-3">
         <div
           className={cn(
-            "mb-2 overflow-hidden rounded-2xl border px-3.5 py-2.5 max-[390px]:mb-1.5 max-[390px]:rounded-xl max-[390px]:px-3 max-[390px]:py-2",
+            "mb-1.5 overflow-hidden rounded-xl border px-3 py-2 max-[390px]:px-2.5 max-[390px]:py-1.5",
             hasPriceReduction
               ? "border-emerald-200/80 bg-gradient-to-b from-emerald-50/90 to-card dark:border-emerald-400/25 dark:from-emerald-500/10"
               : "border-border/50 bg-muted/30"
           )}
         >
           {hasPriceReduction ? (
-            <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
+            <div className="mb-2.5 flex flex-wrap items-center gap-1.5 max-[390px]:mb-1.5">
               <span className="inline-flex items-center rounded-full bg-emerald-600 px-2.5 py-0.5 text-[11px] font-semibold text-white dark:bg-emerald-500">
-                وفّرت {formatCurrency(totalSavings)}
+                {t("You saved")} {formatCurrency(totalSavings)}
               </span>
               {uniquePromoLabels.slice(0, 2).map((label) => (
                 <span
@@ -340,7 +340,7 @@ export function CartPanel({
           <div className="flex items-end justify-between gap-3">
             <div className="min-w-0">
               <p className="text-xs font-medium text-muted-foreground">
-                {hasPriceReduction ? "المبلغ المستحق" : "الإجمالي"}
+                {hasPriceReduction ? t("Amount due") : t("Total")}
               </p>
               {hasPriceReduction ? (
                 <p className="mt-0.5 text-sm tabular-nums text-muted-foreground line-through decoration-muted-foreground/60">
@@ -361,10 +361,10 @@ export function CartPanel({
           </div>
 
           {hasPriceReduction ? (
-            <div className="mt-2.5 space-y-1 border-t border-emerald-200/60 pt-2 dark:border-emerald-400/20">
+            <div className="mt-2.5 space-y-1 border-t border-emerald-200/60 pt-2 max-[390px]:mt-1.5 max-[390px]:pt-1.5 dark:border-emerald-400/20">
               {promoItemSavings > 0 ? (
                 <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">توفير أصناف</span>
+                  <span className="text-muted-foreground">{t("Item savings")}</span>
                   <span className="font-medium tabular-nums text-emerald-700 dark:text-emerald-300">
                     -{formatCurrency(promoItemSavings)}
                   </span>
@@ -372,7 +372,7 @@ export function CartPanel({
               ) : null}
               {promoCartDiscount > 0 ? (
                 <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">عرض فاتورة</span>
+                  <span className="text-muted-foreground">{t("Invoice offer")}</span>
                   <span className="font-medium tabular-nums text-emerald-700 dark:text-emerald-300">
                     -{formatCurrency(promoCartDiscount)}
                   </span>
@@ -380,19 +380,15 @@ export function CartPanel({
               ) : null}
               {discountAmount > 0 ? (
                 <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">خصم يدوي</span>
-                  <button
-                    type="button"
-                    className="font-medium tabular-nums text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
-                    onClick={() => setDiscountOpen(true)}
-                  >
+                  <span className="text-muted-foreground">{t("Manual discount")}</span>
+                  <span className="font-medium tabular-nums text-emerald-700 dark:text-emerald-300">
                     -{formatCurrency(discountAmount)}
-                  </button>
+                  </span>
                 </div>
               ) : null}
               {redemptionAmount > 0 ? (
                 <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">نقاط ولاء</span>
+                  <span className="text-muted-foreground">{t("Loyalty points")}</span>
                   <span className="font-medium tabular-nums text-emerald-700 dark:text-emerald-300">
                     -{formatCurrency(redemptionAmount)}
                   </span>
@@ -409,63 +405,52 @@ export function CartPanel({
           <div className="mb-2 max-h-[min(28dvh,12rem)] space-y-2 overflow-y-auto overscroll-y-contain">
             {loyaltyEnabled && customer && loyaltyBalance === null && hasCart ? (
               <p className="rounded-xl border border-dashed border-amber-200/80 bg-amber-50/60 px-3 py-2 text-xs text-amber-900 dark:border-amber-400/20 dark:bg-amber-400/5 dark:text-amber-200">
-                جاري جلب نقاط الولاء…
+                {t("Loading loyalty points…")}
               </p>
             ) : null}
 
             {loyaltyAvailable ? (
-              <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-2.5 dark:border-amber-400/30 dark:bg-amber-400/10">
-                <p className="flex items-center gap-1.5 text-xs font-medium text-amber-900 dark:text-amber-200">
+              <div className="space-y-1.5 rounded-xl border border-amber-200 bg-amber-50 p-2 dark:border-amber-400/30 dark:bg-amber-400/10">
+                <p className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-amber-900 dark:text-amber-200">
                   <Star className="size-3.5" />
-                  رصيد النقاط: {loyaltyBalance}
-                  {canRedeemLoyalty
-                    ? ` · توفّر خصم حتى ${formatCurrency(maxRedeemableAmount)}`
-                    : ` · الحد الأدنى ${minimumLoyaltyRedeemPoints} نقطة`}
+                  <span className="truncate">
+                    {t("Points balance")}: {loyaltyBalance}
+                    {canRedeemLoyalty
+                      ? ` · ${t("Save up to")} ${formatCurrency(maxRedeemableAmount)}`
+                      : ` · ${t("Minimum")} ${minimumLoyaltyRedeemPoints} ${t("points")}`}
+                  </span>
                 </p>
                 {canRedeemLoyalty ? (
-                  <>
-                    <div className="flex gap-1.5">
+                    <div className="flex items-center gap-1.5">
                       <Button
                         type="button"
                         size="sm"
-                        className="h-10 min-w-0 flex-1 rounded-xl text-xs sm:text-sm"
+                        className="h-11 shrink-0 rounded-lg px-2.5 text-xs"
                         variant={loyaltyRedemption ? "default" : "outline"}
                         onClick={() => applyRedemption(maxRedeemablePoints)}
                       >
-                        استخدم النقاط
+                        {t("Use points")}
                       </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={!loyaltyRedemption ? "default" : "outline"}
-                        className="h-10 min-w-0 flex-1 rounded-xl text-xs sm:text-sm"
-                        onClick={() => setLoyaltyRedemption(null)}
-                      >
-                        بدون نقاط
-                      </Button>
-                    </div>
-                    <div className="flex items-center gap-2">
                       <Input
                         type="number"
                         min={minimumLoyaltyRedeemPoints}
                         max={maxRedeemablePoints}
                         value={loyaltyRedemption?.points ?? ""}
-                        placeholder="أو اكتب عدد النقاط"
-                        aria-label="نقاط للاستبدال"
+                        placeholder={t("Or enter points")}
+                        aria-label={t("Points to redeem")}
                         onChange={(e) => applyRedemption(Number(e.target.value))}
-                        className="h-10 rounded-xl bg-background"
+                        className="h-11 min-w-0 flex-1 rounded-lg bg-background px-2 text-end text-sm tabular-nums"
                         inputMode="numeric"
                       />
                       {loyaltyRedemption ? (
-                        <span className="shrink-0 text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                          -{formatCurrency(loyaltyRedemption.amount)}
-                        </span>
+                        <Button type="button" variant="ghost" size="icon" className="size-11 shrink-0 rounded-lg" onClick={() => setLoyaltyRedemption(null)} aria-label={t("No points")}>
+                          <X className="size-4" />
+                        </Button>
                       ) : null}
                     </div>
-                  </>
                 ) : (
                   <p className="text-[11px] text-amber-800/80 dark:text-amber-200/80">
-                    العميل محتاج على الأقل {minimumLoyaltyRedeemPoints} نقطة للاستبدال.
+                    {t("Customer needs at least")} {minimumLoyaltyRedeemPoints} {t("points to redeem.")}
                   </p>
                 )}
               </div>
@@ -475,30 +460,15 @@ export function CartPanel({
               !loyaltyRedemptionRate &&
               hasCart ? (
               <p className="rounded-xl border border-dashed border-amber-200/80 bg-amber-50/60 px-3 py-2 text-xs text-amber-900 dark:border-amber-400/20 dark:bg-amber-400/5 dark:text-amber-200">
-                النقاط موجودة لكن إعداد الاستبدال غير مفعّل. راجع الولاء من الإعدادات.
+                {t("Point redemption is not enabled. Check loyalty settings.")}
               </p>
             ) : null}
 
             {discountsEnabled && discountOpen ? (
-              <div className="space-y-2 rounded-xl border border-border bg-muted/40 p-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <label className="text-sm font-medium" htmlFor="cart-discount">
-                    مبلغ الخصم
-                  </label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="size-11 rounded-xl"
-                    aria-label="إلغاء الخصم"
-                    onClick={() => {
-                      setDiscountAmount(0);
-                      setDiscountOpen(false);
-                    }}
-                  >
-                    <X className="size-3.5" />
-                  </Button>
-                </div>
+              <div className="flex min-h-12 items-center gap-1.5 rounded-xl border border-border/70 bg-muted/30 p-0.5">
+                <label className="min-w-0 flex-1 truncate ps-1.5 text-xs font-medium text-muted-foreground" htmlFor="cart-discount">
+                  {t("Discount amount")}
+                </label>
                 <Input
                   id="cart-discount"
                   type="number"
@@ -507,11 +477,25 @@ export function CartPanel({
                   step="0.01"
                   value={discountAmount || ""}
                   onChange={(e) => setDiscountAmount(Number(e.target.value))}
-                  className="h-11 rounded-xl bg-background"
+                  className="h-11 w-24 shrink-0 rounded-lg bg-background px-2 text-end text-sm font-semibold tabular-nums shadow-none sm:w-28 sm:px-2.5"
                   autoFocus
                   placeholder="0.00"
                   inputMode="decimal"
+                  aria-label={t("Discount amount")}
                 />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-11 shrink-0 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    aria-label={t("Remove discount")}
+                    onClick={() => {
+                      setDiscountAmount(0);
+                      setDiscountOpen(false);
+                    }}
+                  >
+                    <X className="size-4" />
+                  </Button>
               </div>
             ) : null}
           </div>
@@ -526,10 +510,10 @@ export function CartPanel({
               className="h-11 min-w-0 flex-1 rounded-xl border-border/80 bg-background px-2 text-xs font-medium shadow-none"
               onClick={() => setDiscountOpen(true)}
               aria-keyshortcuts={OPERATOR_SHORTCUTS.discount}
-              title={`خصم (${OPERATOR_SHORTCUTS.discount})`}
+              title={`${t("Discount")} (${OPERATOR_SHORTCUTS.discount})`}
             >
               <Percent className="size-3.5 shrink-0" />
-              خصم
+              {t("Discount")}
               <kbd className="ms-1 hidden rounded border border-border/60 bg-background/80 px-1 text-[10px] font-normal text-muted-foreground lg:inline">
                 {OPERATOR_SHORTCUTS.discount}
               </kbd>
@@ -543,10 +527,10 @@ export function CartPanel({
             disabled={!hasCart}
             onClick={() => handleHoldCart()}
             aria-keyshortcuts={OPERATOR_SHORTCUTS.hold}
-            title={`تعليق (${OPERATOR_SHORTCUTS.hold})`}
+            title={`${t("Hold")} (${OPERATOR_SHORTCUTS.hold})`}
           >
             <Pause className="size-3.5 shrink-0" />
-            تعليق
+            {t("Hold")}
             <kbd className="ms-1 hidden rounded border border-border/60 bg-background/80 px-1 text-[10px] font-normal text-muted-foreground lg:inline">
               {OPERATOR_SHORTCUTS.hold}
             </kbd>
@@ -559,10 +543,10 @@ export function CartPanel({
             disabled={!hasCart}
             onClick={() => onRequestClearCart?.()}
             aria-keyshortcuts={OPERATOR_SHORTCUTS.delete}
-            title={`مسح (${OPERATOR_SHORTCUTS.delete})`}
+            title={`${t("Clear")} (${OPERATOR_SHORTCUTS.delete})`}
           >
             <Trash2 className="size-3.5 shrink-0" />
-            مسح
+            {t("Clear")}
             <kbd className="ms-1 hidden rounded border border-border/60 bg-background/80 px-1 text-[10px] font-normal text-muted-foreground lg:inline">
               {OPERATOR_SHORTCUTS.delete}
             </kbd>
@@ -582,7 +566,7 @@ export function CartPanel({
                   : "grid-cols-5 lg:grid-cols-3"
           )}
           aria-keyshortcuts="F1"
-          title="إتمام البيع بطريقة الدفع الحالية (F1)"
+          title={t("Complete sale using current payment method (F1)")}
         >
           {methods.map((method) => {
             const meta = METHOD_META[method];
@@ -592,15 +576,17 @@ export function CartPanel({
                 key={method}
                 type="button"
                 disabled={payDisabled}
-                aria-label={meta.label}
+                aria-label={t(meta.label)}
                 className={cn(
-                  "h-12 min-h-12 flex-col gap-0 rounded-xl border font-bold shadow-none transition active:scale-[0.98] lg:h-16 lg:min-h-16 lg:gap-0.5 lg:rounded-2xl",
+                  "h-11 min-h-11 flex-col gap-0 rounded-xl border px-1 font-bold shadow-none transition active:scale-[0.98] lg:h-12 lg:min-h-12 lg:flex-row lg:gap-1 lg:px-2",
                   meta.className
                 )}
                 onClick={() => handlePay(method)}
               >
-                <Icon className="size-5" aria-hidden />
-                <span className="sr-only text-sm lg:not-sr-only">{meta.label}</span>
+                <Icon className="size-4 lg:size-5" aria-hidden />
+                <span className="max-w-full truncate text-[11px] leading-tight lg:text-xs">
+                  {t(meta.label)}
+                </span>
               </Button>
             );
           })}

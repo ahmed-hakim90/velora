@@ -28,7 +28,6 @@ import { PageHeader } from "@/components/Velora/page-header";
 import { OperationalCard } from "@/components/Velora/operational-card";
 import { formatCurrency } from "@/lib/format";
 import { sanitizeDecimalInput } from "@/lib/digits";
-import { cn } from "@/lib/utils";
 import type { Product } from "@/lib/types";
 import type { PriceListStudioData } from "@/modules/price-lists/actions/price-list.actions";
 import {
@@ -55,6 +54,7 @@ import {
 } from "@/modules/price-lists/lib/export-poster";
 import { savePriceListPrintPayload } from "@/modules/price-lists/lib/print-payload";
 import { PriceListPoster } from "@/modules/price-lists/components/price-list-poster";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 function nextSuggestedSale(row: PriceListRow, marginPercent: number): number {
   if (row.catalogSalePrice > 0) return row.catalogSalePrice;
@@ -92,15 +92,16 @@ function buildPosterRows(
 }
 
 export function PriceListStudio({ initial }: PriceListStudioProps) {
+  const { t } = useTranslation();
   const posterRef = useRef<HTMLDivElement>(null);
   const [exporting, startExport] = useTransition();
   const [rows, setRows] = useState<PriceListRow[]>(initial.rows);
   const [manualIds, setManualIds] = useState<Set<string>>(() => new Set());
   const [marginPercent, setMarginPercent] = useState(String(initial.defaultMarginPercent));
   const [discountPercent, setDiscountPercent] = useState("0");
-  const [listTitle, setListTitle] = useState(initial.branding.orgName || "قائمة الأسعار");
-  const [sectionTitle, setSectionTitle] = useState("أسعار البيع");
-  const [footerText, setFooterText] = useState("الأسعار سارية حتى نفاد الكمية");
+  const [listTitle, setListTitle] = useState(initial.branding.orgName || t("Price list"));
+  const [sectionTitle, setSectionTitle] = useState(t("Sale prices"));
+  const [footerText, setFooterText] = useState(t("Prices are valid while stock lasts"));
   const [showLogo, setShowLogo] = useState(true);
   const [showBeforeAfter, setShowBeforeAfter] = useState(false);
   const [showUnitLine, setShowUnitLine] = useState(true);
@@ -229,7 +230,7 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
   const runExport = (kind: "png" | "jpg") => {
     const node = posterRef.current;
     if (!node) {
-      toast.error("المعاينة مش جاهزة");
+      toast.error(t("Preview is not ready"));
       return;
     }
     startExport(async () => {
@@ -240,16 +241,16 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
             : await exportPosterJpeg(node, format);
         const stamp = new Date().toISOString().slice(0, 10);
         downloadDataUrl(dataUrl, `price-list-${format.id}-${stamp}.${kind === "png" ? "png" : "jpg"}`);
-        toast.success(kind === "png" ? "تم تنزيل PNG" : "تم تنزيل JPG");
+        toast.success(kind === "png" ? t("PNG downloaded") : t("JPG downloaded"));
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "فشل التصدير");
+        toast.error(e instanceof Error ? e.message : t("Export failed"));
       }
     });
   };
 
   const openPrintPdf = () => {
     if (posterRows.length === 0) {
-      toast.error("اختَر أصناف الأول قبل الطباعة");
+      toast.error(t("Select products before printing"));
       return;
     }
     try {
@@ -257,10 +258,10 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
       // Keep opener so the print tab can fall back if storage is blocked.
       const printWindow = window.open("/print/price-list", "_blank");
       if (!printWindow) {
-        toast.error("المتصفح منع النافذة المنبثقة — اسمح بالـ Pop-ups وجرب تاني");
+        toast.error(t("The browser blocked the popup. Allow popups and try again."));
       }
     } catch {
-      toast.error("مقدرناش نفتح صفحة الطباعة");
+      toast.error(t("Could not open the print page"));
     }
   };
 
@@ -270,7 +271,7 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
     startExport(async () => {
       try {
         const blob = await exportPosterBlob(node, format, "image/png");
-        if (!blob) throw new Error("فشل إنشاء الصورة");
+        if (!blob) throw new Error(t("Could not create the image"));
         const file = new File([blob], `price-list-${format.id}.png`, { type: "image/png" });
         const text = `${listTitle}\n${sectionTitle}\n${footerText}`;
         if (navigator.share && navigator.canShare?.({ files: [file] })) {
@@ -282,10 +283,10 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
           return;
         }
         downloadDataUrl(URL.createObjectURL(blob), file.name);
-        toast.message("اتحفظت الصورة — شاركها من جهازك");
+        toast.message(t("Image saved. Share it from your device."));
       } catch (e) {
         if (e instanceof Error && e.name === "AbortError") return;
-        toast.error(e instanceof Error ? e.message : "فشلت المشاركة");
+        toast.error(e instanceof Error ? e.message : t("Sharing failed"));
       }
     });
   };
@@ -302,8 +303,8 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
         });
         const priceText =
           showBeforeAfter && offer.oldPrice != null
-            ? `كان ${offer.oldPrice} ج ← بقى ${offer.displayPrice} ج`
-            : `${offer.displayPrice} ج`;
+            ? `${t("Was")} ${formatCurrency(offer.oldPrice, initial.branding.currency)} ← ${t("Now")} ${formatCurrency(offer.displayPrice, initial.branding.currency)}`
+            : formatCurrency(offer.displayPrice, initial.branding.currency);
         return `${r.name}: ${priceText}${r.packUnitLabel ? ` / ${r.packUnitLabel}` : ""}`;
       })
       .join("\n")}\n${footerText}`
@@ -322,18 +323,18 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
   const previewScale = Math.min(1, 360 / format.width);
 
   return (
-    <div className="space-y-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+    <div className="space-y-4 pb-6">
       <PageHeader
-        title="قائمة أسعار المنتجات"
+        title="Product price list"
         description={
           initial.invoiceNumber
-            ? `من فاتورة ${initial.invoiceNumber} — السعر الظاهر هو سعر البيع المسجّل للصنف (قابل للتعديل)`
-            : "اختر الأصناف وعدّل سعر البيع ثم صدّر للسوشيال أو اطبع"
+            ? `${t("From invoice")} ${initial.invoiceNumber} — ${t("The shown price is the saved sale price and can be edited.")}`
+            : "Select products, edit sale prices, then export or print"
         }
         action={
           <Link href="/inventory/purchases">
             <Button variant="outline" className="min-h-11">
-              رجوع للمشتريات
+              {t("Back to purchases")}
             </Button>
           </Link>
         }
@@ -344,7 +345,7 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
           <OperationalCard accent="var(--mds-color-action-primary)">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="listTitle">اسم القائمة</Label>
+                <Label htmlFor="listTitle">{t("List name")}</Label>
                 <Input
                   id="listTitle"
                   value={listTitle}
@@ -352,16 +353,16 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
                 />
               </div>
               <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="sectionTitle">عنوان القسم</Label>
+                <Label htmlFor="sectionTitle">{t("Section title")}</Label>
                 <Input
                   id="sectionTitle"
                   value={sectionTitle}
                   onChange={(e) => setSectionTitle(e.target.value)}
-                  placeholder="مجمدات · صوصات · موتزريلا"
+                  placeholder={t("Frozen food · Sauces · Mozzarella")}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="margin">نسبة ربح مقترحة % (لو مفيش سعر بيع)</Label>
+                <Label htmlFor="margin">{t("Suggested margin % when no sale price exists")}</Label>
                 <Input
                   id="margin"
                   inputMode="decimal"
@@ -370,7 +371,7 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="discount">خصم عرض %</Label>
+                <Label htmlFor="discount">{t("Offer discount %")}</Label>
                 <Input
                   id="discount"
                   inputMode="decimal"
@@ -383,7 +384,7 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="bg">لون الخلفية</Label>
+                <Label htmlFor="bg">{t("Background color")}</Label>
                 <Input
                   id="bg"
                   type="color"
@@ -393,7 +394,7 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="accent">لون الهوية</Label>
+                <Label htmlFor="accent">{t("Brand color")}</Label>
                 <Input
                   id="accent"
                   type="color"
@@ -403,7 +404,7 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
                 />
               </div>
               <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="footer">عبارة التذييل</Label>
+                <Label htmlFor="footer">{t("Footer text")}</Label>
                 <Input
                   id="footer"
                   value={footerText}
@@ -412,7 +413,7 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
               </div>
               <label className="flex items-center gap-2 text-sm">
                 <Checkbox checked={showLogo} onCheckedChange={(v) => setShowLogo(v === true)} />
-                إظهار الشعار
+                {t("Show logo")}
               </label>
               <label className="flex flex-col gap-1 text-sm sm:col-span-2">
                 <span className="flex items-center gap-2">
@@ -432,10 +433,10 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
                       }
                     }}
                   />
-                  عرض سعر قبل وبعد (عروض)
+                  {t("Show before and after prices")}
                 </span>
                 <span className="ps-7 text-xs text-muted-foreground">
-                  السعر المشطوب = قبل · السعر الواضح = بعد. تقدّر تستخدم خصم % أو تعدّل السعر يدوي.
+                  {t("The crossed price is before, and the clear price is after. Use a discount or edit it manually.")}
                 </span>
               </label>
               <label className="flex items-center gap-2 text-sm sm:col-span-2">
@@ -443,10 +444,10 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
                   checked={showUnitLine}
                   onCheckedChange={(v) => setShowUnitLine(v === true)}
                 />
-                إظهار الوحدة أسفل اسم المنتج
+                {t("Show unit below product name")}
               </label>
               <div className="space-y-1.5 sm:col-span-2">
-                <Label>مقاس التصدير</Label>
+                <Label>{t("Export size")}</Label>
                 <Select
                   value={formatId}
                   onValueChange={(v) =>
@@ -459,7 +460,7 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
                   <SelectContent>
                     {PRICE_LIST_FORMATS.map((f) => (
                       <SelectItem key={f.id} value={f.id}>
-                        {f.label} ({f.width}×{f.height})
+                        {t(f.label)} ({f.width}×{f.height})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -470,10 +471,10 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
 
           <OperationalCard>
             <div className="mb-3 space-y-1.5">
-              <Label htmlFor="productQuery">اختيار / إضافة أصناف من الكتالوج</Label>
+              <Label htmlFor="productQuery">{t("Select products from the catalog")}</Label>
               <Input
                 id="productQuery"
-                placeholder="ابحث بالاسم أو الباركود…"
+                placeholder={t("Search by name or barcode…")}
                 value={productQuery}
                 onChange={(e) => setProductQuery(e.target.value)}
               />
@@ -498,9 +499,9 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
           </OperationalCard>
 
           <OperationalCard>
-            <h3 className="mb-3 font-semibold">أصناف القائمة ({rows.length})</h3>
+            <h3 className="mb-3 font-semibold">{t("List products")} ({rows.length})</h3>
             {rows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">اختَر أصناف من الكتالوج أعلاه.</p>
+              <p className="text-sm text-muted-foreground">{t("Select products from the catalog above.")}</p>
             ) : (
               <div className="grid gap-2">
                 {rows.map((row) => {
@@ -519,15 +520,15 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
                       <div className="min-w-0">
                         <p className="truncate font-medium">{row.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          تكلفة {row.packUnitLabel}:{" "}
+                          {t("Cost")} {row.packUnitLabel}:{" "}
                           {formatCurrency(row.packCost, initial.branding.currency)}
                           {row.weightLine ? ` · ${row.weightLine}` : ""}
-                          {!row.hasPacking ? " · بدون تعبئة شراء" : ""}
+                          {!row.hasPacking ? ` · ${t("No purchase packaging")}` : ""}
                         </p>
                       </div>
                       {showBeforeAfter ? (
                         <div className="min-w-0 space-y-1">
-                          <Label className="text-xs text-muted-foreground">سعر قبل</Label>
+                          <Label className="text-xs text-muted-foreground">{t("Before price")}</Label>
                           <Input
                             className="min-h-11 w-full tabular-nums sm:min-h-10 sm:w-28"
                             inputMode="decimal"
@@ -554,9 +555,9 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
                         <Label className="text-xs text-muted-foreground">
                           {showBeforeAfter
                             ? discount > 0
-                              ? "السعر قبل الخصم"
-                              : "سعر بعد"
-                            : "سعر البيع"}
+                              ? t("Price before discount")
+                              : t("After price")
+                            : t("Sale price")}
                         </Label>
                         <Input
                           className="min-h-11 w-full tabular-nums sm:min-h-10 sm:w-28"
@@ -578,7 +579,7 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
                           </>
                         ) : (
                           <>
-                            في القائمة:{" "}
+                            {t("In the list")}:{" "}
                             {formatCurrency(offer.displayPrice, initial.branding.currency)}
                           </>
                         )}
@@ -591,7 +592,7 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
           </OperationalCard>
 
           <OperationalCard>
-            <h3 className="mb-3 font-semibold">تصدير ومشاركة</h3>
+            <h3 className="mb-3 font-semibold">{t("Export and share")}</h3>
             <CompactActions className="justify-start">
               <CompactAction
                 label="PNG"
@@ -608,29 +609,29 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
                 onClick={() => runExport("jpg")}
               />
               <CompactAction
-                label="PDF / طباعة"
+                label={t("PDF / Print")}
                 icon={Printer}
                 disabled={rows.length === 0}
                 onClick={openPrintPdf}
               />
               <CompactAction
-                label="مشاركة"
+                label={t("Share")}
                 icon={Share2}
                 disabled={exporting || rows.length === 0}
                 onClick={shareNative}
               />
               <CompactAction
-                label="واتساب"
+                label={t("WhatsApp")}
                 icon={MessageCircle}
                 href={shareLinks.whatsapp}
               />
               <CompactAction
-                label="تيليجرام"
+                label={t("Telegram")}
                 icon={Send}
                 href={shareLinks.telegram}
               />
               <CompactAction
-                label="فيسبوك"
+                label={t("Facebook")}
                 icon={Share2}
                 href={shareLinks.facebook}
               />
@@ -641,9 +642,9 @@ export function PriceListStudio({ initial }: PriceListStudioProps) {
         <div className="xl:sticky xl:top-4 xl:self-start">
           <OperationalCard>
             <p className="mb-3 text-sm text-muted-foreground">
-              معاينة {format.label} — كل الأصناف المختارة ({posterRows.length}) ظاهرة في الصورة
+              {t("Preview")} {t(format.label)} — {t("all selected products")} ({posterRows.length}) {t("are shown in the image")}
             </p>
-            <div className="max-h-[min(80vh,920px)] overflow-x-hidden overflow-y-auto rounded-2xl bg-muted/40 p-3">
+            <div className="max-h-[min(80dvh,920px)] overflow-x-hidden overflow-y-auto rounded-2xl bg-muted/40 p-3">
               {/*
                 Preview stage is LTR for scale math only. Poster keeps its own RTL.
                 Outer size = scaled pixels; overflow hidden clips unscaled layout width

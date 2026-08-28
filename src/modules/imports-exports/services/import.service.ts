@@ -977,7 +977,7 @@ export async function bulkImportProducts(
       row: 0,
       field: "Variants",
       message:
-        "النشاط الحالي بدون أحجام/خيارات؛ شيت Variants هيتجاهل. عدّل المنتجات مباشرة في ورقة المنتجات.",
+        "Variants are disabled for this activity, so the Variants sheet will be ignored. Edit products in the Products sheet.",
     });
   }
 
@@ -985,7 +985,7 @@ export async function bulkImportProducts(
     warnings.push({
       row: 0,
       field: "Recipes",
-      message: "النشاط الحالي بدون وصفات؛ شيت Recipes هيتجاهل.",
+      message: "Recipes are disabled for this activity, so the Recipes sheet will be ignored.",
     });
   }
 

@@ -30,7 +30,7 @@ export function OnlineMenuShell({ theme, typography, children }: OnlineMenuShell
       <BrandFontStylesheet typography={typography} />
       <main
         className={[
-          "min-h-screen text-foreground",
+          "min-h-dvh text-foreground",
           theme.cssClass ??
             "bg-[radial-gradient(circle_at_top,_color-mix(in_srgb,var(--primary)_12%,transparent),_transparent_35%),linear-gradient(180deg,_var(--background),_color-mix(in_srgb,var(--muted)_45%,var(--background)))]",
         ]

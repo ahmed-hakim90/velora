@@ -6,7 +6,7 @@ import { useTransition } from "react";
 import { toast } from "sonner";
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DateRangeFilter } from "@/components/Velora/date-range-filter";
 import { exportReportsAction } from "@/modules/reports/actions/reports.actions";
 import type { Store } from "@/lib/types";
 import {
@@ -31,6 +31,7 @@ import type { ProductProfitRow } from "@/modules/reports/services/profitability-
 import type { InventoryKpi } from "@/modules/reports/services/inventory-report.service";
 import type { SalesKpi } from "@/modules/reports/services/sales-report.service";
 import type { SessionKpi } from "@/modules/reports/services/session-report.service";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 type AccountingData = {
   profit: Awaited<ReturnType<typeof import("@/modules/reports/services/profit-report.service").getProfitReport>>;
@@ -79,6 +80,7 @@ export function ReportsDashboard({
   customerAccounts,
 }: ReportsDashboardProps) {
   const router = useRouter();
+  const { t, language } = useTranslation();
   const [pending, startTransition] = useTransition();
 
   const chartData = sales.revenueByDay.map((d) => ({
@@ -89,10 +91,10 @@ export function ReportsDashboard({
   const PIE_COLORS = ["#2563EB", "#7C3AED", "#059669", "#D97706", "#DC2626", "#64748B"];
 
   return (
-    <div className="flex flex-col gap-3" dir="rtl">
+    <div className="flex flex-col gap-3" dir={language === "ar" ? "rtl" : "ltr"}>
       <div>
-        <h2 className="text-lg font-semibold">نظرة تنفيذية</h2>
-        <p className="text-sm text-muted-foreground">{`مؤشرات الأداء خلال ${days} يوم`}</p>
+        <h2 className="text-lg font-semibold">{t("Executive overview")}</h2>
+        <p className="text-sm text-muted-foreground">{t("Performance over {{days}} days").replace("{{days}}", String(days))}</p>
       </div>
       <div className="flex flex-wrap items-center gap-[var(--mds-space-3)] rounded-[var(--mds-radius-lg)] border border-border bg-card p-[var(--mds-space-4)] shadow-[var(--mds-elevation-1)]">
         <div className="flex gap-[var(--mds-space-2)]">
@@ -110,37 +112,17 @@ export function ReportsDashboard({
             </Link>
           ))}
         </div>
-        <form
-          className="flex flex-wrap items-center gap-[var(--mds-space-2)]"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const fd = new FormData(e.currentTarget);
-            const from = fd.get("from")?.toString();
-            const to = fd.get("to")?.toString();
+        <DateRangeFilter
+          value={{ from: customFrom, to: customTo }}
+          onChange={(range) => {
             const params = new URLSearchParams();
             params.set("storeId", filterStoreId);
-            if (from) params.set("from", from);
-            if (to) params.set("to", to);
+            if (range.from) params.set("from", range.from);
+            if (range.to) params.set("to", range.to);
             else params.set("days", String(days));
             router.push(`/reports?${params.toString()}`);
           }}
-        >
-          <Input
-            type="date"
-            name="from"
-            defaultValue={customFrom}
-            className="h-9 w-36 rounded-[var(--mds-radius-md)]"
-          />
-          <Input
-            type="date"
-            name="to"
-            defaultValue={customTo}
-            className="h-9 w-36 rounded-[var(--mds-radius-md)]"
-          />
-          <Button type="submit" size="sm" variant="outline" className="rounded-[var(--mds-radius-md)]">
-            فترة مخصصة
-          </Button>
-        </form>
+        />
         <select
           className="h-9 rounded-[var(--mds-radius-md)] border border-input bg-background px-[var(--mds-space-3)] text-sm"
           value={filterStoreId}
@@ -153,7 +135,7 @@ export function ReportsDashboard({
             router.push(`/reports?${params.toString()}`);
           }}
         >
-          <option value="all">كل الفروع</option>
+          <option value="all">{t("All branches")}</option>
           {stores.map((store) => (
             <option key={store.id} value={store.id}>
               {store.name}
@@ -177,21 +159,21 @@ export function ReportsDashboard({
                 link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${file.base64}`;
                 link.download = file.filename;
                 link.click();
-                toast.success("تم تصدير التقرير");
+                toast.success(t("Report exported"));
               } catch {
-                toast.error("فشل التصدير");
+                toast.error(t("Export failed"));
               }
             });
           }}
         >
           <Download className="size-4" />
-          تصدير
+          {t("Export")}
         </Button>
       </div>
 
-      <div className="grid gap-[var(--mds-space-4)] sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-[var(--mds-space-3)] sm:gap-[var(--mds-space-4)] lg:grid-cols-4">
         <KpiCard
-          label="الإيراد"
+          label={t("Revenue")}
           value={formatCurrency(sales.totalRevenue, currency)}
           icon={<DollarSign className="size-5" />}
           trend="up"
@@ -199,17 +181,17 @@ export function ReportsDashboard({
         {showCosts ? (
           <>
             <KpiCard
-              label="تكلفة البضاعة"
+              label={t("COGS")}
               value={formatCurrency(sales.totalCost, currency)}
               icon={<Package className="size-5" />}
             />
             <KpiCard
-              label="إجمالي الربح"
+              label={t("Gross profit")}
               value={formatCurrency(sales.grossProfit, currency)}
               icon={<TrendingUp className="size-5" />}
             />
             <KpiCard
-              label="متوسط الهامش"
+              label={t("Average margin")}
               value={`${sales.avgMargin.toFixed(1)}%`}
               icon={<Users className="size-5" />}
             />
@@ -217,17 +199,17 @@ export function ReportsDashboard({
         ) : (
           <>
             <KpiCard
-              label="الطلبات"
+              label={t("Orders")}
               value={String(sales.orderCount)}
               icon={<TrendingUp className="size-5" />}
             />
             <KpiCard
-              label="قيمة المخزون"
+              label={t("Inventory value")}
               value={formatCurrency(inventory.valuationEstimate, currency)}
               icon={<Package className="size-5" />}
             />
             <KpiCard
-              label="الجلسات المفتوحة"
+              label={t("Open sessions")}
               value={String(sessions.openSessions)}
               icon={<Users className="size-5" />}
             />
@@ -236,7 +218,7 @@ export function ReportsDashboard({
       </div>
 
       <div className="grid min-w-0 gap-[var(--mds-space-6)] lg:grid-cols-2">
-        <OperationalCard title="اتجاه الإيراد">
+        <OperationalCard title={t("Revenue trend")}>
           <div className="h-64">
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -258,13 +240,13 @@ export function ReportsDashboard({
               </ResponsiveContainer>
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground">
-                لا توجد بيانات مبيعات بعد - أكمل طلبات الكاشير لعرض الاتجاهات
+                {t("No sales data yet. Complete POS orders to view trends.")}
               </div>
             )}
           </div>
         </OperationalCard>
 
-        <OperationalCard title="الإيراد حسب الفرع">
+        <OperationalCard title={t("Revenue by branch")}>
           <div className="h-64 min-w-0">
             {sales.revenueByStore.some((s) => s.revenue > 0) ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -280,15 +262,15 @@ export function ReportsDashboard({
               </ResponsiveContainer>
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground">
-                No revenue by store yet — complete POS orders to compare branches
+                {t("No revenue by branch yet. Complete POS orders to compare branches.")}
               </div>
             )}
           </div>
         </OperationalCard>
 
-        <OperationalCard title="أفضل المنتجات">
+        <OperationalCard title={t("Top products")}>
           {sales.topProducts.length === 0 ? (
-            <p className="py-8 text-center text-muted-foreground">لا توجد بيانات بعد</p>
+            <p className="py-8 text-center text-muted-foreground">{t("No data yet")}</p>
           ) : (
             <ul className="space-y-3">
               {sales.topProducts.map((p, i) => (
@@ -299,9 +281,9 @@ export function ReportsDashboard({
                   <div className="flex-1">
                     <p className="font-medium">{p.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {p.quantity} sold
+                      {p.quantity} {t("sold")}
                       {showCosts
-                        ? ` · margin ${p.margin.toFixed(1)}%`
+                        ? ` · ${t("margin")} ${p.margin.toFixed(1)}%`
                         : null}
                     </p>
                   </div>
@@ -311,7 +293,7 @@ export function ReportsDashboard({
                     </span>
                     {showCosts ? (
                       <p className="text-xs text-muted-foreground">
-                        profit {formatCurrency(p.profit, currency)}
+                        {t("Profit")} {formatCurrency(p.profit, currency)}
                       </p>
                     ) : null}
                   </div>
@@ -322,7 +304,7 @@ export function ReportsDashboard({
         </OperationalCard>
 
         {sales.topVariants.length > 0 ? (
-          <OperationalCard title="أفضل الخيارات">
+          <OperationalCard title={t("Top variants")}>
             <ul className="space-y-3">
               {sales.topVariants.map((v, i) => (
                 <li key={`${v.productName}-${v.name}`} className="flex items-center gap-[var(--mds-space-4)]">
@@ -333,7 +315,7 @@ export function ReportsDashboard({
                     <p className="font-medium">
                       {v.productName} — {v.name}
                     </p>
-                    <p className="text-xs text-muted-foreground">{v.quantity} مباع</p>
+                    <p className="text-xs text-muted-foreground">{v.quantity} {t("sold")}</p>
                   </div>
                   <span className="font-semibold">{formatCurrency(v.revenue, currency)}</span>
                 </li>
@@ -343,7 +325,7 @@ export function ReportsDashboard({
         ) : null}
 
         {showCosts && profitability.length > 0 ? (
-          <OperationalCard title="ربحية المنتجات">
+          <OperationalCard title={t("Product profitability")}>
             <ul className="max-h-64 space-y-2 overflow-y-auto">
               {profitability.slice(0, 10).map((row) => (
                 <li
@@ -360,27 +342,27 @@ export function ReportsDashboard({
           </OperationalCard>
         ) : null}
 
-        <OperationalCard title="صحة المخزون">
+        <OperationalCard title={t("Inventory health")}>
           <div className="grid grid-cols-2 gap-[var(--mds-space-4)]">
             <div className="rounded-[var(--mds-radius-lg)] bg-muted/50 p-[var(--mds-space-4)] text-center">
               <p className="text-2xl font-semibold">{inventory.totalUnits}</p>
-              <p className="text-xs text-muted-foreground">إجمالي الوحدات</p>
+              <p className="text-xs text-muted-foreground">{t("Total units")}</p>
             </div>
             <div className="rounded-[var(--mds-radius-lg)] bg-[var(--mds-color-feedback-warning)]/10 p-[var(--mds-space-4)] text-center">
               <p className="text-2xl font-semibold text-amber-700 dark:text-amber-300">
                 {inventory.lowStockCount}
               </p>
-              <p className="text-xs text-muted-foreground">مخزون منخفض</p>
+              <p className="text-xs text-muted-foreground">{t("Low stock")}</p>
             </div>
             <div className="rounded-[var(--mds-radius-lg)] bg-[var(--mds-color-feedback-danger)]/10 p-[var(--mds-space-4)] text-center">
               <p className="text-2xl font-semibold text-red-700 dark:text-red-300">
                 {inventory.outOfStockCount}
               </p>
-              <p className="text-xs text-muted-foreground">غير متوفر</p>
+              <p className="text-xs text-muted-foreground">{t("Out of stock")}</p>
             </div>
             <div className="rounded-[var(--mds-radius-lg)] bg-muted/50 p-[var(--mds-space-4)] text-center">
               <p className="text-2xl font-semibold">{inventory.totalSkus}</p>
-              <p className="text-xs text-muted-foreground">أكواد متتبعة</p>
+              <p className="text-xs text-muted-foreground">{t("Tracked SKUs")}</p>
             </div>
           </div>
         </OperationalCard>
@@ -388,35 +370,35 @@ export function ReportsDashboard({
 
       {showCosts && accounting ? (
         <>
-          <h2 className="mb-4 mt-10 text-xl font-semibold">الحسابات</h2>
-          <div className="grid gap-[var(--mds-space-4)] sm:grid-cols-2 lg:grid-cols-4">
+          <h2 className="mb-4 mt-10 text-xl font-semibold">{t("Accounting")}</h2>
+          <div className="grid grid-cols-2 gap-[var(--mds-space-3)] sm:gap-[var(--mds-space-4)] lg:grid-cols-4">
             <KpiCard
-              label="إجمالي المصروفات"
+              label={t("Total expenses")}
               value={formatCurrency(accounting.profit.totalExpenses, currency)}
               icon={<DollarSign className="size-5" />}
             />
             <KpiCard
-              label="تكلفة الهالك"
+              label={t("Waste cost")}
               value={formatCurrency(accounting.profit.wasteCost, currency)}
               icon={<Package className="size-5" />}
             />
             <KpiCard
-              label="صافي الربح المتوقع"
+              label={t("Estimated net profit")}
               value={formatCurrency(accounting.profit.estimatedNetProfit, currency)}
               icon={<TrendingUp className="size-5" />}
             />
             <KpiCard
-              label="المرتجعات"
+              label={t("Refunds")}
               value={formatCurrency(accounting.profit.refunds, currency)}
               icon={<Users className="size-5" />}
             />
           </div>
 
           <div className="grid min-w-0 gap-[var(--mds-space-6)] lg:grid-cols-2">
-            <OperationalCard title="المصروفات حسب مركز التكلفة">
+            <OperationalCard title={t("Expenses by cost center")}>
               <div className="h-64">
                 {accounting.expensesByStore.length > 0 ? (
-                  <OperationalCard title="المصروفات حسب الفرع">
+                  <OperationalCard title={t("Expenses by branch")}>
                     <ul className="space-y-2">
                       {accounting.expensesByStore.map((s) => (
                         <li key={s.storeId} className="flex justify-between text-sm">
@@ -450,13 +432,13 @@ export function ReportsDashboard({
                   </ResponsiveContainer>
                 ) : (
                   <div className="flex h-full items-center justify-center text-muted-foreground">
-                    No expense data yet
+                    {t("No expense data yet")}
                   </div>
                 )}
               </div>
             </OperationalCard>
 
-            <OperationalCard title="المصروفات حسب التصنيف">
+            <OperationalCard title={t("Expenses by category")}>
               <div className="h-64">
                 {accounting.expensesByCategoryTrend.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
@@ -471,8 +453,8 @@ export function ReportsDashboard({
                             : formatCurrency(Number(v), currency)
                         }
                       />
-                      <Bar dataKey="amount" fill="#7C3AED" radius={[8, 8, 0, 0]} name="الحالي" />
-                      <Bar dataKey="priorAmount" fill="#94A3B8" radius={[8, 8, 0, 0]} name="السابق" />
+                      <Bar dataKey="amount" fill="#7C3AED" radius={[8, 8, 0, 0]} name={t("Current")} />
+                      <Bar dataKey="priorAmount" fill="#94A3B8" radius={[8, 8, 0, 0]} name={t("Previous")} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : accounting.expensesByCategory.length > 0 ? (
@@ -487,7 +469,7 @@ export function ReportsDashboard({
                   </ResponsiveContainer>
                 ) : (
                   <div className="flex h-full items-center justify-center text-muted-foreground">
-                    No category data yet
+                    {t("No category data yet")}
                   </div>
                 )}
               </div>
@@ -506,11 +488,11 @@ export function ReportsDashboard({
               )}
             </OperationalCard>
 
-            <OperationalCard title="أعلى المصروفات">
+            <OperationalCard title={t("Top expenses")}>
               <ul className="space-y-2 text-sm">
                 {accounting.topExpenses.highestCostCenter && (
                   <li className="flex justify-between">
-                    <span>أعلى مركز تكلفة</span>
+                    <span>{t("Highest cost center")}</span>
                     <span className="font-medium">
                       {accounting.topExpenses.highestCostCenter.name} —{" "}
                       {formatCurrency(accounting.topExpenses.highestCostCenter.amount, currency)}
@@ -519,7 +501,7 @@ export function ReportsDashboard({
                 )}
                 {accounting.topExpenses.highestCategory && (
                   <li className="flex justify-between">
-                    <span>أعلى تصنيف</span>
+                    <span>{t("Highest category")}</span>
                     <span className="font-medium">
                       {accounting.topExpenses.highestCategory.name} —{" "}
                       {formatCurrency(accounting.topExpenses.highestCategory.amount, currency)}
@@ -528,7 +510,7 @@ export function ReportsDashboard({
                 )}
                 {accounting.topExpenses.highestSingle && (
                   <li className="flex justify-between">
-                    <span>أكبر مصروف منفرد</span>
+                    <span>{t("Largest single expense")}</span>
                     <span className="font-medium">
                       {accounting.topExpenses.highestSingle.title} —{" "}
                       {formatCurrency(accounting.topExpenses.highestSingle.amount, currency)}
@@ -538,37 +520,37 @@ export function ReportsDashboard({
               </ul>
             </OperationalCard>
 
-            <OperationalCard title="أعلى هالك">
+            <OperationalCard title={t("Highest waste")}>
               <ul className="max-h-64 space-y-2 overflow-y-auto text-sm">
                 {accounting.highestWaste.slice(0, 5).map((w) => (
                   <li key={w.productId} className="flex justify-between gap-2">
-                    <span>{w.name} ({w.quantity} units)</span>
+                    <span>{w.name} ({w.quantity} {t("units")})</span>
                     <span className="font-medium">{formatCurrency(w.cost, currency)}</span>
                   </li>
                 ))}
                 {accounting.highestWaste.length === 0 && (
-                  <p className="text-muted-foreground">لا توجد هالك مسجل</p>
+                  <p className="text-muted-foreground">{t("No waste recorded")}</p>
                 )}
               </ul>
             </OperationalCard>
 
-            <OperationalCard title="مصروفات الجلسات" className="lg:col-span-2">
+            <OperationalCard title={t("Session expenses")} className="lg:col-span-2">
               <ul className="max-h-48 space-y-2 overflow-y-auto text-sm">
                 {accounting.sessionExpenses.slice(0, 10).map((s) => (
                   <li key={s.sessionId} className="flex justify-between border-b border-border/50 pb-2">
-                    <span>{s.cashierName} · {s.expenses.length} items</span>
+                    <span>{s.cashierName} · {s.expenses.length} {t("items")}</span>
                     <span className="font-medium">{formatCurrency(s.total, currency)}</span>
                   </li>
                 ))}
                 {accounting.sessionExpenses.length === 0 && (
-                  <p className="text-muted-foreground">لا توجد مصروفات جلسات</p>
+                  <p className="text-muted-foreground">{t("No session expenses")}</p>
                 )}
               </ul>
             </OperationalCard>
           </div>
 
           <div className="grid gap-[var(--mds-space-6)] lg:grid-cols-2">
-            <OperationalCard title="أعلى منتجات ربحًا">
+            <OperationalCard title={t("Most profitable products")}>
               <ul className="space-y-2 text-sm">
                 {accounting.productRankings.highestProfit.slice(0, 5).map((p) => (
                   <li key={p.productId} className="flex justify-between gap-2">
@@ -580,12 +562,12 @@ export function ReportsDashboard({
                   </li>
                 ))}
                 {accounting.productRankings.highestProfit.length === 0 && (
-                  <p className="text-muted-foreground">لا توجد بيانات منتجات بعد</p>
+                  <p className="text-muted-foreground">{t("No product data yet")}</p>
                 )}
               </ul>
             </OperationalCard>
 
-            <OperationalCard title="أعلى منتجات بيعًا">
+            <OperationalCard title={t("Top-selling products")}>
               <ul className="space-y-2 text-sm">
                 {(accounting.productRankings.highestSelling ?? []).slice(0, 5).map((p) => (
                   <li key={p.productId} className="flex justify-between gap-2">
@@ -593,20 +575,20 @@ export function ReportsDashboard({
                     <span className="text-end font-medium">
                       {formatCurrency(p.revenue, currency)}
                       <span className="block text-xs font-normal text-muted-foreground">
-                        ربح {formatCurrency(p.profit, currency)}
+                        {t("Profit")} {formatCurrency(p.profit, currency)}
                       </span>
                     </span>
                   </li>
                 ))}
                 {(accounting.productRankings.highestSelling ?? []).length === 0 && (
-                  <p className="text-muted-foreground">لا توجد بيانات منتجات بعد</p>
+                  <p className="text-muted-foreground">{t("No product data yet")}</p>
                 )}
               </ul>
             </OperationalCard>
           </div>
 
           <div className="grid gap-[var(--mds-space-6)] lg:grid-cols-2">
-            <OperationalCard title="أعلى منتجات تكلفة">
+            <OperationalCard title={t("Highest-cost products")}>
               <ul className="space-y-2 text-sm">
                 {accounting.productRankings.highestCost.slice(0, 5).map((p) => (
                   <li key={p.productId} className="flex justify-between gap-2">
@@ -617,7 +599,7 @@ export function ReportsDashboard({
                   </li>
                 ))}
                 {accounting.productRankings.highestCost.length === 0 && (
-                  <p className="text-muted-foreground">لا توجد بيانات منتجات بعد</p>
+                  <p className="text-muted-foreground">{t("No product data yet")}</p>
                 )}
               </ul>
             </OperationalCard>
@@ -627,10 +609,10 @@ export function ReportsDashboard({
 
       {customerAccounts ? (
         <section className="mt-10 space-y-4">
-          <h2 className="text-xl font-semibold">حسابات العملاء</h2>
-          <div className="grid gap-[var(--mds-space-4)] sm:grid-cols-2 lg:grid-cols-4">
+          <h2 className="text-xl font-semibold">{t("Customer accounts")}</h2>
+          <div className="grid grid-cols-2 gap-[var(--mds-space-3)] sm:gap-[var(--mds-space-4)] lg:grid-cols-4">
             <KpiCard
-              label="أرصدة العملاء المستحقة"
+              label={t("Outstanding customer balances")}
               value={formatCurrency(customerAccounts.aging.total, currency)}
             />
             <KpiCard
@@ -646,10 +628,10 @@ export function ReportsDashboard({
               value={formatCurrency(customerAccounts.aging.buckets.over90, currency)}
             />
           </div>
-          <OperationalCard title="الأرصدة المستحقة">
+          <OperationalCard title={t("Outstanding balances")}>
             <ul className="space-y-2 text-sm">
               {customerAccounts.outstanding.length === 0 ? (
-                <li className="text-muted-foreground">لا توجد أرصدة مفتوحة</li>
+                <li className="text-muted-foreground">{t("No open balances")}</li>
               ) : (
                 customerAccounts.outstanding.map((c) => (
                   <li key={c.id} className="flex justify-between gap-2">

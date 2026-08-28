@@ -48,7 +48,7 @@ export function PosLoadingSkeleton({
 }) {
   return (
     <div
-      className="flex min-h-[70vh] flex-col gap-[var(--mds-space-4)]"
+      className="flex min-h-[70dvh] flex-col gap-[var(--mds-space-4)]"
       role="status"
       aria-live="polite"
       aria-label={label}

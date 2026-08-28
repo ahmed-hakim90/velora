@@ -19,6 +19,7 @@ import {
 import type { ReportContext } from "@/modules/reports/core/report-context";
 import type { TaxDayRow, TaxReport } from "@/modules/reports/services/tax-report.service";
 import type { Store } from "@/lib/types";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface TaxReportViewProps {
   filters: ReportFilters;
@@ -40,26 +41,27 @@ export function TaxReportView({
   canExcel,
   canPdf,
 }: TaxReportViewProps) {
+  const { t } = useTranslation();
   const [pending, startTransition] = useTransition();
   const printQs = reportFiltersToSearchParams(filters);
   const printHref = `/print/reports/tax${printQs ? `?${printQs}` : ""}`;
   const ratePct = report.taxRate <= 1 ? report.taxRate * 100 : report.taxRate;
 
   const dayColumns: ColumnDef<TaxDayRow>[] = [
-    { header: "اليوم", accessorKey: "date" },
-    { header: "الطلبات", accessorKey: "orderCount" },
+    { header: t("Day"), accessorKey: "date" },
+    { header: t("Orders"), accessorKey: "orderCount" },
     {
-      header: "الأساس الخاضع",
+      header: t("Taxable base"),
       id: "base",
       cell: ({ row }) => formatCurrency(row.original.taxableBase, currency),
     },
     {
-      header: "الضريبة",
+      header: t("Tax"),
       id: "tax",
       cell: ({ row }) => formatCurrency(row.original.tax, currency),
     },
     {
-      header: "الإجمالي",
+      header: t("Total"),
       id: "total",
       cell: ({ row }) => formatCurrency(row.original.total, currency),
     },
@@ -67,8 +69,8 @@ export function TaxReportView({
 
   return (
     <ReportPage
-      title="تقرير الضريبة"
-      description="ضريبة المبيعات المحصّلة من الطلبات المكتملة — جاهز للتصدير"
+      title="Tax report"
+      description="Sales tax collected from completed orders, ready to export"
       actions={
         <ExportButtonGroup
           printHref={canPrint ? printHref : undefined}
@@ -88,9 +90,9 @@ export function TaxReportView({
                   ) as Record<string, string>
                 );
                 downloadBase64Excel(result.base64, result.filename);
-                toast.success("تم تصدير Excel");
+                toast.success(t("Excel exported"));
               } catch {
-                toast.error("فشل التصدير");
+                toast.error(t("Export failed"));
               }
             });
           }}
@@ -107,24 +109,24 @@ export function TaxReportView({
       <ReportKpiGrid
         items={[
           {
-            label: "نسبة الضريبة",
+            label: t("Tax rate"),
             value: `${ratePct.toFixed(ratePct % 1 === 0 ? 0 : 2)}%${
-              report.taxInclusive ? " (شامل)" : " (إضافي)"
+              report.taxInclusive ? ` (${t("inclusive")})` : ` (${t("additional")})`
             }`,
             icon: <Percent className="size-5" />,
           },
           {
-            label: "الأساس الخاضع",
+            label: t("Taxable base"),
             value: formatCurrency(report.summary.taxableBase, currency),
             icon: <Wallet className="size-5" />,
           },
           {
-            label: "الضريبة المحصّلة",
+            label: t("Tax collected"),
             value: formatCurrency(report.summary.taxCollected, currency),
             icon: <Receipt className="size-5" />,
           },
           {
-            label: "إجمالي المبيعات",
+            label: t("Gross sales"),
             value: formatCurrency(report.summary.grossSales, currency),
             icon: <Wallet className="size-5" />,
           },
@@ -133,16 +135,15 @@ export function TaxReportView({
 
       {!report.taxEnabled && report.summary.taxCollected === 0 ? (
         <p className="rounded-[var(--mds-radius-md)] border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
-          الضريبة غير مفعّلة حالياً أو نسبة صفر — التقرير يعرض قيم `orders.tax`
-          المحفوظة عند الإكمال.
+          {t("Tax is disabled or set to zero. The report shows saved tax values from completed orders.")}
         </p>
       ) : null}
 
       <ReportTable
-        title="الضريبة حسب اليوم"
+        title={t("Tax by day")}
         columns={dayColumns}
         data={report.byDay}
-        emptyMessage="لا توجد طلبات في الفترة"
+        emptyMessage={t("No orders in this period")}
       />
     </ReportPage>
   );

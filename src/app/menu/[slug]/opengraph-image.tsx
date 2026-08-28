@@ -181,7 +181,6 @@ function renderBrandProductOrderCard(input: {
               }}
             >
               {input.logoDataUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={input.logoDataUrl}
                   width={92}
@@ -267,7 +266,6 @@ function renderBrandProductOrderCard(input: {
             }}
           >
             {input.heroDataUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={input.heroDataUrl}
                 width={620}

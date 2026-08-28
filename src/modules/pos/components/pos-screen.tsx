@@ -9,10 +9,12 @@ import {
   Loader2,
   MoreHorizontal,
   Plus,
+  ScanBarcode,
   Search,
   ShoppingCart,
   Truck,
   Wallet,
+  X,
 } from "lucide-react";
 import {
   backgroundMutationKey,
@@ -71,6 +73,7 @@ import { ExpenseWizard } from "@/modules/expenses/components/expense-wizard";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useTranslation } from "@/lib/i18n/use-translation";
 import {
   Sheet,
   SheetContent,
@@ -155,7 +158,7 @@ async function postPosCheckout(input: {
     const message =
       data && typeof data === "object" && "error" in data && typeof data.error === "string"
         ? data.error
-        : "فشل إتمام البيع";
+        : "Could not complete sale";
     console.info(`[pos-checkout] ${elapsedMs}ms`, message);
     return { success: false, error: message };
   }
@@ -181,7 +184,7 @@ async function postPosCustomerPayment(input: {
   });
   const data = (await res.json()) as { success?: boolean; error?: string };
   if (!res.ok || !data.success) {
-    return { success: false, error: data.error || "تعذر تسجيل التحصيل" };
+    return { success: false, error: data.error || "Could not record collection" };
   }
   return { success: true };
 }
@@ -285,6 +288,8 @@ export function PosScreen({
   storeSlug,
   storeLabel = null,
 }: PosScreenProps) {
+  const { t, language } = useTranslation();
+  const locale = language === "ar" ? "ar-EG" : "en-EG";
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [creditOpen, setCreditOpen] = useState(false);
   const [attachExpanded, setAttachExpanded] = useState(false);
@@ -294,7 +299,12 @@ export function PosScreen({
   const [onlineOrdersOpen, setOnlineOrdersOpen] = useState(false);
   const [collectOpen, setCollectOpen] = useState(false);
   const [supplierPayOpen, setSupplierPayOpen] = useState(false);
+  const [cashierMoreOpen, setCashierMoreOpen] = useState(false);
+  const [closeSessionOpen, setCloseSessionOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const restoreScannerFocusRef = useRef(false);
   const [pickerProduct, setPickerProduct] = useState<POSProduct | null>(null);
   const [modifierProduct, setModifierProduct] = useState<POSProduct | null>(null);
   const [pendingModifierVariant, setPendingModifierVariant] = useState<POSVariant | null>(
@@ -352,10 +362,49 @@ export function PosScreen({
   );
 
   useEffect(() => {
+    if (
+      !restoreScannerFocusRef.current ||
+      pickerProduct ||
+      modifierProduct ||
+      weightProduct
+    ) {
+      return;
+    }
+
+    restoreScannerFocusRef.current = false;
+    const frame = window.requestAnimationFrame(() => searchInputRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [modifierProduct, pickerProduct, weightProduct]);
+
+  useEffect(() => {
     setHeldCarts(initialHeldCarts);
     unlockPosAudio();
     // Hydrate once from server props for this device load.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount hydrate
+  }, []);
+
+  useEffect(() => {
+    function focusProductSearch(event: KeyboardEvent) {
+      if (event.defaultPrevented || event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable || Boolean(target.closest("input, textarea, select")))
+      ) {
+        return;
+      }
+      if (document.querySelector('[role="dialog"]')) return;
+
+      event.preventDefault();
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+    }
+
+    window.addEventListener("keydown", focusProductSearch);
+    return () => window.removeEventListener("keydown", focusProductSearch);
   }, []);
 
   useEffect(() => {
@@ -373,7 +422,7 @@ export function PosScreen({
         setLiveOnlineOrders(next);
         if (onlineOrdersSeeded.current && hasNew) {
           playPosNewOrderSound();
-          toast.message("طلب أونلاين جديد");
+          toast.message(t("New online order"));
         }
         onlineOrdersSeeded.current = true;
       } catch {
@@ -386,7 +435,7 @@ export function PosScreen({
       cancelled = true;
       window.clearInterval(id);
     };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!loadCatalogClient) return;
@@ -406,7 +455,7 @@ export function PosScreen({
           error?: string;
         };
         if (!catalogRes.ok) {
-          throw new Error(catalogJson.error || "فشل تحميل المنتجات");
+          throw new Error(catalogJson.error || "Could not load products");
         }
         if (!cancelled) {
           setCatalogCategories(catalogJson.categories ?? []);
@@ -428,7 +477,7 @@ export function PosScreen({
       } catch (error) {
         if (!cancelled) {
           setCatalogError(
-            error instanceof Error ? error.message : "فشل تحميل المنتجات"
+            t(error instanceof Error ? error.message : "Could not load products")
           );
         }
       } finally {
@@ -440,7 +489,13 @@ export function PosScreen({
     return () => {
       cancelled = true;
     };
-  }, [loadCatalogClient, storeId]);
+  }, [loadCatalogClient, storeId, t]);
+
+  useEffect(() => {
+    if (categoryId && !categories.some((category) => category.id === categoryId)) {
+      setCategoryId(null);
+    }
+  }, [categories, categoryId]);
 
   const barcodeEnabled = featureFlags.barcode_scanner !== false;
   const receiptEnabled = featureFlags.receipt_printing !== false;
@@ -514,19 +569,19 @@ export function PosScreen({
   const cartItemCount = cart.reduce((total, line) => total + line.quantity, 0);
   const noPaymentMethods = enabledPaymentMethods.length === 0;
   const checkoutBlockedReason = checkoutSaving
-    ? "جاري حفظ الفاتورة السابقة…"
+    ? "Saving previous invoice…"
     : pending
-      ? "جاري إتمام البيع…"
+      ? "Completing sale…"
       : readinessState === "session_expired"
         ? requireManagerOverrideForExpiredSale
-          ? "مدة الوردية خلصت — البيع محتاج PIN المدير"
-          : "مدة الوردية خلصت — الأفضل تقفل الوردية"
+          ? "Session expired — manager PIN required"
+          : "Session expired — close the session"
         : readinessState === "no_session"
-          ? "افتح جلسة كاشير الأول"
+          ? "Open a cashier session first"
           : checkoutBlocked
-            ? POS_READINESS_COPY[readinessState]?.title ?? "الكاشير مش جاهز للبيع دلوقتي"
+            ? POS_READINESS_COPY[readinessState]?.title ?? "POS is not ready"
             : noPaymentMethods
-              ? "مفيش طريقة دفع مفعّلة من الإعدادات"
+              ? "No payment method is enabled"
               : null;
   const payLocked = checkoutBlocked || pending || checkoutSaving || noPaymentMethods;
 
@@ -547,7 +602,7 @@ export function PosScreen({
       if (payLocked || cart.length === 0) return;
       if (paymentMethod === "credit" && !customer) {
         playPosErrorSound();
-        toast.error("اربط عميلًا أولًا للبيع الآجل");
+        toast.error(t("Attach a customer first for an on-account sale"));
         setAttachExpanded(true);
         return;
       }
@@ -559,12 +614,12 @@ export function PosScreen({
     },
     onUndo: () => {
       if (!undoLast()) {
-        toast.message("مفيش خطوة للتراجع");
+        toast.message(t("Nothing to undo"));
       }
     },
     onHold: () => {
       if (cart.length === 0) {
-        toast.message("السلة فاضية — مفيش حاجة تتعليق");
+        toast.message(t("Cart is empty — nothing to hold"));
         return;
       }
       holdCurrentPosCart();
@@ -575,7 +630,7 @@ export function PosScreen({
     },
     onDiscount: () => {
       if (!discountsEnabled) {
-        toast.message("الخصم مش مفعّل من الإعدادات");
+        toast.message(t("Discounts are not enabled in settings"));
         return;
       }
       setDiscountOpen(true);
@@ -587,6 +642,32 @@ export function PosScreen({
     (order) => order.status !== "cancelled" && order.status !== "invoiced"
   ).length;
 
+  const productSearchIndex = useMemo(
+    () =>
+      new Map(
+        initialProductsLive.map((product) => [
+          product.id,
+          [
+            product.name,
+            product.categoryName,
+            product.sku,
+            product.barcode,
+            formatCurrency(product.base_price),
+            ...product.variants.flatMap((variant) => [
+              variant.name,
+              variant.sku,
+              variant.barcode,
+              formatCurrency(variant.price),
+            ]),
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase(),
+        ])
+      ),
+    [initialProductsLive]
+  );
+
   const products = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
     const categoryProducts = categoryId
@@ -595,27 +676,10 @@ export function PosScreen({
 
     if (!normalizedSearch) return categoryProducts;
 
-    return categoryProducts.filter((product) => {
-      const searchableText = [
-        product.name,
-        product.categoryName,
-        product.sku,
-        product.barcode,
-        formatCurrency(product.base_price),
-        ...product.variants.flatMap((variant) => [
-          variant.name,
-          variant.sku,
-          variant.barcode,
-          formatCurrency(variant.price),
-        ]),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      return searchableText.includes(normalizedSearch);
-    });
-  }, [categoryId, initialProductsLive, searchTerm]);
+    return categoryProducts.filter((product) =>
+      productSearchIndex.get(product.id)?.includes(normalizedSearch)
+    );
+  }, [categoryId, initialProductsLive, productSearchIndex, searchTerm]);
 
   /** When variants exist, checkout SQL requires a variant_id — even if UI variants are off. */
   function resolveCheckoutVariant(
@@ -679,27 +743,56 @@ export function PosScreen({
     const match = barcodeEnabled ? findPosProductByBarcode(initialProductsLive, trimmed) : null;
 
     if (!match && products.length !== 1) {
+      const message = t(
+        products.length > 1
+          ? "Narrow the search to one product, or scan an exact barcode."
+          : "Product not found"
+      );
       playPosErrorSound();
-      toast.error("المنتج غير موجود");
+      setSearchError(message);
+      toast.error(message);
+      window.requestAnimationFrame(() => {
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      });
       return;
     }
 
     const { product, variant } = match ?? { product: products[0]!, variant: null };
+    setSearchError(null);
     playPosScanSound();
     const useWeightFlow =
       (enableWeightSales && product.supports_weight_sale) ||
       (enablePriceByAmount && product.supports_amount_sale);
     if (useWeightFlow) {
+      restoreScannerFocusRef.current = true;
       setWeightProduct(product);
       setSearchTerm("");
       return;
     }
     if (enableVariants && product.hasVariants && !variant) {
+      restoreScannerFocusRef.current = true;
       setPickerProduct(product);
+      setSearchTerm("");
+      return;
+    }
+    if (enableModifiers) {
+      restoreScannerFocusRef.current = true;
+      setPendingModifierVariant(variant);
+      setModifierProduct(product);
+      setSearchTerm("");
       return;
     }
     addToCart(product, variant);
     setSearchTerm("");
+    window.requestAnimationFrame(() => searchInputRef.current?.focus());
+  }
+
+  function clearCatalogFilters() {
+    setSearchTerm("");
+    setSearchError(null);
+    setCategoryId(null);
+    window.requestAnimationFrame(() => searchInputRef.current?.focus());
   }
 
   function runCheckout(
@@ -709,7 +802,7 @@ export function PosScreen({
     overridePin?: string
   ) {
     if (checkoutSaving) {
-      toast.message("الفاتورة السابقة بتتحفظ… استنى لحظة");
+      toast.message(t("The previous invoice is still saving. Wait a moment."));
       return;
     }
 
@@ -718,10 +811,8 @@ export function PosScreen({
       discountAmount,
       managerDiscountOverrideAmount
     );
-    const sessionExpired = readinessState === "session_expired";
-    const needsExpiredSessionOverride =
-      sessionExpired && requireManagerOverrideForExpiredSale;
-
+    const sessionExpired =
+      readinessState === "session_expired" && requireManagerOverrideForExpiredSale;
     const state = usePosStore.getState();
     const receiptCart = [...state.cart];
     const receiptCustomer = state.customer
@@ -743,7 +834,7 @@ export function PosScreen({
 
     if (checkoutCart.length === 0) {
       playPosErrorSound();
-      toast.error("السلة فارغة");
+      toast.error(t("Cart is empty"));
       return;
     }
 
@@ -753,7 +844,7 @@ export function PosScreen({
 
     runBackground({
       key: checkoutMutationKey,
-      label: "جاري حفظ البيع…",
+      label: t("Saving sale…"),
       execute: async () => {
         const result = await postPosCheckout({
           cart: checkoutCart,
@@ -778,11 +869,11 @@ export function PosScreen({
           throw new Error(result.error);
         }
         if (!result.orderNumber) {
-          throw new Error("فشل إتمام البيع");
+          throw new Error(t("Could not complete sale"));
         }
         return result;
       },
-      successMessage: (result) => `تم إتمام الطلب ${result.orderNumber}`,
+      successMessage: (result) => `${t("Order completed")} ${result.orderNumber}`,
       onSuccess: (result) => {
         if (cashDrawerEnabled && payments.some((payment) => payment.method === "cash")) {
           openCashDrawerHook();
@@ -816,15 +907,15 @@ export function PosScreen({
             amount: accountCollection,
             paymentMethod: collectionMethod,
             reference: result.orderNumber,
-            notes: `تحصيل مع فاتورة ${result.orderNumber}`,
+            notes: `${t("Collection with invoice")} ${result.orderNumber}`,
           }).then((collected) => {
             if (!collected.success) {
               playPosErrorSound();
-              toast.error(`تم البيع، لكن تحصيل المستحق فشل: ${collected.error}`);
+              toast.error(`${t("Sale completed, but balance collection failed")}: ${t(collected.error)}`);
               return;
             }
             toast.success(
-              `اتحصل ${formatCurrency(accountCollection)} من حساب العميل مع الفاتورة`
+              `${t("Collected")} ${formatCurrency(accountCollection)} ${t("from customer account with the invoice")}`
             );
           });
         }
@@ -833,7 +924,7 @@ export function PosScreen({
         playPosErrorSound();
         const failedHold: HeldCart = {
           id: `temp-hold-${crypto.randomUUID()}`,
-          name: "فاتورة فشلت — اضغط للاستعادة",
+          name: t("Failed invoice — tap to restore"),
           cart: checkoutCart,
           customer: checkoutCustomer,
           discountAmount: checkoutDiscount,
@@ -855,7 +946,7 @@ export function PosScreen({
   function handleComplete(payments: PaymentSplit[], accountCollection = 0) {
     if (payments.some((payment) => payment.method === "credit") && !customer) {
       playPosErrorSound();
-      toast.error("اختر عميلًا للبيع الآجل");
+      toast.error(t("Select a customer for credit sale"));
       return;
     }
     const needsDiscountOverride = requiresManagerDiscountOverride(
@@ -869,15 +960,15 @@ export function PosScreen({
       setOverrideDialog({
         kind: "checkout",
         title: both
-          ? "موافقة بيع بعد انتهاء الجلسة مع خصم"
+          ? t("Approve discounted sale after session expiry")
           : needsExpiredSessionOverride
-            ? "موافقة بيع بعد انتهاء الجلسة"
-            : "موافقة المدير على الخصم",
+            ? t("Approve sale after session expiry")
+            : t("Manager discount approval"),
         defaultReason: both
-          ? "تمت الموافقة على بيع بخصم بعد انتهاء الجلسة"
+          ? t("Approved discounted sale after session expiry")
           : needsExpiredSessionOverride
-            ? "تمت الموافقة على بيع بعد انتهاء الجلسة"
-            : "تمت الموافقة على الخصم",
+            ? t("Approved sale after session expiry")
+            : t("Discount approved"),
         payments,
         accountCollection,
       });
@@ -907,11 +998,11 @@ export function PosScreen({
         stores={stores}
         activeStoreId={storeId}
         readinessState={readinessState}
-        title={readinessState === "store_mismatch" ? "تغيير الفرع" : "اختيار الفرع"}
+        title={readinessState === "store_mismatch" ? "Change store" : "Choose store"}
         description={
           readinessState === "store_mismatch"
-            ? "الفرع النشط مختلف. اختر الفرع الصحيح والمتصفح هيتجهز تلقائيًا."
-            : "اختر الفرع الذي ستعمل عليه في نقطة البيع."
+            ? "The active store is different. Choose the correct store to continue."
+            : "Choose the store where you will use the POS."
         }
       />
     );
@@ -925,7 +1016,7 @@ export function PosScreen({
     readinessState === "no_session" ? (
       <QuickOpenSessionButton
         size="sm"
-        label="ابدأ البيع"
+        label={t("Start selling")}
         pendingOpeningFloat={pendingOpeningFloat}
       />
     ) : activeSession && sessionReconciliation ? (
@@ -933,14 +1024,14 @@ export function PosScreen({
         session={activeSession}
         reconciliation={sessionReconciliation}
         sessionExpenses={sessionExpenses}
-        cashierName={cashierName ?? "الكاشير"}
+        cashierName={cashierName ?? t("Cashier")}
         costCenterMap={costCenterMap}
         categoryMap={expenseCategoryMap}
         triggerVariant={readinessState === "session_expired" ? "destructive" : "outline"}
         triggerChildren={
           readinessState === "session_expired" || readinessState === "session_warning"
-            ? "إغلاق الوردية"
-            : "إغلاق الجلسة"
+            ? t("Close shift")
+            : t("Close session")
         }
       />
     ) : null;
@@ -948,8 +1039,8 @@ export function PosScreen({
   function handleOpenCashDrawer() {
     setOverrideDialog({
       kind: "cash_drawer",
-      title: "فتح درج النقدية",
-      defaultReason: "فتح درج النقدية يدويًا",
+      title: t("Open cash drawer"),
+      defaultReason: t("Open cash drawer manually"),
     });
   }
 
@@ -959,44 +1050,35 @@ export function PosScreen({
         await openCashDrawerAction({ reason, pin });
         openCashDrawerHook();
         setOverrideDialog(null);
-        toast.success("تم فتح درج النقدية");
+        toast.success(t("Cash drawer opened"));
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "تعذر فتح درج النقدية");
+        toast.error(t(error instanceof Error ? error.message : "Could not open cash drawer"));
       }
     });
   }
 
   async function handleUsbPrintReceipt() {
     if (!lastReceipt) {
-      toast.error("تعذرت طباعة الإيصال");
-      return;
+      throw new Error(t("Could not print receipt"));
     }
-    try {
-      await printReceiptViaUsb(lastReceipt);
-      toast.success("تم إرسال الإيصال لطابعة USB");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "تعذرت طباعة الإيصال");
-    }
+    await printReceiptViaUsb(lastReceipt);
   }
 
   function handleBrowserPrintReceipt() {
     if (!lastReceipt) {
-      toast.error("تعذرت طباعة الإيصال");
-      return;
+      throw new Error(t("Could not print receipt"));
     }
     if (typeof document !== "undefined" && !document.getElementById("Velora-receipt")) {
-      toast.error("تعذرت طباعة الإيصال — الإيصال غير جاهز");
-      return;
+      throw new Error(t("Could not print receipt — receipt is not ready"));
     }
     setTimeout(() => triggerReceiptPrint(), 50);
   }
 
-  function handleSendWhatsAppReceipt() {
-    if (!lastReceipt) return;
-    const url = buildWhatsAppReceiptUrl(lastReceipt);
+  function handleSendWhatsAppReceipt(phoneOverride?: string) {
+    if (!lastReceipt) throw new Error(t("Could not open WhatsApp"));
+    const url = buildWhatsAppReceiptUrl(lastReceipt, phoneOverride);
     if (!url) {
-      toast.error("رقم هاتف العميل غير صالح لواتساب");
-      return;
+      throw new Error(t("Customer phone number is not valid for WhatsApp"));
     }
     window.open(url, "_blank", "noopener,noreferrer");
   }
@@ -1019,13 +1101,13 @@ export function PosScreen({
             <Button
               variant="outline"
               size="sm"
-              className="h-11 min-w-0 flex-1 justify-center gap-1.5 rounded-xl border-sky-200 bg-sky-50 px-2 text-sm font-semibold text-sky-900 hover:bg-sky-100 max-[390px]:px-1.5 max-[390px]:text-xs sm:h-10 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200 dark:hover:bg-sky-500/20"
+              className="relative h-11 min-w-0 flex-1 justify-center gap-1.5 rounded-xl border-sky-200 bg-sky-50 px-2 text-sm font-semibold text-sky-900 hover:bg-sky-100 max-lg:size-11 max-lg:flex-none max-lg:px-0 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200 dark:hover:bg-sky-500/20"
               onClick={() => setOnlineOrdersOpen(true)}
             >
               <ClipboardList className="size-4 shrink-0" />
-              <span className="truncate max-[390px]:sr-only">أونلاين</span>
+              <span className="truncate max-lg:sr-only">{t("Online")}</span>
               {activeOnlineOrdersCount > 0 ? (
-                <span className="rounded-full bg-sky-700 px-1.5 py-0.5 text-[11px] font-bold text-white tabular-nums dark:bg-sky-400 dark:text-sky-950">
+                <span className="rounded-full bg-sky-700 px-1.5 py-0.5 text-[11px] font-bold text-white tabular-nums max-lg:absolute max-lg:-end-1 max-lg:-top-1 dark:bg-sky-400 dark:text-sky-950">
                   {activeOnlineOrdersCount}
                 </span>
               ) : null}
@@ -1034,26 +1116,26 @@ export function PosScreen({
               <Button
                 variant="outline"
                 size="sm"
-                className="hidden h-11 min-w-0 flex-1 justify-center gap-1.5 rounded-xl border-emerald-200 bg-emerald-50 px-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-100 sm:inline-flex sm:h-10 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20"
+                className="hidden h-11 min-w-0 flex-1 justify-center gap-1.5 rounded-xl border-emerald-200 bg-emerald-50 px-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-100 lg:inline-flex dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20"
                 onClick={() => setCollectOpen(true)}
               >
                 <Banknote className="size-4 shrink-0" />
-                <span className="truncate">تحصيل</span>
+                <span className="truncate">{t("Collect")}</span>
               </Button>
             ) : null}
             {canPaySupplier ? (
               <Button
                 variant="outline"
                 size="sm"
-                className="hidden h-11 min-w-0 flex-1 justify-center gap-1.5 rounded-xl border-amber-200 bg-amber-50 px-2 text-sm font-semibold text-amber-900 hover:bg-amber-100 md:inline-flex md:h-10 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200 dark:hover:bg-amber-500/20"
+                className="hidden h-11 min-w-0 flex-1 justify-center gap-1.5 rounded-xl border-amber-200 bg-amber-50 px-2 text-sm font-semibold text-amber-900 hover:bg-amber-100 lg:inline-flex dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200 dark:hover:bg-amber-500/20"
                 onClick={() => setSupplierPayOpen(true)}
               >
                 <Truck className="size-4 shrink-0" />
-                <span className="truncate">مورد</span>
+                <span className="truncate">{t("Supplier")}</span>
               </Button>
             ) : null}
             {canAddSessionExpense && storeId && cashierId && sessionId ? (
-              <div className="hidden min-w-0 flex-1 md:block [&_button]:h-10 [&_button]:w-full md:[&_button]:h-10">
+              <div className="hidden min-w-0 flex-1 lg:block [&_button]:h-11 [&_button]:w-full">
                 <ExpenseWizard
                   storeId={storeId}
                   sessionId={sessionId}
@@ -1068,7 +1150,7 @@ export function PosScreen({
                       className="justify-center gap-1.5 rounded-xl border-rose-200 bg-rose-50 px-2 text-sm font-semibold text-rose-900 hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/20"
                     >
                       <Wallet className="size-4 shrink-0" />
-                      <span className="truncate">مصروف</span>
+                      <span className="truncate">{t("Expense")}</span>
                     </Button>
                   }
                 />
@@ -1078,27 +1160,28 @@ export function PosScreen({
               <Button
                 variant="outline"
                 size="sm"
-                className="hidden h-10 min-w-0 flex-1 justify-center gap-1.5 rounded-xl border-violet-200 bg-violet-50 px-2 text-sm font-semibold text-violet-900 hover:bg-violet-100 lg:inline-flex dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200 dark:hover:bg-violet-500/20"
+                className="hidden h-11 min-w-0 flex-1 justify-center gap-1.5 rounded-xl border-violet-200 bg-violet-50 px-2 text-sm font-semibold text-violet-900 hover:bg-violet-100 lg:inline-flex dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200 dark:hover:bg-violet-500/20"
                 disabled={pending}
                 onClick={handleOpenCashDrawer}
               >
                 <Archive className="size-4 shrink-0" />
-                <span className="truncate">الدرج</span>
+                <span className="truncate">{t("Drawer")}</span>
               </Button>
             ) : null}
             {(canCollectPayment ||
               canPaySupplier ||
               (canAddSessionExpense && storeId && cashierId && sessionId) ||
-              (cashDrawerEnabled)) ? (
-              <DropdownMenu>
+              cashDrawerEnabled ||
+              hasActiveSession) ? (
+              <DropdownMenu open={cashierMoreOpen} onOpenChange={setCashierMoreOpen}>
                 <DropdownMenuTrigger
                   render={
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-11 w-11 shrink-0 rounded-xl px-0 sm:h-10 sm:w-10 lg:hidden"
-                      aria-label="المزيد من إجراءات الكاشير"
+                      className="size-11 shrink-0 rounded-xl px-0 lg:hidden"
+                      aria-label={t("More cashier actions")}
                     />
                   }
                 >
@@ -1107,34 +1190,43 @@ export function PosScreen({
                 <DropdownMenuContent align="end" className="min-w-48">
                   {canCollectPayment ? (
                     <DropdownMenuItem
-                      onClick={() => setCollectOpen(true)}
-                      className="min-h-11 gap-2 sm:hidden"
+                      onClick={() => {
+                        setCashierMoreOpen(false);
+                        setCollectOpen(true);
+                      }}
+                      className="min-h-11 gap-2 lg:hidden"
                     >
                       <Banknote className="size-4" />
-                      تحصيل من عميل
+                      {t("Collect from customer")}
                     </DropdownMenuItem>
                   ) : null}
                   {canPaySupplier ? (
                     <DropdownMenuItem
-                      onClick={() => setSupplierPayOpen(true)}
-                      className="min-h-11 gap-2 md:hidden"
+                      onClick={() => {
+                        setCashierMoreOpen(false);
+                        setSupplierPayOpen(true);
+                      }}
+                      className="min-h-11 gap-2 lg:hidden"
                     >
                       <Truck className="size-4" />
-                      دفع مورد
+                      {t("Pay supplier")}
                     </DropdownMenuItem>
                   ) : null}
                   {cashDrawerEnabled ? (
                     <DropdownMenuItem
                       disabled={pending}
-                      onClick={handleOpenCashDrawer}
+                      onClick={() => {
+                        setCashierMoreOpen(false);
+                        handleOpenCashDrawer();
+                      }}
                       className="min-h-11 gap-2 lg:hidden"
                     >
                       <Archive className="size-4" />
-                      فتح الدرج
+                      {t("Open drawer")}
                     </DropdownMenuItem>
                   ) : null}
                   {canAddSessionExpense && storeId && cashierId && sessionId ? (
-                    <div className="md:hidden [&_button]:h-11 [&_button]:w-full [&_button]:justify-start [&_button]:rounded-md [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-2 [&_button]:py-2 [&_button]:text-sm [&_button]:font-normal [&_button]:shadow-none [&_button]:hover:bg-accent">
+                    <div className="lg:hidden [&_button]:h-11 [&_button]:w-full [&_button]:justify-start [&_button]:rounded-md [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-2 [&_button]:py-2 [&_button]:text-sm [&_button]:font-normal [&_button]:shadow-none [&_button]:hover:bg-accent">
                       <ExpenseWizard
                         storeId={storeId}
                         sessionId={sessionId}
@@ -1142,15 +1234,32 @@ export function PosScreen({
                         costCenters={costCenters}
                         categories={expenseCategories}
                         sessionMode
+                        onOpenChange={(expenseOpen) => {
+                          if (expenseOpen) setCashierMoreOpen(false);
+                        }}
                         trigger={
                           <Button type="button" variant="ghost" size="sm">
                             <Wallet className="size-4" />
-                            مصروف جلسة
+                            {t("Session expense")}
                           </Button>
                         }
                       />
                     </div>
                   ) : null}
+                  {readinessState === "ready" && activeSession && sessionReconciliation ? (
+                    <DropdownMenuItem
+                      className="min-h-11 gap-2 lg:hidden"
+                      onClick={() => {
+                        setCashierMoreOpen(false);
+                        setCloseSessionOpen(true);
+                      }}
+                    >
+                      {t("Close session")}
+                    </DropdownMenuItem>
+                  ) : null}
+                  <div className="lg:hidden">
+                    <PosPinSwitch returnTo={posPath} menuItem />
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : null}
@@ -1159,29 +1268,39 @@ export function PosScreen({
           <div className="min-w-0 flex-1" />
         )}
 
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5 max-[390px]:gap-1">
           {checkoutSaving ? (
-            <span className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-primary/30 bg-primary/10 px-2.5 text-sm font-semibold text-primary sm:h-10">
+            <span
+              className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/10 px-2.5 text-sm font-semibold text-primary max-lg:size-11 max-lg:px-0"
+              role="status"
+              aria-live="polite"
+            >
               <Loader2 className="size-4 shrink-0 animate-spin" />
-              <span className="truncate max-[390px]:sr-only">جاري حفظ الفاتورة…</span>
+              <span className="truncate max-lg:sr-only">{t("Saving invoice…")}</span>
             </span>
           ) : null}
           <OperatorShortcutHint variant="pos" className="me-1 hidden lg:block" />
           {hasActiveSession ? <PosHeldCartsBar /> : null}
           {readinessState === "ready" && hasActiveSession && activeSession && sessionReconciliation ? (
-            <PosCloseSessionDialog
-              session={activeSession}
-              reconciliation={sessionReconciliation}
-              sessionExpenses={sessionExpenses}
-              cashierName={cashierName ?? "الكاشير"}
-              costCenterMap={costCenterMap}
-              categoryMap={expenseCategoryMap}
-              triggerSize="sm"
-              triggerClassName="h-11 rounded-full px-3 sm:h-10"
-              triggerChildren="إغلاق"
-            />
+            <div className="hidden lg:block">
+              <PosCloseSessionDialog
+                open={closeSessionOpen}
+                onOpenChange={setCloseSessionOpen}
+                session={activeSession}
+                reconciliation={sessionReconciliation}
+                sessionExpenses={sessionExpenses}
+                cashierName={cashierName ?? t("Cashier")}
+                costCenterMap={costCenterMap}
+                categoryMap={expenseCategoryMap}
+                triggerSize="sm"
+                triggerClassName="h-11 rounded-full px-3"
+                triggerChildren={t("Close")}
+              />
+            </div>
           ) : null}
-          <PosPinSwitch returnTo={posPath} />
+          <div className={hasActiveSession ? "hidden lg:block" : undefined}>
+            <PosPinSwitch returnTo={posPath} />
+          </div>
         </div>
         </div>
       </div>
@@ -1193,62 +1312,130 @@ export function PosScreen({
             onSelect={setCategoryId}
           />
           <form
-            className="flex gap-1.5 sm:gap-2"
+            className="flex flex-wrap gap-1.5"
             onSubmit={(e) => {
               e.preventDefault();
               if (searchTerm.trim()) handleBarcodeSubmit(searchTerm);
             }}
           >
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground max-[390px]:start-2.5" />
+            <div className="relative min-w-0 flex-1">
+              {barcodeEnabled ? (
+                <ScanBarcode className="pointer-events-none absolute start-3 top-1/2 size-5 -translate-y-1/2 text-primary" aria-hidden />
+              ) : (
+                <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+              )}
               <Input
+                ref={searchInputRef}
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={barcodeEnabled ? "ابحث أو امسح الباركود…" : "ابحث عن منتجات…"}
-                aria-label={barcodeEnabled ? "بحث أو مسح باركود" : "بحث عن منتجات"}
-                className="h-11 rounded-xl ps-10 text-base max-[390px]:ps-9"
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setSearchError(null);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape" && searchTerm) {
+                    event.preventDefault();
+                    setSearchTerm("");
+                    setSearchError(null);
+                  }
+                }}
+                placeholder={t(barcodeEnabled ? "Search or scan barcode…" : "Search products…")}
+                aria-label={t(barcodeEnabled ? "Search or scan barcode" : "Search products")}
+                aria-describedby={
+                  [barcodeEnabled ? "pos-barcode-hint" : null, searchError ? "pos-search-error" : null]
+                    .filter(Boolean)
+                    .join(" ") || undefined
+                }
+                aria-invalid={Boolean(searchError)}
+                aria-keyshortcuts="/ Escape"
+                className="h-11 rounded-xl bg-card ps-11 pe-11 text-base shadow-none ring-1 ring-border/50 focus-visible:ring-2 aria-invalid:ring-destructive/70 sm:pe-24"
                 autoComplete="off"
                 enterKeyHint="search"
                 inputMode="search"
               />
+              {searchTerm ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setSearchError(null);
+                    searchInputRef.current?.focus();
+                  }}
+                  className="absolute end-0 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-xl text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                  aria-label={t("Clear search")}
+                >
+                  <X className="size-4" aria-hidden />
+                </button>
+              ) : barcodeEnabled ? (
+                <span className="pointer-events-none absolute end-3 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded-md bg-primary/8 px-2 py-1 text-[10px] font-semibold text-primary sm:flex">
+                  <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
+                  {t("Scanner ready")}
+                </span>
+              ) : null}
+              {barcodeEnabled ? (
+                <span id="pos-barcode-hint" className="sr-only">
+                  {t("Scan barcode or type a product name, then press Enter to add")}
+                </span>
+              ) : null}
             </div>
             <Button
               type="submit"
               variant="outline"
-              className="h-11 shrink-0 rounded-xl px-4 max-sm:w-11 max-sm:px-0 sm:px-5"
-              aria-label="إضافة من البحث"
+              className="hidden h-11 shrink-0 rounded-xl px-4 sm:inline-flex"
+              aria-label={t("Add from search")}
             >
-              <span className="max-sm:hidden">إضافة</span>
-              <Plus className="hidden size-5 max-sm:block" aria-hidden />
+              <Plus className="size-4" aria-hidden />
+              {t("Add")}
             </Button>
+            {searchError ? (
+              <p
+                id="pos-search-error"
+                className="basis-full px-1 text-xs font-medium text-destructive"
+                role="alert"
+              >
+                {searchError}
+              </p>
+            ) : null}
           </form>
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain rounded-2xl bg-muted/50 p-2 pb-[calc(5.75rem+env(safe-area-inset-bottom))] ring-1 ring-border/70 max-[390px]:rounded-xl max-[390px]:p-1.5 sm:p-3 lg:p-4 lg:pb-4">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain rounded-xl bg-muted/45 p-1.5 ring-1 ring-border/70 sm:p-2 lg:p-2.5">
             {catalogLoading ? (
               <EmptyStateBlock
-                title="جاري تحميل المنتجات…"
-                description="ثواني ونرجع للقائمة."
-                className="flex min-h-40 flex-col items-center justify-center border-border/70 bg-card/80 p-4 py-8 sm:min-h-48 sm:py-10"
+                title={t("Loading products…")}
+                description={t("This will only take a moment.")}
+                className="flex min-h-32 flex-col items-center justify-center border-border/70 bg-card/80 p-3 py-5 sm:min-h-40 sm:py-7"
               />
             ) : catalogError ? (
               <EmptyStateBlock
-                title="تعذر تحميل المنتجات"
+                title={t("Could not load products")}
                 description={catalogError}
-                className="flex min-h-40 flex-col items-center justify-center border-border/70 bg-card/80 p-4 py-8 sm:min-h-48 sm:py-10"
+                className="flex min-h-32 flex-col items-center justify-center border-border/70 bg-card/80 p-3 py-5 sm:min-h-40 sm:py-7"
               />
             ) : products.length === 0 ? (
               <EmptyStateBlock
-                title={searchTerm.trim() ? "لا نتائج" : "لا توجد منتجات"}
+                title={t(searchTerm.trim() ? "No results" : "No products")}
                 description={
                   searchTerm.trim()
-                    ? "جرّب اسمًا أو باركود مختلف."
+                    ? t("Try a different name or barcode.")
                     : categoryId
-                      ? "لا توجد منتجات في هذا التصنيف."
-                      : "أضف منتجات للكتالوج عشان تبدأ البيع."
+                      ? t("No products in this category.")
+                      : t("Add products to the catalog to start selling.")
                 }
-                className="flex min-h-40 flex-col items-center justify-center border-border/70 bg-card/80 p-4 py-8 sm:min-h-48 sm:py-10"
+                action={
+                  searchTerm.trim() || categoryId ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-11 rounded-xl px-4"
+                      onClick={clearCatalogFilters}
+                    >
+                      {t(searchTerm.trim() && categoryId ? "Clear filters" : categoryId ? "Show all products" : "Clear search")}
+                    </Button>
+                  ) : undefined
+                }
+                className="flex min-h-32 flex-col items-center justify-center border-border/70 bg-card/80 p-3 py-5 sm:min-h-40 sm:py-7"
               />
             ) : (
-              <div className="grid grid-cols-2 gap-1.5 min-[400px]:gap-2 sm:grid-cols-[repeat(auto-fit,minmax(128px,1fr))] sm:gap-2.5 md:grid-cols-[repeat(auto-fit,minmax(136px,1fr))] lg:grid-cols-[repeat(auto-fit,minmax(120px,1fr))]">
+              <div className="grid grid-cols-2 gap-1.5 min-[350px]:grid-cols-3 sm:grid-cols-[repeat(auto-fit,minmax(112px,1fr))] sm:gap-2 lg:grid-cols-[repeat(auto-fit,minmax(118px,1fr))]">
                 {products.map((product) => (
                   <ProductTile
                     key={product.id}
@@ -1263,11 +1450,11 @@ export function PosScreen({
           </div>
         </section>
 
-        <aside className="hidden min-h-0 w-[min(400px,36vw)] shrink-0 flex-col lg:flex">
+        <aside className="hidden min-h-0 w-[min(340px,40vw)] shrink-0 flex-col md:flex lg:w-[min(380px,34vw)]">
           <CartPanel
             onCheckout={cartCheckout}
             checkoutDisabled={payLocked || cart.length === 0}
-            checkoutBlockedReason={checkoutBlockedReason}
+            checkoutBlockedReason={checkoutBlockedReason ? t(checkoutBlockedReason) : null}
             discountsEnabled={discountsEnabled}
             promoCartDiscount={promoCartDiscount}
             promoItemSavings={promoItemSavings}
@@ -1286,12 +1473,12 @@ export function PosScreen({
           {checkoutBlocked ? (
             <div className="mt-2.5 space-y-2.5 rounded-2xl border border-amber-500/25 bg-amber-50/80 p-3.5 text-center dark:bg-amber-500/10">
               <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-                {checkoutBlockedReason}
+                {checkoutBlockedReason ? t(checkoutBlockedReason) : null}
               </p>
               {readinessState === "no_session" ? (
                 <QuickOpenSessionButton
                   className="w-full"
-                  label="ابدأ البيع الآن"
+                  label="Start selling"
                   pendingOpeningFloat={pendingOpeningFloat}
                 />
               ) : null}
@@ -1305,20 +1492,20 @@ export function PosScreen({
             showCloseButton
             className="flex h-[min(94dvh,100%)] max-h-[min(94dvh,100%)] flex-col gap-0 overflow-hidden rounded-t-2xl border-t p-0 max-[390px]:h-[min(96dvh,100%)] max-[390px]:max-h-[min(96dvh,100%)] data-[side=bottom]:h-[min(94dvh,100%)] data-[side=bottom]:max-[390px]:h-[min(96dvh,100%)]"
           >
-            <div className="flex justify-center pt-2 pb-1" aria-hidden>
-              <span className="h-1.5 w-10 rounded-full bg-muted-foreground/35" />
+            <div className="flex justify-center pb-0.5 pt-1.5" aria-hidden>
+              <span className="h-1 w-9 rounded-full bg-muted-foreground/35" />
             </div>
-            <SheetHeader className="shrink-0 gap-0 border-b border-border/60 px-4 py-2.5 pe-14 text-start">
-              <SheetTitle className="text-base font-semibold">
-                السلة
+            <SheetHeader className="flex shrink-0 flex-row items-center justify-between gap-2 border-b border-border/60 px-3 py-1.5 pe-14 text-start">
+              <SheetTitle className="min-w-0 truncate text-sm font-semibold">
+                {t("Cart")}
                 {cartItemCount > 0 ? (
-                  <span className="ms-2 text-sm font-medium text-muted-foreground">
-                    · {cartItemCount} {cartItemCount === 1 ? "صنف" : "أصناف"}
+                  <span className="ms-1.5 text-xs font-medium text-muted-foreground">
+                    · {cartItemCount} {t(cartItemCount === 1 ? "item" : "items")}
                   </span>
                 ) : null}
               </SheetTitle>
-              <SheetDescription className="text-sm font-semibold tabular-nums text-foreground">
-                {cartTotal === 0 ? "أضف أصناف عشان تدفع" : `الإجمالي ${formatCurrency(cartTotal)}`}
+              <SheetDescription className="shrink-0 text-xs font-bold tabular-nums text-foreground">
+                {cartTotal === 0 ? t("Add items to continue") : `${t("Total")} ${formatCurrency(cartTotal, "EGP", locale)}`}
               </SheetDescription>
             </SheetHeader>
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -1328,7 +1515,7 @@ export function PosScreen({
                   cartCheckout(method);
                 }}
                 checkoutDisabled={payLocked || cart.length === 0}
-                checkoutBlockedReason={checkoutBlockedReason}
+                checkoutBlockedReason={checkoutBlockedReason ? t(checkoutBlockedReason) : null}
                 discountsEnabled={discountsEnabled}
                 promoCartDiscount={promoCartDiscount}
                 promoItemSavings={promoItemSavings}
@@ -1345,14 +1532,14 @@ export function PosScreen({
                 onRequestClearCart={() => setClearConfirmOpen(true)}
               />
               {checkoutBlocked ? (
-                <div className="space-y-2.5 border-t border-border/60 p-4 text-center">
+                <div className="space-y-2 border-t border-border/60 p-2.5 text-center">
                   <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-                    {checkoutBlockedReason}
+                    {checkoutBlockedReason ? t(checkoutBlockedReason) : null}
                   </p>
                   {readinessState === "no_session" ? (
                     <QuickOpenSessionButton
                       className="w-full"
-                      label="ابدأ البيع الآن"
+                      label={t("Start selling now")}
                       pendingOpeningFloat={pendingOpeningFloat}
                     />
                   ) : null}
@@ -1408,7 +1595,7 @@ export function PosScreen({
             <DialogHeader className="border-b border-border/70 px-3 py-3 sm:px-4">
               <DialogTitle className="flex items-center gap-2 pe-8 text-base sm:text-lg">
                 <ClipboardList className="size-5 text-primary" />
-                طلبات الأونلاين
+                {t("Online Orders")}
                 {activeOnlineOrdersCount > 0 ? (
                   <span className="rounded-full bg-sky-700 px-2 py-0.5 text-xs font-bold text-white tabular-nums dark:bg-sky-400 dark:text-sky-950">
                     {activeOnlineOrdersCount}
@@ -1431,7 +1618,11 @@ export function PosScreen({
           <PosCollectFlowDialog open={collectOpen} onOpenChange={setCollectOpen} />
         ) : null}
         {canPaySupplier ? (
-          <PosSupplierPayDialog open={supplierPayOpen} onOpenChange={setSupplierPayOpen} />
+          <PosSupplierPayDialog
+            open={supplierPayOpen}
+            onOpenChange={setSupplierPayOpen}
+            storeId={storeId}
+          />
         ) : null}
       <WeightAmountModal
         open={Boolean(weightProduct)}
@@ -1462,19 +1653,20 @@ export function PosScreen({
       />
       </div>
 
+      <div className="shrink-0 pb-[max(0rem,calc(env(safe-area-inset-bottom)-0.5rem))] md:hidden">
       <Button
         type="button"
-        className="flex h-16 shrink-0 items-center justify-between gap-3 rounded-2xl px-3 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-2 text-base shadow-lg transition active:scale-[0.99] max-[390px]:rounded-xl sm:h-14 sm:px-4 sm:pb-0 sm:pt-0 lg:hidden"
+        className="flex h-12 w-full items-center justify-between gap-2.5 rounded-xl px-2.5 py-1 text-sm shadow-md transition active:scale-[0.99] sm:h-13 sm:px-3"
         onClick={() => setCartOpen(true)}
         aria-label={
           cartItemCount > 0
-            ? `فتح السلة، ${cartItemCount} أصناف، الإجمالي ${formatCurrency(cartTotal)}`
-            : "فتح السلة"
+            ? `${t("Open cart")}, ${cartItemCount} ${t("items")}, ${t("Total")} ${formatCurrency(cartTotal, "EGP", locale)}`
+            : t("Open cart")
         }
       >
         <span className="flex min-w-0 items-center gap-2.5">
-          <span className="relative flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary-foreground/15 sm:size-10">
-            <ShoppingCart className="size-5" />
+          <span className="relative flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary-foreground/15 sm:size-10">
+            <ShoppingCart className="size-4.5" />
             {cartItemCount > 0 ? (
               <span className="absolute -top-1 -end-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-background px-1 text-[11px] font-bold text-primary tabular-nums">
                 {cartItemCount > 99 ? "99+" : cartItemCount}
@@ -1482,27 +1674,28 @@ export function PosScreen({
             ) : null}
           </span>
           <span className="min-w-0 text-start">
-            <span className="block truncate text-[15px] font-semibold leading-tight sm:text-sm">
+            <span className="block truncate text-sm font-semibold leading-tight">
               {cartItemCount === 0
-                ? "السلة فاضية"
-                : `${cartItemCount} ${cartItemCount === 1 ? "صنف" : "أصناف"}`}
+                ? t("Cart is empty")
+                : `${cartItemCount} ${t(cartItemCount === 1 ? "item" : "items")}`}
             </span>
             <span className="block text-xs font-medium text-primary-foreground/80">
-              {cartItemCount === 0 ? "اضغط للمتابعة" : "اضغط للدفع"}
+              {t(cartItemCount === 0 ? "Tap to continue" : "Tap to pay")}
             </span>
           </span>
         </span>
         <span className="flex shrink-0 flex-col items-end gap-0.5">
-          <span className="text-xl font-bold tabular-nums leading-none sm:text-lg">
+          <span className="text-lg font-bold tabular-nums leading-none">
             {cartTotal === 0 ? "—" : formatCurrency(cartTotal)}
           </span>
           {cartItemCount > 0 ? (
             <span className="rounded-full bg-primary-foreground/15 px-2 py-0.5 text-[11px] font-bold tracking-wide text-primary-foreground">
-              ادفع
+              {t("Pay")}
             </span>
           ) : null}
         </span>
       </Button>
+      </div>
 
     </div>
       {lastReceipt && receiptEnabled ? (
@@ -1520,9 +1713,9 @@ export function PosScreen({
       <ConfirmActionDialog
         open={clearConfirmOpen}
         onOpenChange={setClearConfirmOpen}
-        title="مسح السلة؟"
-        description="هتتمسح كل الأصناف من الفاتورة الحالية. الفواتير المعلّقة مش هتتأثر."
-        confirmLabel="مسح السلة"
+        title={t("Clear cart?")}
+        description={t("All items in the current sale will be removed. Held carts are not affected.")}
+        confirmLabel={t("Clear cart")}
         destructive
         onConfirm={() => {
           clearCart();
@@ -1534,7 +1727,7 @@ export function PosScreen({
       onOpenChange={(open) => {
         if (!open) setOverrideDialog(null);
       }}
-      title={overrideDialog?.title ?? "موافقة المدير"}
+      title={overrideDialog?.title ?? t("Manager approval")}
       defaultReason={overrideDialog?.defaultReason ?? ""}
       onConfirm={(reason, pin) => {
         if (!overrideDialog) return;

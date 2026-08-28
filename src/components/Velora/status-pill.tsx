@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { LocalizedText } from "@/components/Velora/localized-text";
 
 const variants = {
   default: "bg-muted text-muted-foreground",
@@ -27,7 +28,7 @@ export function StatusPill({ label, variant = "default", className }: StatusPill
         className
       )}
     >
-      {label}
+      <LocalizedText text={label} />
     </span>
   );
 }

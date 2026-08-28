@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { resolveDisplayPriceRange } from "@/modules/products/lib/display-price-range";
 import { updateProductAction } from "../actions/product.actions";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 export interface ProductGridItem {
   product: Product;
@@ -66,6 +67,7 @@ export function ProductGrid({
   onDelete,
   emptyAction,
 }: ProductGridProps) {
+  const { t } = useTranslation();
   const [localItems, setLocalItems] = useState(items);
   const snapshotRef = useRef<ProductGridItem[] | null>(null);
 
@@ -89,7 +91,7 @@ export function ProductGrid({
         await updateProductAction(product.id, { is_active: isActive });
       } catch (error) {
         if (snapshotRef.current) setLocalItems(snapshotRef.current);
-        toast.error(error instanceof Error ? error.message : "تعذر تحديث حالة المنتج");
+        toast.error(error instanceof Error ? t(error.message) : t("Could not update product status."));
       }
     })();
   }
@@ -97,8 +99,8 @@ export function ProductGrid({
   if (localItems.length === 0) {
     return (
       <EmptyStateBlock
-        title="لا توجد منتجات مطابقة"
-        description="عدّل البحث أو التصنيف، أو أضف صنفًا جديدًا."
+        title={t("No matching products")}
+        description={t("Change the search or category, or add a new product.")}
         action={emptyAction}
       />
     );
@@ -177,9 +179,9 @@ export function ProductGrid({
                 )}
                 <div className="absolute inset-x-0 bottom-0 flex flex-wrap gap-1 p-[var(--mds-space-2)]">
                   {missingRecipeVariantCount > 0 ? (
-                    <StatusPill label="تكلفة ناقصة" variant="warning" />
+                    <StatusPill label={t("Missing cost")} variant="warning" />
                   ) : null}
-                  {product.is_popular ? <StatusPill label="شائع" variant="info" /> : null}
+                  {product.is_popular ? <StatusPill label={t("Popular")} variant="info" /> : null}
                 </div>
               </div>
 
@@ -187,10 +189,10 @@ export function ProductGrid({
                 <div className="min-w-0 space-y-1">
                   <div className="flex items-center justify-between gap-2">
                     <p className="truncate text-xs font-medium text-muted-foreground">
-                      {category?.name ?? "غير مصنف"}
+                      {category?.name ?? t("Uncategorized")}
                     </p>
                     <StatusPill
-                      label={product.is_active ? "نشط" : "متوقف"}
+                      label={product.is_active ? t("Active") : t("Inactive")}
                       variant={product.is_active ? "success" : "warning"}
                     />
                   </div>
@@ -206,10 +208,10 @@ export function ProductGrid({
                   <div className="min-w-0 space-y-0.5">
                     <dt className="text-[11px] text-muted-foreground">
                       {priceMode === "cost"
-                        ? "تكلفة الوحدة"
+                        ? t("Unit cost")
                         : showVariantPrice && priceRange
-                          ? "نطاق السعر"
-                          : "السعر"}
+                          ? t("Price range")
+                          : t("Price")}
                     </dt>
                     <dd className="truncate text-sm font-semibold tabular-nums tracking-tight">
                       {formatCurrency(amount, currency)}
@@ -226,10 +228,10 @@ export function ProductGrid({
                     </dd>
                   </div>
                   <div className="min-w-0 space-y-0.5 text-end">
-                    <dt className="text-[11px] text-muted-foreground">المخزون</dt>
+                    <dt className="text-[11px] text-muted-foreground">{t("Inventory stock")}</dt>
                     <dd className="truncate text-sm font-semibold tabular-nums tracking-tight">
                       {stock == null ? (
-                        <span className="font-normal text-muted-foreground">غير متتبع</span>
+                        <span className="font-normal text-muted-foreground">{t("Not tracked")}</span>
                       ) : (
                         <>
                           {stock}{" "}
@@ -243,9 +245,9 @@ export function ProductGrid({
                   {variantCount > 0 || hasRecipe ? (
                     <div className="col-span-2 flex flex-wrap gap-1 border-t border-border/50 pt-2">
                       {variantCount > 0 ? (
-                        <StatusPill label={`${variantCount} أحجام`} variant="info" />
+                        <StatusPill label={`${variantCount} ${t("sizes")}`} variant="info" />
                       ) : null}
-                      {hasRecipe ? <StatusPill label="وصفة" variant="info" /> : null}
+                      {hasRecipe ? <StatusPill label={t("Recipe")} variant="info" /> : null}
                     </div>
                   ) : null}
                 </dl>
@@ -258,11 +260,11 @@ export function ProductGrid({
                     className="h-9 flex-1"
                     onClick={() => setActive(product, !product.is_active)}
                     aria-label={
-                      product.is_active ? `إيقاف ${product.name}` : `تفعيل ${product.name}`
+                      product.is_active ? `${t("Deactivate")} ${product.name}` : `${t("Activate")} ${product.name}`
                     }
                   >
                     <Power className="size-3.5" />
-                    {product.is_active ? "إيقاف" : "تفعيل"}
+                    {product.is_active ? t("Deactivate") : t("Activate")}
                   </Button>
                   {showEdit ? (
                     <Button
@@ -281,7 +283,7 @@ export function ProductGrid({
                           variants,
                         })
                       }
-                      aria-label={`تعديل ${product.name}`}
+                      aria-label={`${t("Edit")} ${product.name}`}
                     >
                       <Pencil className="size-3.5" />
                     </Button>
@@ -292,7 +294,7 @@ export function ProductGrid({
                     variant="ghost"
                     className="h-9 text-destructive hover:bg-destructive/10 hover:text-destructive"
                     onClick={() => onDelete(product)}
-                    aria-label={`حذف ${product.name}`}
+                    aria-label={`${t("Delete")} ${product.name}`}
                   >
                     <Trash2 className="size-3.5" />
                   </Button>

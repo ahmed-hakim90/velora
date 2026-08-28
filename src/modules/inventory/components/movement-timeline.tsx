@@ -1,20 +1,18 @@
 "use client";
 
 import { formatDistanceToNow } from "date-fns";
+import { arEG, enUS } from "date-fns/locale";
 import { ArrowDown, ArrowUp, Minus } from "lucide-react";
 import { GlassPanel } from "@/components/Velora/glass-panel";
 import { StatusPill } from "@/components/Velora/status-pill";
 import type { MovementTimelineItem } from "../services/movement.service";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 const typeLabels: Record<string, string> = {
-  sale: "Sale",
-  purchase: "Purchase",
-  transfer_in: "Transfer in",
-  transfer_out: "Transfer out",
-  waste: "Waste",
-  adjustment: "Adjustment",
-  stock_count: "Stock count",
+  sale: "Sale", purchase: "Purchase", purchase_from_session: "Session purchase",
+  transfer_in: "Transfer in", transfer_out: "Transfer out", waste: "Waste",
+  adjustment: "Adjustment", stock_count: "Stock count", reservation: "Reservation", reservation_release: "Reservation release",
 };
 
 interface MovementTimelineProps {
@@ -23,10 +21,11 @@ interface MovementTimelineProps {
 }
 
 export function MovementTimeline({ movements, compact }: MovementTimelineProps) {
+  const { t, language } = useTranslation();
   if (movements.length === 0) {
     return (
       <GlassPanel className="p-8 text-center text-sm text-muted-foreground">
-        No inventory movements yet. Adjust stock or receive purchases to populate the timeline.
+        {t("No inventory movements match the current filters.")}
       </GlassPanel>
     );
   }
@@ -65,13 +64,13 @@ export function MovementTimeline({ movements, compact }: MovementTimelineProps) 
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="min-w-0 truncate font-medium">{movement.productName}</p>
                   <StatusPill
-                    label={typeLabels[movement.movement_type] ?? movement.movement_type}
+                    label={t(typeLabels[movement.movement_type] ?? movement.movement_type)}
                     variant="default"
                   />
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {movement.warehouseName} · {movement.reason ?? "بدون سبب مسجل"} ·{" "}
-                  {formatDistanceToNow(new Date(movement.created_at), { addSuffix: true })}
+                  {movement.warehouseName} · {movement.reason ?? t("No reason recorded")} ·{" "}
+                  {formatDistanceToNow(new Date(movement.created_at), { addSuffix: true, locale: language === "ar" ? arEG : enUS })}
                 </p>
                 <p
                   className={cn(
@@ -81,7 +80,7 @@ export function MovementTimeline({ movements, compact }: MovementTimelineProps) 
                   )}
                 >
                   {positive ? "+" : ""}
-                  {movement.quantity_delta} units
+                  {movement.quantity_delta} {t("unit")}
                 </p>
               </div>
             </li>

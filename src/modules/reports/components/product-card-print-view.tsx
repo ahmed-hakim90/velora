@@ -1,7 +1,10 @@
+"use client";
+
 import { PrintableDocument } from "@/modules/reports/components/printable-document";
 import { formatDateTime } from "@/lib/format";
 import type { ReportBranding } from "@/modules/reports/core/report-context";
 import type { ProductStockCardReport } from "@/modules/reports/services/product-stock-card.service";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 function formatQty(n: number): string {
   if (Number.isInteger(n)) return String(n);
@@ -20,63 +23,65 @@ export interface ProductCardPrintData {
 }
 
 export function ProductCardPrintView({ report: r, context }: ProductCardPrintData) {
+  const { t, language } = useTranslation();
   if (!r) {
     return (
       <PrintableDocument
         branding={context}
-        title="كارت صنف"
+        title="Product Stock Card"
         generatedBy={context.generatedBy}
         generatedAt={context.generatedAt}
       >
-        <p className="text-sm text-muted-foreground">اختار صنف لطباعة الكارت.</p>
+        <p className="text-sm text-muted-foreground">{t("Choose a product to print its stock card.")}</p>
       </PrintableDocument>
     );
   }
 
-  const fromLabel = new Date(r.fromIso).toLocaleDateString("ar-EG");
-  const toLabel = new Date(r.toIso).toLocaleDateString("ar-EG");
+  const locale = language === "ar" ? "ar-EG" : "en-GB";
+  const fromLabel = new Date(r.fromIso).toLocaleDateString(locale);
+  const toLabel = new Date(r.toIso).toLocaleDateString(locale);
   const unit = r.product.unitLabel;
 
   return (
     <PrintableDocument
       branding={context}
-      title="كارت صنف"
+      title="Product Stock Card"
       dateRange={`${fromLabel} — ${toLabel}`}
       generatedBy={context.generatedBy}
       generatedAt={context.generatedAt}
       filterSummary={`${r.product.name}${r.product.sku ? ` · ${r.product.sku}` : ""}${
-        r.warehouseName ? ` · ${r.warehouseName}` : " · كل المخازن"
+        r.warehouseName ? ` · ${r.warehouseName}` : ` · ${t("All warehouses")}`
       }`}
     >
       <table className="mb-6 w-full text-sm">
         <tbody>
           <tr className="border-b">
-            <td className="py-2 font-medium">بدانا بـ</td>
+            <td className="py-2 font-medium">{t("Opening balance")}</td>
             <td className="py-2 text-end tabular-nums">
               {formatQty(r.openingQty)} {unit}
             </td>
           </tr>
           <tr className="border-b">
-            <td className="py-2 font-medium">جه</td>
+            <td className="py-2 font-medium">{t("Inbound")}</td>
             <td className="py-2 text-end tabular-nums">
               {formatQty(r.totals.inQty)} {unit}
             </td>
           </tr>
           <tr className="border-b">
-            <td className="py-2 font-medium">طلع</td>
+            <td className="py-2 font-medium">{t("Outbound")}</td>
             <td className="py-2 text-end tabular-nums">
               {formatQty(r.totals.outQty)} {unit}
             </td>
           </tr>
           <tr className="border-b">
-            <td className="py-2 font-medium">اتساوى</td>
+            <td className="py-2 font-medium">{t("Adjustments")}</td>
             <td className="py-2 text-end tabular-nums">
               {r.totals.equalizeQty > 0 ? "+" : ""}
               {formatQty(r.totals.equalizeQty)} {unit}
             </td>
           </tr>
           <tr className="border-b">
-            <td className="py-2 font-medium">متاح (نهاية الفترة)</td>
+            <td className="py-2 font-medium">{t("Closing stock")}</td>
             <td className="py-2 text-end font-semibold tabular-nums">
               {formatQty(r.closingQty)} {unit}
             </td>
@@ -87,18 +92,18 @@ export function ProductCardPrintView({ report: r, context }: ProductCardPrintDat
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b">
-            <th className="py-2 text-start">التاريخ</th>
-            <th className="py-2 text-start">النوع</th>
-            <th className="py-2 text-end">جه</th>
-            <th className="py-2 text-end">طلع</th>
-            <th className="py-2 text-end">اتساوى</th>
-            <th className="py-2 text-end">الرصيد</th>
+            <th className="py-2 text-start">{t("Date")}</th>
+            <th className="py-2 text-start">{t("Type")}</th>
+            <th className="py-2 text-end">{t("Inbound")}</th>
+            <th className="py-2 text-end">{t("Outbound")}</th>
+            <th className="py-2 text-end">{t("Adjustments")}</th>
+            <th className="py-2 text-end">{t("Balance")}</th>
           </tr>
         </thead>
         <tbody>
           <tr className="border-b bg-muted/20">
             <td className="py-2" colSpan={5}>
-              رصيد افتتاحي
+              {t("Opening balance")}
             </td>
             <td className="py-2 text-end font-medium tabular-nums">
               {formatQty(r.openingQty)}

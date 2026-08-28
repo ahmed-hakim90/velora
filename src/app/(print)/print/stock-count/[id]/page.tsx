@@ -34,18 +34,18 @@ export default async function PrintStockCountPage({
   const branding = await getReportBranding(data.sheet.storeId);
   const statusLabel =
     data.sheet.status === "completed"
-      ? "مكتمل"
+      ? "Completed"
       : data.sheet.status === "approved"
-        ? "معتمد"
+        ? "Approved"
         : data.sheet.status === "pending_approval"
-          ? "بانتظار الاعتماد"
-          : "جارٍ العد";
+          ? "Pending approval"
+          : "Counting";
 
   return (
     <StockCountPrintView
-      title="تقرير جرد المخزون"
-      subtitle={`جرد ${data.sheet.countId.slice(0, 8)} · ${statusLabel}`}
-      filterSummary={`فرع: ${data.sheet.storeName} · مخزن: ${data.sheet.warehouseName}`}
+      title="Stock Count Report"
+      subtitle={`Count ${data.sheet.countId.slice(0, 8)} · ${statusLabel}`}
+      filterSummary={`Branch: ${data.sheet.storeName} · Warehouse: ${data.sheet.warehouseName}`}
       groups={data.sheet.groups}
       lines={data.sheet.lines}
       truncated={data.sheet.truncated}

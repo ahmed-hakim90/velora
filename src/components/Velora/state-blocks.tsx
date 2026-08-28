@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { LocalizedText } from "@/components/Velora/localized-text";
 
 export function EmptyStateBlock({
   title,
@@ -30,15 +31,15 @@ export function EmptyStateBlock({
         className
       )}
     >
-      <p className="text-base font-semibold">{title}</p>
+      <p className="text-base font-semibold"><LocalizedText text={title} /></p>
       {description ? (
-        <p className="mt-[var(--mds-space-1)] text-sm text-muted-foreground">{description}</p>
+        <p className="mt-[var(--mds-space-1)] text-sm text-muted-foreground"><LocalizedText text={description} /></p>
       ) : null}
       {hasActions ? (
         <div className="mt-[var(--mds-space-4)] flex flex-wrap items-center justify-center gap-[var(--mds-space-2)]">
           {hasLinkCta ? (
             <Link href={ctaHref!} className={buttonVariants()}>
-              {ctaLabel}
+              <LocalizedText text={ctaLabel!} />
             </Link>
           ) : null}
           {action}
@@ -69,7 +70,7 @@ export function LoadingStateBlock({
       <Skeleton className="h-4 w-full" />
       <Skeleton className="h-4 w-5/6" />
       <Skeleton className="h-24 w-full" />
-      <p className="sr-only">{label}</p>
+      <p className="sr-only"><LocalizedText text={label} /></p>
     </div>
   );
 }
@@ -96,14 +97,14 @@ export function ErrorStateBlock({
       )}
       role="alert"
     >
-      <p className="text-base font-semibold text-[var(--mds-color-feedback-danger)]">{title}</p>
+      <p className="text-base font-semibold text-[var(--mds-color-feedback-danger)]"><LocalizedText text={title} /></p>
       {description ? (
-        <p className="mt-[var(--mds-space-1)] text-sm text-muted-foreground">{description}</p>
+        <p className="mt-[var(--mds-space-1)] text-sm text-muted-foreground"><LocalizedText text={description} /></p>
       ) : null}
       {onRetry ? (
         <div className="mt-[var(--mds-space-4)] flex justify-center">
           <Button type="button" variant="outline" size="sm" onClick={onRetry}>
-            {retryLabel}
+            <LocalizedText text={retryLabel} />
           </Button>
         </div>
       ) : null}
