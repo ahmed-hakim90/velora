@@ -11,6 +11,13 @@ export type StorefrontPageKind =
   | "order"
   | "login"
   | "account"
+  | "categories"
+  | "offers"
+  | "wishlist"
+  | "track"
+  | "about"
+  | "contact"
+  | "policy"
   | "notFound";
 
 export type StorefrontSectionSlot =
@@ -19,6 +26,11 @@ export type StorefrontSectionSlot =
   | "featuredCategories"
   | "featuredProducts"
   | "benefits";
+
+export type StorefrontHomeSection = {
+  id: StorefrontSectionSlot;
+  enabled: boolean;
+};
 
 export interface StorefrontThemeTokens {
   colors: {
@@ -112,6 +124,10 @@ export interface StorefrontData {
   currency: string;
   canOrder: boolean;
   unavailableMessage: string | null;
+  contact: {
+    phone: string | null;
+    address: string | null;
+  };
   fulfillment: {
     pickupEnabled: boolean;
     deliveryEnabled: boolean;
@@ -121,6 +137,7 @@ export interface StorefrontData {
   configVersion: number;
   brand: StorefrontBrand;
   content: StorefrontContent;
+  homeSections: StorefrontHomeSection[];
   categories: StorefrontCategory[];
   products: StorefrontProduct[];
 }
@@ -145,6 +162,7 @@ export type StorefrontThemePageProps = {
   order?: StorefrontOrderSummary;
   customerAccount?: StorefrontCustomerAccountSummary | null;
   authError?: string;
+  policyKind?: "privacy" | "returns" | "terms";
 };
 
 export type StorefrontOrderSummary = {
@@ -192,6 +210,13 @@ export interface StorefrontThemePages {
   Order: StorefrontThemePage;
   Login: StorefrontThemePage;
   Account: StorefrontThemePage;
+  Categories: StorefrontThemePage;
+  Offers: StorefrontThemePage;
+  Wishlist: StorefrontThemePage;
+  Track: StorefrontThemePage;
+  About: StorefrontThemePage;
+  Contact: StorefrontThemePage;
+  Policy: StorefrontThemePage;
   NotFound: StorefrontThemePage;
 }
 

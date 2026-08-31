@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { StorefrontPage } from "@/modules/storefront/components/storefront-page";
 import { getStorefrontBySlug } from "@/modules/storefront/services/storefront.service";
+import { StorefrontPreviewUnavailable } from "@/modules/storefront/components/storefront-preview-unavailable";
 
 export const dynamic = "force-dynamic";
 type Props = {
@@ -37,6 +38,9 @@ export default async function StoreHome({ params, searchParams }: Props) {
     token: query.token,
     previewToken: query.preview,
   });
-  if (!storefront) notFound();
+  if (!storefront) {
+    if (query.preview) return <StorefrontPreviewUnavailable slug={slug} />;
+    notFound();
+  }
   return <StorefrontPage kind="home" storefront={storefront} />;
 }

@@ -11,6 +11,13 @@ const REQUIRED_PAGES = [
   "Order",
   "Login",
   "Account",
+  "Categories",
+  "Offers",
+  "Wishlist",
+  "Track",
+  "About",
+  "Contact",
+  "Policy",
   "NotFound",
 ] as const;
 

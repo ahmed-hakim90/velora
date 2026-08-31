@@ -42,6 +42,22 @@ describe("storefront foundation", () => {
     ).toEqual(DEFAULT_STOREFRONT_CONFIG);
   });
 
+  it("migrates the first Nelaab config to ordered home sections", () => {
+    const migrated = normalizeStorefrontConfig({
+      configVersion: 1,
+      theme: "nelaab",
+      content: DEFAULT_STOREFRONT_CONFIG.content,
+    });
+    expect(migrated.configVersion).toBe(2);
+    expect(migrated.homeSections.map((section) => section.id)).toEqual([
+      "hero",
+      "ageSelector",
+      "featuredCategories",
+      "featuredProducts",
+      "benefits",
+    ]);
+  });
+
   it("requires a matching, unexpired preview token", () => {
     const now = new Date("2026-08-29T10:00:00.000Z");
     const token = "a".repeat(32);
@@ -78,15 +94,22 @@ describe("storefront foundation", () => {
     expect(Object.keys(theme.pages).sort()).toEqual(
       [
         "Cart",
+        "Categories",
         "Checkout",
         "Account",
+        "About",
+        "Contact",
         "Home",
         "Login",
         "Listing",
         "NotFound",
+        "Offers",
         "Order",
+        "Policy",
         "Product",
         "Search",
+        "Track",
+        "Wishlist",
       ].sort(),
     );
   });
@@ -207,6 +230,14 @@ describe("storefront foundation", () => {
     ).toBe("/store/kids%20%26%20toys/order/abc?preview=draft&token=access");
     expect(buildStorefrontPath({ slug: "public" }, "/cart")).toBe(
       "/store/public/cart",
+    );
+    expect(
+      buildStorefrontPath(
+        { slug: "public", token: "access" },
+        "/search?q=العاب",
+      ),
+    ).toBe(
+      `/store/public/search?q=${encodeURIComponent("العاب")}&token=access`,
     );
   });
 });

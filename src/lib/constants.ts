@@ -277,6 +277,7 @@ export const PATH_PERMISSIONS: Partial<
   "/storefront": "product_manage",
   "/storefront/products": "product_manage",
   "/storefront/settings": "settings_manage",
+  "/storefront/preview": "settings_manage",
   "/storefront/orders": "order_view",
   "/storefront-orders": "order_view",
   "/devices": "settings_manage",

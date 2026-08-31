@@ -18,6 +18,13 @@ const pageKey = {
   notFound: "NotFound",
   login: "Login",
   account: "Account",
+  categories: "Categories",
+  offers: "Offers",
+  wishlist: "Wishlist",
+  track: "Track",
+  about: "About",
+  contact: "Contact",
+  policy: "Policy",
 } as const;
 
 export function StorefrontPage({

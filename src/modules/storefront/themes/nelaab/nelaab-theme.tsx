@@ -8,11 +8,15 @@ import {
   ArrowLeft,
   Check,
   CircleUserRound,
+  Grid2X2,
   Heart,
+  Mail,
+  MapPin,
   Minus,
   Plus,
   Search,
   ShoppingBag,
+  Tags,
   Sparkles,
   Star,
   Truck,
@@ -24,6 +28,10 @@ import {
   useStorefrontCart,
 } from "../../components/storefront-cart-provider";
 import { StorefrontCustomerAuth } from "../../components/storefront-customer-auth";
+import {
+  StorefrontWishlistProvider,
+  useStorefrontWishlist,
+} from "../../components/storefront-wishlist-provider";
 import { NelaabAccountPage, NelaabLoginPage } from "./nelaab-customer-pages";
 import {
   STOREFRONT_ORDER_STATUSES,
@@ -115,6 +123,7 @@ function ProductImage({
 
 function Header({ storefront }: StorefrontThemePageProps) {
   const cart = useStorefrontCart();
+  const wishlist = useStorefrontWishlist();
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--sf-border)] bg-[color:var(--sf-surface)]/95 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:h-20 sm:px-6 lg:px-8">
@@ -151,6 +160,18 @@ function Header({ storefront }: StorefrontThemePageProps) {
             كل الألعاب
           </Link>
           <Link
+            href={buildStorefrontPath(storefront, "/categories")}
+            className="hover:text-[var(--sf-primary)]"
+          >
+            الأقسام
+          </Link>
+          <Link
+            href={buildStorefrontPath(storefront, "/offers")}
+            className="hover:text-[var(--sf-primary)]"
+          >
+            العروض
+          </Link>
+          <Link
             href={buildStorefrontPath(storefront, "/search")}
             className="hover:text-[var(--sf-primary)]"
           >
@@ -163,6 +184,18 @@ function Header({ storefront }: StorefrontThemePageProps) {
           className="ms-auto grid size-11 place-items-center rounded-[var(--sf-control-radius)] border border-[var(--sf-border)] md:ms-0"
         >
           <Search className="size-5" />
+        </Link>
+        <Link
+          aria-label={`المفضلة، ${wishlist.ids.length} منتجات`}
+          href={buildStorefrontPath(storefront, "/wishlist")}
+          className="relative hidden size-11 place-items-center rounded-[var(--sf-control-radius)] border border-[var(--sf-border)] sm:grid"
+        >
+          <Heart className="size-5" />
+          {wishlist.hydrated && wishlist.ids.length > 0 ? (
+            <span className="absolute -end-2 -top-2 grid min-h-5 min-w-5 place-items-center rounded-full bg-[var(--sf-danger)] px-1 text-[10px] font-bold text-white">
+              {wishlist.ids.length}
+            </span>
+          ) : null}
         </Link>
         <Link
           aria-label="حسابي"
@@ -197,34 +230,62 @@ function Shell({
 }) {
   return (
     <StorefrontCartProvider storeSlug={storefront.slug}>
-      <div
-        data-storefront-theme="nelaab"
-        dir="rtl"
-        style={storefrontTokenStyle(tokens)}
-        className="min-h-dvh bg-[var(--sf-bg)] font-[family-name:var(--sf-font-body)] text-[var(--sf-text)]"
-      >
-        <Header storefront={storefront} />
-        {!storefront.canOrder ? (
-          <div
-            role="status"
-            className="bg-[var(--sf-danger)] px-4 py-2 text-center text-sm font-bold text-white"
-          >
-            {storefront.unavailableMessage ?? "الطلب غير متاح حاليًا"}
-          </div>
-        ) : null}
-        {children}
-        <footer className="mt-16 bg-[var(--sf-primary)] px-4 py-10 text-white">
-          <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-2xl font-extrabold">{storefront.brand.name}</p>
-              <p className="mt-1 text-sm text-white/75">
-                {storefront.brand.tagline}
-              </p>
+      <StorefrontWishlistProvider storeSlug={storefront.slug}>
+        <div
+          data-storefront-theme="nelaab"
+          dir="rtl"
+          style={storefrontTokenStyle(tokens)}
+          className="min-h-dvh bg-[var(--sf-bg)] font-[family-name:var(--sf-font-body)] text-[var(--sf-text)]"
+        >
+          <Header storefront={storefront} />
+          {!storefront.canOrder ? (
+            <div
+              role="status"
+              className="bg-[var(--sf-danger)] px-4 py-2 text-center text-sm font-bold text-white"
+            >
+              {storefront.unavailableMessage ?? "الطلب غير متاح حاليًا"}
             </div>
-            <p className="text-sm text-white/70">تجربة متجر مدعومة من Velora</p>
-          </div>
-        </footer>
-      </div>
+          ) : null}
+          {children}
+          <footer className="mt-16 bg-[var(--sf-primary)] px-4 py-10 text-white">
+            <div className="mx-auto grid max-w-7xl gap-8 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto]">
+              <div>
+                <p className="text-2xl font-extrabold">
+                  {storefront.brand.name}
+                </p>
+                <p className="mt-1 text-sm text-white/75">
+                  {storefront.brand.tagline}
+                </p>
+              </div>
+              <nav className="grid gap-2 text-sm" aria-label="روابط المتجر">
+                <Link href={buildStorefrontPath(storefront, "/about")}>
+                  من نحن
+                </Link>
+                <Link href={buildStorefrontPath(storefront, "/contact")}>
+                  تواصل معنا
+                </Link>
+                <Link href={buildStorefrontPath(storefront, "/track-order")}>
+                  تتبع طلبك
+                </Link>
+              </nav>
+              <nav
+                className="grid gap-2 text-sm text-white/80"
+                aria-label="السياسات"
+              >
+                <Link href={buildStorefrontPath(storefront, "/returns")}>
+                  الاستبدال والاسترجاع
+                </Link>
+                <Link href={buildStorefrontPath(storefront, "/privacy")}>
+                  الخصوصية
+                </Link>
+                <Link href={buildStorefrontPath(storefront, "/terms")}>
+                  الشروط والأحكام
+                </Link>
+              </nav>
+            </div>
+          </footer>
+        </div>
+      </StorefrontWishlistProvider>
     </StorefrontCartProvider>
   );
 }
@@ -239,6 +300,8 @@ function ProductCard({
   priority?: boolean;
 }) {
   const { add } = useStorefrontCart();
+  const wishlist = useStorefrontWishlist();
+  const router = useRouter();
   const needsChoice = product.variants.length > 0;
   return (
     <article className="group relative overflow-hidden rounded-[var(--sf-card-radius)] border border-[var(--sf-border)] bg-[var(--sf-surface)] shadow-[var(--sf-card-shadow)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[var(--sf-hover-shadow)]">
@@ -264,11 +327,37 @@ function ProductCard({
           <p className="mt-2 font-extrabold text-[var(--sf-primary)]">
             {formatCurrency(product.price, storefront.currency)}
           </p>
+          {product.compareAtPrice && product.compareAtPrice > product.price ? (
+            <p className="text-sm text-[var(--sf-muted)] line-through">
+              {formatCurrency(product.compareAtPrice, storefront.currency)}
+            </p>
+          ) : null}
         </div>
       </Link>
       <button
         type="button"
-        onClick={() => (needsChoice ? undefined : add(product))}
+        onClick={() => wishlist.toggle(product.id)}
+        aria-pressed={wishlist.has(product.id)}
+        aria-label={
+          wishlist.has(product.id)
+            ? `إزالة ${product.name} من المفضلة`
+            : `إضافة ${product.name} للمفضلة`
+        }
+        className="absolute end-3 top-3 z-10 grid size-11 place-items-center rounded-full bg-white/95 shadow-md"
+      >
+        <Heart
+          className={`size-5 ${wishlist.has(product.id) ? "fill-[var(--sf-danger)] text-[var(--sf-danger)]" : ""}`}
+        />
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          needsChoice
+            ? router.push(
+                buildStorefrontPath(storefront, `/product/${product.slug}`),
+              )
+            : add(product)
+        }
         disabled={!product.available || !storefront.canOrder}
         aria-label={
           needsChoice
@@ -277,15 +366,7 @@ function ProductCard({
         }
         className="m-3 mt-0 flex h-11 w-[calc(100%-1.5rem)] items-center justify-center rounded-[var(--sf-control-radius)] bg-[var(--sf-accent)] px-3 text-sm font-extrabold disabled:cursor-not-allowed disabled:opacity-50 sm:m-4 sm:mt-0 sm:w-[calc(100%-2rem)]"
       >
-        {needsChoice ? (
-          <Link
-            href={buildStorefrontPath(storefront, `/product/${product.slug}`)}
-          >
-            اختر الخيارات
-          </Link>
-        ) : (
-          "أضف للسلة"
-        )}
+        {needsChoice ? "اختر الخيارات" : "أضف للسلة"}
       </button>
     </article>
   );
@@ -322,113 +403,200 @@ function ProductGrid({
   );
 }
 
-function Home({ storefront }: StorefrontThemePageProps) {
-  const featured = storefront.products.filter((p) => p.isFeatured).slice(0, 8);
+function NelaabHeroSection({ storefront }: StorefrontThemePageProps) {
   return (
-    <main>
-      <section className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 sm:pt-8 lg:px-8">
-        <div className="relative overflow-hidden rounded-[var(--sf-hero-radius)] bg-[var(--sf-primary)] px-6 py-12 text-white sm:px-10 sm:py-16 lg:min-h-[440px] lg:px-16 lg:py-20">
-          <div className="relative z-10 max-w-2xl">
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-2 text-sm font-bold">
-              <Sparkles className="size-4 text-[var(--sf-accent)]" /> لعب أكثر،
-              تعلّم أفضل
-            </span>
-            <h1 className="mt-5 text-4xl font-black leading-tight sm:text-5xl lg:text-6xl">
-              {storefront.content.heroTitle}
-            </h1>
-            <p className="mt-4 max-w-xl text-lg leading-8 text-white/80">
-              {storefront.content.heroSubtitle}
-            </p>
-            <Link
-              href={buildStorefrontPath(storefront, "/shop")}
-              className="mt-7 inline-flex h-13 items-center gap-2 rounded-[var(--sf-control-radius)] bg-[var(--sf-accent)] px-6 font-extrabold text-[var(--sf-accent-fg)]"
-            >
-              {storefront.content.heroCtaLabel}
-              <ArrowLeft className="size-5" />
-            </Link>
-          </div>
-          <div
-            className="absolute -bottom-16 -left-12 size-64 rounded-full bg-[var(--sf-accent)]/90 blur-sm"
-            aria-hidden
-          />
-          <div
-            className="absolute -left-4 top-8 text-8xl opacity-90 sm:text-9xl"
-            aria-hidden
-          >
-            🧩
-          </div>
-        </div>
-      </section>
-      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mb-6 flex items-end justify-between">
-          <div>
-            <p className="font-bold text-[var(--sf-primary)]">
-              اختار حسب اهتمامه
-            </p>
-            <h2 className="text-2xl font-black sm:text-3xl">الأقسام</h2>
-          </div>
+    <section className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 sm:pt-8 lg:px-8">
+      <div className="relative overflow-hidden rounded-[var(--sf-hero-radius)] bg-[var(--sf-primary)] px-6 py-12 text-white sm:px-10 sm:py-16 lg:min-h-[440px] lg:px-16 lg:py-20">
+        <div className="relative z-10 max-w-2xl">
+          <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-2 text-sm font-bold">
+            <Sparkles className="size-4 text-[var(--sf-accent)]" /> لعب أكثر،
+            تعلّم أفضل
+          </span>
+          <h1 className="mt-5 text-4xl font-black leading-tight sm:text-5xl lg:text-6xl">
+            {storefront.content.heroTitle}
+          </h1>
+          <p className="mt-4 max-w-xl text-lg leading-8 text-white/80">
+            {storefront.content.heroSubtitle}
+          </p>
           <Link
             href={buildStorefrontPath(storefront, "/shop")}
-            className="text-sm font-bold text-[var(--sf-primary)]"
+            className="mt-7 inline-flex h-13 items-center gap-2 rounded-[var(--sf-control-radius)] bg-[var(--sf-accent)] px-6 font-extrabold text-[var(--sf-accent-fg)]"
           >
-            عرض الكل
+            {storefront.content.heroCtaLabel}
+            <ArrowLeft className="size-5" />
           </Link>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {storefront.categories.slice(0, 6).map((category) => (
+        <div
+          className="absolute -bottom-16 -left-12 size-64 rounded-full bg-[var(--sf-accent)]/90 blur-sm"
+          aria-hidden
+        />
+        <div
+          className="absolute -left-4 top-8 text-8xl opacity-90 sm:text-9xl"
+          aria-hidden
+        >
+          🧩
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function NelaabAgeSelectorSection({ storefront }: StorefrontThemePageProps) {
+  const ranges = [
+    { label: "من 0 إلى 2", min: 0, max: 2, emoji: "🧸" },
+    { label: "من 3 إلى 5", min: 3, max: 5, emoji: "🧩" },
+    { label: "من 6 إلى 8", min: 6, max: 8, emoji: "🔭" },
+    { label: "9 سنوات فأكثر", min: 9, max: 99, emoji: "🤖" },
+  ];
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="mb-5">
+        <p className="font-bold text-[var(--sf-primary)]">اختيار أسرع</p>
+        <h2 className="text-2xl font-black sm:text-3xl">اختار حسب العمر</h2>
+      </div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {ranges.map((range) => {
+          const count = storefront.products.filter((product) => {
+            const value = product.attributes.age_range;
+            return Boolean(
+              value &&
+              typeof value === "object" &&
+              !Array.isArray(value) &&
+              value.min <= range.max &&
+              value.max >= range.min,
+            );
+          }).length;
+          return (
             <Link
-              key={category.id}
+              key={range.label}
               href={buildStorefrontPath(
                 storefront,
-                `/category/${category.slug}`,
+                `/search?q=${encodeURIComponent(range.label)}`,
               )}
-              className="flex min-h-28 flex-col items-center justify-center rounded-2xl border border-[var(--sf-border)] bg-white p-3 text-center shadow-[var(--sf-card-shadow)] transition hover:-translate-y-0.5"
+              className="flex min-h-28 items-center gap-3 rounded-2xl border border-[var(--sf-border)] bg-white p-4 shadow-[var(--sf-card-shadow)]"
             >
-              <span className="text-3xl" aria-hidden>
-                {category.icon || "🎲"}
+              <span className="text-4xl" aria-hidden>
+                {range.emoji}
               </span>
-              <strong className="mt-2 text-sm">{category.name}</strong>
+              <span>
+                <strong className="block">{range.label}</strong>
+                <small className="mt-1 block text-[var(--sf-muted)]">
+                  {count ? `${count} منتج` : "استكشف الألعاب"}
+                </small>
+              </span>
             </Link>
-          ))}
-        </div>
-      </section>
-      <section className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-        <h2 className="mb-6 text-2xl font-black sm:text-3xl">
-          {storefront.content.featuredTitle}
-        </h2>
-        <ProductGrid
-          storefront={storefront}
-          products={(featured.length ? featured : storefront.products).slice(
-            0,
-            8,
-          )}
-        />
-      </section>
-      <section className="mx-auto grid max-w-7xl gap-3 px-4 py-14 sm:grid-cols-3 sm:px-6 lg:px-8">
-        {[
-          [Truck, "توصيل موثوق", "طلبك يوصل بأمان"],
-          [Star, "اختيارات مدروسة", "ألعاب مناسبة لكل مرحلة"],
-          [Heart, "تجربة أسهل", "من الاختيار لحد الاستلام"],
-        ].map(([Icon, title, copy]) => {
-          const C = Icon as typeof Truck;
-          return (
-            <div
-              key={String(title)}
-              className="flex gap-3 rounded-2xl bg-white p-5"
-            >
-              <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#F1EDFF] text-[var(--sf-primary)]">
-                <C className="size-6" />
-              </span>
-              <div>
-                <h3 className="font-extrabold">{title as string}</h3>
-                <p className="mt-1 text-sm text-[var(--sf-muted)]">
-                  {copy as string}
-                </p>
-              </div>
-            </div>
           );
         })}
-      </section>
+      </div>
+    </section>
+  );
+}
+
+function NelaabCategoriesSection({ storefront }: StorefrontThemePageProps) {
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mb-6 flex items-end justify-between">
+        <div>
+          <p className="font-bold text-[var(--sf-primary)]">
+            اختار حسب اهتمامه
+          </p>
+          <h2 className="text-2xl font-black sm:text-3xl">الأقسام</h2>
+        </div>
+        <Link
+          href={buildStorefrontPath(storefront, "/shop")}
+          className="text-sm font-bold text-[var(--sf-primary)]"
+        >
+          عرض الكل
+        </Link>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {storefront.categories.slice(0, 6).map((category) => (
+          <Link
+            key={category.id}
+            href={buildStorefrontPath(storefront, `/category/${category.slug}`)}
+            className="flex min-h-28 flex-col items-center justify-center rounded-2xl border border-[var(--sf-border)] bg-white p-3 text-center shadow-[var(--sf-card-shadow)] transition hover:-translate-y-0.5"
+          >
+            <span className="text-3xl" aria-hidden>
+              {category.icon || "🎲"}
+            </span>
+            <strong className="mt-2 text-sm">{category.name}</strong>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function NelaabFeaturedProductsSection({
+  storefront,
+}: StorefrontThemePageProps) {
+  const featured = storefront.products.filter((p) => p.isFeatured).slice(0, 8);
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+      <h2 className="mb-6 text-2xl font-black sm:text-3xl">
+        {storefront.content.featuredTitle}
+      </h2>
+      <ProductGrid
+        storefront={storefront}
+        products={(featured.length ? featured : storefront.products).slice(
+          0,
+          8,
+        )}
+      />
+    </section>
+  );
+}
+
+function NelaabBenefitsSection() {
+  return (
+    <section className="mx-auto grid max-w-7xl gap-3 px-4 py-14 sm:grid-cols-3 sm:px-6 lg:px-8">
+      {[
+        [Truck, "توصيل موثوق", "طلبك يوصل بأمان"],
+        [Star, "اختيارات مدروسة", "ألعاب مناسبة لكل مرحلة"],
+        [Heart, "تجربة أسهل", "من الاختيار لحد الاستلام"],
+      ].map(([Icon, title, copy]) => {
+        const C = Icon as typeof Truck;
+        return (
+          <div
+            key={String(title)}
+            className="flex gap-3 rounded-2xl bg-white p-5"
+          >
+            <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#F1EDFF] text-[var(--sf-primary)]">
+              <C className="size-6" />
+            </span>
+            <div>
+              <h3 className="font-extrabold">{title as string}</h3>
+              <p className="mt-1 text-sm text-[var(--sf-muted)]">
+                {copy as string}
+              </p>
+            </div>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+const homeSections = {
+  hero: NelaabHeroSection,
+  ageSelector: NelaabAgeSelectorSection,
+  featuredCategories: NelaabCategoriesSection,
+  featuredProducts: NelaabFeaturedProductsSection,
+  benefits: NelaabBenefitsSection,
+} satisfies Record<
+  StorefrontThemePageProps["storefront"]["homeSections"][number]["id"],
+  React.ComponentType<StorefrontThemePageProps>
+>;
+
+function Home({ storefront }: StorefrontThemePageProps) {
+  return (
+    <main>
+      {storefront.homeSections
+        .filter((section) => section.enabled)
+        .map((section) => {
+          const Section = homeSections[section.id];
+          return <Section key={section.id} storefront={storefront} />;
+        })}
     </main>
   );
 }
@@ -909,6 +1077,291 @@ function OrderPage({ order }: StorefrontThemePageProps) {
   );
 }
 
+function PageIntro({
+  eyebrow,
+  title,
+  copy,
+}: {
+  eyebrow: string;
+  title: string;
+  copy?: string;
+}) {
+  return (
+    <div className="mb-8 max-w-2xl">
+      <p className="font-bold text-[var(--sf-primary)]">{eyebrow}</p>
+      <h1 className="mt-1 text-3xl font-black sm:text-4xl">{title}</h1>
+      {copy ? (
+        <p className="mt-3 leading-7 text-[var(--sf-muted)]">{copy}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function CategoriesPage({ storefront }: StorefrontThemePageProps) {
+  return (
+    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <PageIntro
+        eyebrow="تصفّح بسهولة"
+        title="كل الأقسام"
+        copy="اختار القسم المناسب وشوف المنتجات المتاحة فيه."
+      />
+      {storefront.categories.length ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {storefront.categories.map((category) => {
+            const count = storefront.products.filter(
+              (product) => product.categoryId === category.id,
+            ).length;
+            return (
+              <Link
+                key={category.id}
+                href={buildStorefrontPath(
+                  storefront,
+                  `/category/${category.slug}`,
+                )}
+                className="flex min-h-40 flex-col items-center justify-center rounded-3xl border border-[var(--sf-border)] bg-white p-5 text-center shadow-[var(--sf-card-shadow)] transition hover:-translate-y-0.5"
+              >
+                <span className="text-5xl" aria-hidden>
+                  {category.icon || "🎲"}
+                </span>
+                <strong className="mt-3 text-lg">{category.name}</strong>
+                <span className="mt-1 text-sm text-[var(--sf-muted)]">
+                  {count} منتج
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      ) : (
+        <ProductGrid storefront={storefront} products={[]} />
+      )}
+    </main>
+  );
+}
+
+function OffersPage({ storefront }: StorefrontThemePageProps) {
+  const offers = storefront.products.filter(
+    (product) =>
+      product.compareAtPrice !== null && product.compareAtPrice > product.price,
+  );
+  return (
+    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <PageIntro
+        eyebrow="وفر أكتر"
+        title="العروض"
+        copy="الأسعار المخفضة المتاحة حاليًا في المتجر."
+      />
+      <ProductGrid storefront={storefront} products={offers} />
+    </main>
+  );
+}
+
+function WishlistPage({ storefront }: StorefrontThemePageProps) {
+  const wishlist = useStorefrontWishlist();
+  const products = storefront.products.filter((product) =>
+    wishlist.ids.includes(product.id),
+  );
+  return (
+    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <PageIntro
+        eyebrow="اختياراتك"
+        title="المفضلة"
+        copy="محفوظة على هذا الجهاز لتقدر ترجع لها بسهولة."
+      />
+      {!wishlist.hydrated ? (
+        <div
+          className="h-64 animate-pulse rounded-3xl bg-black/5"
+          aria-label="جاري تحميل المفضلة"
+        />
+      ) : products.length ? (
+        <ProductGrid storefront={storefront} products={products} />
+      ) : (
+        <div className="rounded-3xl border border-dashed border-[var(--sf-border)] bg-white p-10 text-center">
+          <Heart className="mx-auto size-12 text-[var(--sf-primary)]" />
+          <h2 className="mt-4 text-xl font-black">المفضلة فاضية</h2>
+          <p className="mt-2 text-[var(--sf-muted)]">
+            اضغط على القلب بجانب أي منتج لحفظه هنا.
+          </p>
+          <Link
+            href={buildStorefrontPath(storefront, "/shop")}
+            className="mt-5 inline-flex h-12 items-center rounded-xl bg-[var(--sf-accent)] px-5 font-bold"
+          >
+            ابدأ التسوق
+          </Link>
+        </div>
+      )}
+    </main>
+  );
+}
+
+function TrackPage({ storefront }: StorefrontThemePageProps) {
+  const router = useRouter();
+  const [trackingToken, setTrackingToken] = useState("");
+  const [error, setError] = useState("");
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const token = trackingToken.trim();
+    if (!token) {
+      setError("اكتب رمز التتبع الموجود في رابط تأكيد الطلب.");
+      return;
+    }
+    router.push(
+      buildStorefrontPath(storefront, `/order/${encodeURIComponent(token)}`),
+    );
+  }
+  return (
+    <main className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
+      <PageIntro
+        eyebrow="اعرف طلبك وصل لفين"
+        title="تتبع الطلب"
+        copy="أدخل رمز التتبع الذي ظهر لك بعد تأكيد الطلب."
+      />
+      <form
+        onSubmit={submit}
+        className="rounded-3xl bg-white p-5 shadow-[var(--sf-card-shadow)] sm:p-7"
+      >
+        <label htmlFor="tracking-token" className="block font-bold">
+          رمز تتبع الطلب
+        </label>
+        <input
+          id="tracking-token"
+          value={trackingToken}
+          onChange={(event) => {
+            setTrackingToken(event.target.value);
+            setError("");
+          }}
+          dir="ltr"
+          autoComplete="off"
+          className="mt-2 h-13 w-full rounded-[var(--sf-control-radius)] border border-[var(--sf-border)] px-4 text-start outline-none focus:border-[var(--sf-primary)]"
+        />
+        {error ? (
+          <p
+            role="alert"
+            className="mt-2 text-sm font-bold text-[var(--sf-danger)]"
+          >
+            {error}
+          </p>
+        ) : null}
+        <button className="mt-5 h-13 w-full rounded-[var(--sf-control-radius)] bg-[var(--sf-accent)] font-extrabold">
+          عرض حالة الطلب
+        </button>
+      </form>
+    </main>
+  );
+}
+
+function AboutPage({ storefront }: StorefrontThemePageProps) {
+  return (
+    <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
+      <PageIntro
+        eyebrow={storefront.brand.name}
+        title="من نحن"
+        copy={storefront.brand.tagline}
+      />
+      <div className="grid gap-4 sm:grid-cols-3">
+        {[
+          [Grid2X2, "اختيارات واضحة", "تصفح المنتجات والأقسام من مكان واحد."],
+          [Tags, "أسعار شفافة", "السعر الحالي وأي تخفيض ظاهر قبل الطلب."],
+          [Truck, "طلب سهل", "اختر التوصيل أو الاستلام حسب المتاح."],
+        ].map(([Icon, title, copy]) => {
+          const C = Icon as typeof Grid2X2;
+          return (
+            <section key={String(title)} className="rounded-2xl bg-white p-5">
+              <C className="size-7 text-[var(--sf-primary)]" />
+              <h2 className="mt-4 font-black">{title as string}</h2>
+              <p className="mt-2 text-sm leading-6 text-[var(--sf-muted)]">
+                {copy as string}
+              </p>
+            </section>
+          );
+        })}
+      </div>
+    </main>
+  );
+}
+
+function ContactPage({ storefront }: StorefrontThemePageProps) {
+  const phoneHref = storefront.contact.phone?.replace(/[^+\d]/g, "");
+  return (
+    <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
+      <PageIntro
+        eyebrow="نحن هنا لمساعدتك"
+        title="تواصل معنا"
+        copy="لو عندك سؤال عن منتج أو طلب، استخدم بيانات التواصل المسجلة للمتجر."
+      />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <section className="rounded-2xl bg-white p-6">
+          <Mail className="size-7 text-[var(--sf-primary)]" />
+          <h2 className="mt-4 font-black">الهاتف</h2>
+          {storefront.contact.phone && phoneHref ? (
+            <a
+              dir="ltr"
+              className="mt-2 inline-block font-bold text-[var(--sf-primary)]"
+              href={`tel:${phoneHref}`}
+            >
+              {storefront.contact.phone}
+            </a>
+          ) : (
+            <p className="mt-2 text-sm text-[var(--sf-muted)]">
+              لم يضف المتجر رقم تواصل بعد.
+            </p>
+          )}
+        </section>
+        <section className="rounded-2xl bg-white p-6">
+          <MapPin className="size-7 text-[var(--sf-primary)]" />
+          <h2 className="mt-4 font-black">العنوان</h2>
+          <p className="mt-2 leading-7 text-[var(--sf-muted)]">
+            {storefront.contact.address || "لم يضف المتجر عنوانًا بعد."}
+          </p>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+const policyCopy = {
+  privacy: {
+    title: "سياسة الخصوصية",
+    paragraphs: [
+      "نستخدم بيانات التواصل والعنوان لإتمام الطلب وخدمة العميل ومتابعة حالته.",
+      "لا تظهر بيانات الطلب للعامة، ويمكنك التواصل مع المتجر للاستفسار عن بياناتك أو تصحيحها.",
+    ],
+  },
+  returns: {
+    title: "الاستبدال والاسترجاع",
+    paragraphs: [
+      "تختلف إمكانية الاستبدال أو الاسترجاع حسب حالة المنتج وطبيعته.",
+      "تواصل مع المتجر برقم الطلب قبل إعادة أي منتج لمعرفة الإجراء المتاح لحالتك.",
+    ],
+  },
+  terms: {
+    title: "الشروط والأحكام",
+    paragraphs: [
+      "إرسال الطلب يعني تقديم طلب شراء بالمنتجات والأسعار الظاهرة وقت التأكيد.",
+      "يؤكد المتجر توافر المنتجات وتفاصيل التوصيل قبل إتمام الطلب، وقد يتواصل معك عند الحاجة.",
+    ],
+  },
+} as const;
+
+function PolicyPage({
+  storefront,
+  policyKind = "terms",
+}: StorefrontThemePageProps) {
+  const policy = policyCopy[policyKind];
+  return (
+    <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
+      <PageIntro eyebrow={storefront.brand.name} title={policy.title} />
+      <article className="space-y-4 rounded-3xl bg-white p-6 leading-8 shadow-[var(--sf-card-shadow)] sm:p-8">
+        {policy.paragraphs.map((paragraph) => (
+          <p key={paragraph}>{paragraph}</p>
+        ))}
+        <p className="border-t border-[var(--sf-border)] pt-4 text-sm text-[var(--sf-muted)]">
+          للاستفسار عن سياسة تنطبق على طلب معين، تواصل مع المتجر مباشرة.
+        </p>
+      </article>
+    </main>
+  );
+}
+
 function NotFound({ storefront }: StorefrontThemePageProps) {
   return (
     <main className="mx-auto max-w-xl px-4 py-20 text-center">
@@ -955,6 +1408,13 @@ export const nelaabTheme: StorefrontThemeDefinition = {
     Order: OrderPage,
     Login: NelaabLoginPage,
     Account: NelaabAccountPage,
+    Categories: CategoriesPage,
+    Offers: OffersPage,
+    Wishlist: WishlistPage,
+    Track: TrackPage,
+    About: AboutPage,
+    Contact: ContactPage,
+    Policy: PolicyPage,
     NotFound,
   },
 };

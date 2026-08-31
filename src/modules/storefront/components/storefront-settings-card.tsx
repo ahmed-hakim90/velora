@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
-import { ExternalLink, Plus, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +34,13 @@ import {
 } from "@/modules/online-menu/lib/online-ordering-hours";
 
 export function StorefrontSettingsCard({ store }: { store: Store }) {
+  const sectionLabels = {
+    hero: "البانر الرئيسي",
+    ageSelector: "اختيار حسب العمر",
+    featuredCategories: "الأقسام المميزة",
+    featuredProducts: "المنتجات المميزة",
+    benefits: "مميزات المتجر",
+  } as const;
   const storedBrand =
     store.settings.storefront_brand &&
     typeof store.settings.storefront_brand === "object" &&
@@ -64,11 +77,6 @@ export function StorefrontSettingsCard({ store }: { store: Store }) {
       ? store.settings.storefront_preview_token
       : "",
   );
-  const [accessToken, setAccessToken] = useState(
-    typeof store.settings.storefront_token === "string"
-      ? store.settings.storefront_token
-      : "",
-  );
   const [publicSettings, setPublicSettings] = useState({
     enabled: store.settings.storefront_enabled === true,
     orderingEnabled: store.settings.storefront_ordering_enabled === true,
@@ -87,9 +95,7 @@ export function StorefrontSettingsCard({ store }: { store: Store }) {
   });
   const [pending, startTransition] = useTransition();
   const previewHref =
-    publicSettings.slug && previewToken
-      ? `/store/${encodeURIComponent(publicSettings.slug)}?preview=${encodeURIComponent(previewToken)}${publicSettings.unlisted && accessToken ? `&token=${encodeURIComponent(accessToken)}` : ""}`
-      : "";
+    publicSettings.slug && previewToken ? "/storefront/preview" : "";
   return (
     <div className="grid gap-4 rounded-xl border border-border/60 p-4">
       <div>
@@ -112,6 +118,69 @@ export function StorefrontSettingsCard({ store }: { store: Store }) {
             placeholder="my-store"
           />
         </label>
+        <div className="sm:col-span-2">
+          <Label>ترتيب أقسام الرئيسية</Label>
+          <div className="mt-2 grid gap-2">
+            {config.homeSections.map((section, index) => (
+              <div
+                key={section.id}
+                className="flex min-h-11 items-center gap-2 rounded-lg border border-border/70 bg-background px-3"
+              >
+                <Checkbox
+                  checked={section.enabled}
+                  onCheckedChange={(value) =>
+                    setConfig({
+                      ...config,
+                      homeSections: config.homeSections.map((item) =>
+                        item.id === section.id
+                          ? { ...item, enabled: value === true }
+                          : item,
+                      ),
+                    })
+                  }
+                  aria-label={`إظهار ${sectionLabels[section.id]}`}
+                />
+                <span className="text-sm font-bold">
+                  {sectionLabels[section.id]}
+                </span>
+                <div className="ms-auto flex gap-1">
+                  <button
+                    type="button"
+                    disabled={index === 0}
+                    aria-label={`تحريك ${sectionLabels[section.id]} لأعلى`}
+                    onClick={() => {
+                      const next = [...config.homeSections];
+                      [next[index - 1], next[index]] = [
+                        next[index],
+                        next[index - 1],
+                      ];
+                      setConfig({ ...config, homeSections: next });
+                    }}
+                    className="grid size-8 place-items-center rounded-md hover:bg-muted disabled:opacity-30"
+                  >
+                    <ChevronUp className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={index === config.homeSections.length - 1}
+                    aria-label={`تحريك ${sectionLabels[section.id]} لأسفل`}
+                    onClick={() => {
+                      const next = [...config.homeSections];
+                      [next[index], next[index + 1]] = [
+                        next[index + 1],
+                        next[index],
+                      ];
+                      setConfig({ ...config, homeSections: next });
+                    }}
+                    className="grid size-8 place-items-center rounded-md hover:bg-muted disabled:opacity-30"
+                  >
+                    <ChevronDown className="size-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-2 self-end">
           <button
             type="button"
@@ -521,7 +590,6 @@ export function StorefrontSettingsCard({ store }: { store: Store }) {
                   publicSettings,
                 );
                 setPreviewToken(result.previewToken);
-                setAccessToken(result.accessToken);
                 toast.success("تم حفظ المسودة — المعاينة متاحة لمدة 30 دقيقة");
               } catch (error) {
                 toast.error(
@@ -544,7 +612,6 @@ export function StorefrontSettingsCard({ store }: { store: Store }) {
                   publicSettings,
                 );
                 setPreviewToken(result.previewToken);
-                setAccessToken(result.accessToken);
                 await publishStorefrontDraftAction(store.id);
                 toast.success("تم نشر واجهة المتجر");
               } catch (error) {

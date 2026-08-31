@@ -56,9 +56,6 @@ export async function getStorefrontBySlug(
 ): Promise<StorefrontData | null> {
   const slug = normalizeOnlineMenuSlug(rawSlug);
   if (!slug) return null;
-  if (!options.skipRateLimit) {
-    await assertOnlinePublicRateLimit({ action: "storefront_read", slug });
-  }
   const admin = createAdminClient();
   const { data: store, error } = await admin
     .from("stores")
@@ -85,6 +82,12 @@ export async function getStorefrontBySlug(
     storedToken: settings.storefront_preview_token,
     expiresAt: settings.storefront_preview_expires_at,
   });
+  // A verified preview is an editor capability and must not consume the public
+  // visitor bucket during rapid design refreshes. Invalid preview attempts stay
+  // rate-limited like every other public read.
+  if (!options.skipRateLimit && !usePreview) {
+    await assertOnlinePublicRateLimit({ action: "storefront_read", slug });
+  }
   if (options.previewToken && !usePreview) return null;
   if (usePreview) {
     const [catalog, entitlements] = await Promise.all([
@@ -279,6 +282,10 @@ export async function getStorefrontBySlug(
     currency: organization.currency,
     canOrder: availability.canOrder,
     unavailableMessage: availability.canOrder ? null : availability.messageAr,
+    contact: {
+      phone: store.phone?.trim() || null,
+      address: store.address?.trim() || null,
+    },
     fulfillment: {
       pickupEnabled: fulfillment.pickupEnabled,
       deliveryEnabled:
@@ -300,6 +307,7 @@ export async function getStorefrontBySlug(
           : config.content.heroSubtitle,
     },
     content: config.content,
+    homeSections: config.homeSections,
     categories: (categories ?? []).map((category) => ({
       id: category.id,
       slug: categorySlugById.get(category.id)!,

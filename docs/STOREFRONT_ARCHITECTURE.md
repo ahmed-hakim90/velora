@@ -23,6 +23,12 @@ The public storefront is independent from the restaurant menu UI, settings, and 
 
 No commerce service or checkout action should change when a theme is added.
 
+## Headless presentation contract
+
+Velora is the commerce engine and the executable theme is presentation only. Catalog, customer, cart validation, pricing, promotions, inventory, fulfillment, payment, and order lifecycle stay in shared storefront services. Theme packages receive the normalized `StorefrontData` read model and implement the required page contract; they must not call channel databases or external commerce APIs directly.
+
+Home composition is versioned data rather than hard-coded tenant markup. `homeSections` stores the enabled state and order of stable semantic slots (`hero`, `ageSelector`, `featuredCategories`, `featuredProducts`, and `benefits`). Nelaab is the first renderer for those slots. A future theme may render them differently or declare unsupported optional slots, but it consumes the same business read model. Configuration migrations preserve published stores when the contract version changes.
+
 ## Configuration and access
 
 Store settings use an isolated namespace: `storefront_slug`, `storefront_enabled`, `storefront_ordering_enabled`, `storefront_unlisted`, `storefront_token`, `storefront_hours`, `storefront_fulfillment`, `storefront_brand`, `storefront_draft`, `storefront_published`, and `storefront_preview_token`. Configurations are versioned and schema-validated. Preview requires the matching token and published traffic never reads draft data.
