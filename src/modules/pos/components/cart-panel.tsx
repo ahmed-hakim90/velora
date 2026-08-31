@@ -69,7 +69,13 @@ const METHOD_META: Record<
   },
 };
 
-const METHOD_ORDER: PaymentMethod[] = ["cash", "card", "wallet", "other", "credit"];
+const METHOD_ORDER: PaymentMethod[] = [
+  "cash",
+  "card",
+  "wallet",
+  "other",
+  "credit",
+];
 
 interface CartPanelProps {
   onCheckout: (method?: PaymentMethod) => void;
@@ -126,8 +132,12 @@ export function CartPanel({
 
   const attachControlled = attachExpandedProp !== undefined;
   const discountControlled = discountOpenProp !== undefined;
-  const attachExpanded = attachControlled ? Boolean(attachExpandedProp) : attachExpandedInternal;
-  const discountOpen = discountControlled ? Boolean(discountOpenProp) : discountOpenInternal;
+  const attachExpanded = attachControlled
+    ? Boolean(attachExpandedProp)
+    : attachExpandedInternal;
+  const discountOpen = discountControlled
+    ? Boolean(discountOpenProp)
+    : discountOpenInternal;
 
   function setAttachExpanded(next: boolean) {
     if (!attachControlled) setAttachExpandedInternal(next);
@@ -168,7 +178,10 @@ export function CartPanel({
     (loyaltyBalance ?? 0) > 0 &&
     totalBeforeRedemption > 0;
   const maxRedeemablePoints = loyaltyAvailable
-    ? Math.min(loyaltyBalance ?? 0, Math.floor(totalBeforeRedemption / loyaltyRedemptionRate))
+    ? Math.min(
+        loyaltyBalance ?? 0,
+        Math.floor(totalBeforeRedemption / loyaltyRedemptionRate),
+      )
     : 0;
   const hasMinimumRedeemPoints =
     !loyaltyAvailable ||
@@ -184,7 +197,10 @@ export function CartPanel({
       setLoyaltyRedemption(null);
       return;
     }
-    const safePoints = Math.max(0, Math.min(Math.floor(points), maxRedeemablePoints));
+    const safePoints = Math.max(
+      0,
+      Math.min(Math.floor(points), maxRedeemablePoints),
+    );
     if (safePoints <= 0 || safePoints < minimumLoyaltyRedeemPoints) {
       setLoyaltyRedemption(null);
       return;
@@ -193,7 +209,9 @@ export function CartPanel({
     setLoyaltyRedemption({ points: safePoints, amount });
   }
 
-  const methods = METHOD_ORDER.filter((method) => enabledPaymentMethods.includes(method));
+  const methods = METHOD_ORDER.filter((method) =>
+    enabledPaymentMethods.includes(method),
+  );
   const payDisabled = cart.length === 0 || checkoutDisabled;
   const hasCart = cart.length > 0;
   const hasPriceReduction =
@@ -201,9 +219,14 @@ export function CartPanel({
     redemptionAmount > 0 ||
     promoCartDiscount > 0 ||
     promoItemSavings > 0;
-  const totalSavings = Math.round(
-    (promoItemSavings + promoCartDiscount + discountAmount + redemptionAmount) * 100
-  ) / 100;
+  const totalSavings =
+    Math.round(
+      (promoItemSavings +
+        promoCartDiscount +
+        discountAmount +
+        redemptionAmount) *
+        100,
+    ) / 100;
   const uniquePromoLabels = [...new Set(promoLabels.filter(Boolean))];
 
   function handlePay(method: PaymentMethod) {
@@ -241,26 +264,28 @@ export function CartPanel({
             {cart.map((line) => (
               <li
                 key={line.id}
-                className="rounded-lg bg-muted/40 px-2.5 py-2 ring-1 ring-border/40 max-[390px]:px-2 max-[390px]:py-1.5 lg:flex lg:items-start lg:gap-2"
+                className="rounded-lg bg-muted/40 px-2.5 py-2 ring-1 ring-border/40 max-[390px]:px-2 max-[390px]:py-1.5 min-[900px]:flex min-[900px]:items-start min-[900px]:gap-2"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-2 lg:block">
-                    <p className="line-clamp-2 text-[13px] font-medium leading-snug lg:line-clamp-1 lg:text-sm">
+                  <div className="flex items-start justify-between gap-2 min-[900px]:block">
+                    <p className="line-clamp-2 text-[13px] font-medium leading-snug min-[900px]:line-clamp-1 min-[900px]:text-sm">
                       {line.name}
                     </p>
-                    <p className="shrink-0 text-sm font-semibold tabular-nums lg:hidden">
+                    <p className="shrink-0 text-sm font-semibold tabular-nums min-[900px]:hidden">
                       {formatCurrency(line.lineTotal)}
                     </p>
                   </div>
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {formatCurrency(line.unitPrice)} {line.saleUnit ? `/${line.saleUnit}` : t("each")}
-                    {line.saleInputMode === "by_amount" && line.enteredAmount != null
+                    {formatCurrency(line.unitPrice)}{" "}
+                    {line.saleUnit ? `/${line.saleUnit}` : t("each")}
+                    {line.saleInputMode === "by_amount" &&
+                    line.enteredAmount != null
                       ? ` · ${t("Amount")} ${formatCurrency(line.enteredAmount)}`
                       : null}
                   </p>
                 </div>
-                <div className="mt-1.5 flex items-center justify-between gap-2 lg:mt-0 lg:flex-col lg:items-end lg:gap-1">
-                  <div className="flex items-center gap-1 lg:gap-1.5">
+                <div className="mt-1.5 flex items-center justify-between gap-2 min-[900px]:mt-0 min-[900px]:flex-col min-[900px]:items-end min-[900px]:gap-1">
+                  <div className="flex items-center gap-1 min-[900px]:gap-1.5">
                     {line.saleInputMode ? (
                       <span className="max-w-32 truncate px-2 text-sm font-medium tabular-nums">
                         {line.saleUnit === "kg"
@@ -269,27 +294,31 @@ export function CartPanel({
                       </span>
                     ) : (
                       <>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="size-11 rounded-xl"
-                      aria-label={t("Decrease quantity")}
-                      onClick={() => updateQuantity(line.id, line.quantity - 1)}
-                    >
-                      <Minus className="size-4" />
-                    </Button>
-                    <span className="w-8 text-center text-base font-semibold tabular-nums">
-                      {line.quantity}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="size-11 rounded-xl"
-                      aria-label={t("Increase quantity")}
-                      onClick={() => updateQuantity(line.id, line.quantity + 1)}
-                    >
-                      <Plus className="size-4" />
-                    </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="size-11 rounded-xl"
+                          aria-label={t("Decrease quantity")}
+                          onClick={() =>
+                            updateQuantity(line.id, line.quantity - 1)
+                          }
+                        >
+                          <Minus className="size-4" />
+                        </Button>
+                        <span className="w-8 text-center text-base font-semibold tabular-nums">
+                          {line.quantity}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="size-11 rounded-xl"
+                          aria-label={t("Increase quantity")}
+                          onClick={() =>
+                            updateQuantity(line.id, line.quantity + 1)
+                          }
+                        >
+                          <Plus className="size-4" />
+                        </Button>
                       </>
                     )}
                     <Button
@@ -302,7 +331,7 @@ export function CartPanel({
                       <Trash2 className="size-4 text-muted-foreground" />
                     </Button>
                   </div>
-                  <p className="hidden text-base font-semibold tabular-nums lg:block">
+                  <p className="hidden text-base font-semibold tabular-nums min-[900px]:block">
                     {formatCurrency(line.lineTotal)}
                   </p>
                 </div>
@@ -318,7 +347,7 @@ export function CartPanel({
             "mb-1.5 overflow-hidden rounded-xl border px-3 py-2 max-[390px]:px-2.5 max-[390px]:py-1.5",
             hasPriceReduction
               ? "border-emerald-200/80 bg-gradient-to-b from-emerald-50/90 to-card dark:border-emerald-400/25 dark:from-emerald-500/10"
-              : "border-border/50 bg-muted/30"
+              : "border-border/50 bg-muted/30",
           )}
         >
           {hasPriceReduction ? (
@@ -329,7 +358,7 @@ export function CartPanel({
               {uniquePromoLabels.slice(0, 2).map((label) => (
                 <span
                   key={label}
-                  className="inline-flex max-w-[9.5rem] truncate rounded-full border border-emerald-200/80 bg-white/80 px-2 py-0.5 text-[11px] font-medium text-emerald-800 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-200"
+                  className="inline-flex max-w-[9.5rem] truncate rounded-full border border-emerald-200/80 bg-card/90 px-2 py-0.5 text-[11px] font-medium text-emerald-800 dark:border-emerald-400/30 dark:text-emerald-200"
                 >
                   {label}
                 </span>
@@ -353,7 +382,7 @@ export function CartPanel({
                 "shrink-0 text-2xl font-bold tabular-nums tracking-tight max-[390px]:text-[1.65rem]",
                 hasPriceReduction
                   ? "text-emerald-700 dark:text-emerald-300"
-                  : "text-foreground"
+                  : "text-foreground",
               )}
             >
               {formatCurrency(total)}
@@ -364,7 +393,9 @@ export function CartPanel({
             <div className="mt-2.5 space-y-1 border-t border-emerald-200/60 pt-2 max-[390px]:mt-1.5 max-[390px]:pt-1.5 dark:border-emerald-400/20">
               {promoItemSavings > 0 ? (
                 <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">{t("Item savings")}</span>
+                  <span className="text-muted-foreground">
+                    {t("Item savings")}
+                  </span>
                   <span className="font-medium tabular-nums text-emerald-700 dark:text-emerald-300">
                     -{formatCurrency(promoItemSavings)}
                   </span>
@@ -372,7 +403,9 @@ export function CartPanel({
               ) : null}
               {promoCartDiscount > 0 ? (
                 <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">{t("Invoice offer")}</span>
+                  <span className="text-muted-foreground">
+                    {t("Invoice offer")}
+                  </span>
                   <span className="font-medium tabular-nums text-emerald-700 dark:text-emerald-300">
                     -{formatCurrency(promoCartDiscount)}
                   </span>
@@ -380,7 +413,9 @@ export function CartPanel({
               ) : null}
               {discountAmount > 0 ? (
                 <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">{t("Manual discount")}</span>
+                  <span className="text-muted-foreground">
+                    {t("Manual discount")}
+                  </span>
                   <span className="font-medium tabular-nums text-emerald-700 dark:text-emerald-300">
                     -{formatCurrency(discountAmount)}
                   </span>
@@ -388,7 +423,9 @@ export function CartPanel({
               ) : null}
               {redemptionAmount > 0 ? (
                 <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">{t("Loyalty points")}</span>
+                  <span className="text-muted-foreground">
+                    {t("Loyalty points")}
+                  </span>
                   <span className="font-medium tabular-nums text-emerald-700 dark:text-emerald-300">
                     -{formatCurrency(redemptionAmount)}
                   </span>
@@ -400,10 +437,17 @@ export function CartPanel({
 
         {(loyaltyEnabled && customer && loyaltyBalance === null && hasCart) ||
         loyaltyAvailable ||
-        (loyaltyEnabled && customer && (loyaltyBalance ?? 0) > 0 && !loyaltyRedemptionRate && hasCart) ||
+        (loyaltyEnabled &&
+          customer &&
+          (loyaltyBalance ?? 0) > 0 &&
+          !loyaltyRedemptionRate &&
+          hasCart) ||
         (discountsEnabled && discountOpen) ? (
           <div className="mb-2 max-h-[min(28dvh,12rem)] space-y-2 overflow-y-auto overscroll-y-contain">
-            {loyaltyEnabled && customer && loyaltyBalance === null && hasCart ? (
+            {loyaltyEnabled &&
+            customer &&
+            loyaltyBalance === null &&
+            hasCart ? (
               <p className="rounded-xl border border-dashed border-amber-200/80 bg-amber-50/60 px-3 py-2 text-xs text-amber-900 dark:border-amber-400/20 dark:bg-amber-400/5 dark:text-amber-200">
                 {t("Loading loyalty points…")}
               </p>
@@ -421,36 +465,44 @@ export function CartPanel({
                   </span>
                 </p>
                 {canRedeemLoyalty ? (
-                    <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-11 shrink-0 rounded-lg px-2.5 text-xs"
+                      variant={loyaltyRedemption ? "default" : "outline"}
+                      onClick={() => applyRedemption(maxRedeemablePoints)}
+                    >
+                      {t("Use points")}
+                    </Button>
+                    <Input
+                      type="number"
+                      min={minimumLoyaltyRedeemPoints}
+                      max={maxRedeemablePoints}
+                      value={loyaltyRedemption?.points ?? ""}
+                      placeholder={t("Or enter points")}
+                      aria-label={t("Points to redeem")}
+                      onChange={(e) => applyRedemption(Number(e.target.value))}
+                      className="h-11 min-w-0 flex-1 rounded-lg bg-background px-2 text-end text-sm tabular-nums"
+                      inputMode="numeric"
+                    />
+                    {loyaltyRedemption ? (
                       <Button
                         type="button"
-                        size="sm"
-                        className="h-11 shrink-0 rounded-lg px-2.5 text-xs"
-                        variant={loyaltyRedemption ? "default" : "outline"}
-                        onClick={() => applyRedemption(maxRedeemablePoints)}
+                        variant="ghost"
+                        size="icon"
+                        className="size-11 shrink-0 rounded-lg"
+                        onClick={() => setLoyaltyRedemption(null)}
+                        aria-label={t("No points")}
                       >
-                        {t("Use points")}
+                        <X className="size-4" />
                       </Button>
-                      <Input
-                        type="number"
-                        min={minimumLoyaltyRedeemPoints}
-                        max={maxRedeemablePoints}
-                        value={loyaltyRedemption?.points ?? ""}
-                        placeholder={t("Or enter points")}
-                        aria-label={t("Points to redeem")}
-                        onChange={(e) => applyRedemption(Number(e.target.value))}
-                        className="h-11 min-w-0 flex-1 rounded-lg bg-background px-2 text-end text-sm tabular-nums"
-                        inputMode="numeric"
-                      />
-                      {loyaltyRedemption ? (
-                        <Button type="button" variant="ghost" size="icon" className="size-11 shrink-0 rounded-lg" onClick={() => setLoyaltyRedemption(null)} aria-label={t("No points")}>
-                          <X className="size-4" />
-                        </Button>
-                      ) : null}
-                    </div>
+                    ) : null}
+                  </div>
                 ) : (
                   <p className="text-[11px] text-amber-800/80 dark:text-amber-200/80">
-                    {t("Customer needs at least")} {minimumLoyaltyRedeemPoints} {t("points to redeem.")}
+                    {t("Customer needs at least")} {minimumLoyaltyRedeemPoints}{" "}
+                    {t("points to redeem.")}
                   </p>
                 )}
               </div>
@@ -466,7 +518,10 @@ export function CartPanel({
 
             {discountsEnabled && discountOpen ? (
               <div className="flex min-h-12 items-center gap-1.5 rounded-xl border border-border/70 bg-muted/30 p-0.5">
-                <label className="min-w-0 flex-1 truncate ps-1.5 text-xs font-medium text-muted-foreground" htmlFor="cart-discount">
+                <label
+                  className="min-w-0 flex-1 truncate ps-1.5 text-xs font-medium text-muted-foreground"
+                  htmlFor="cart-discount"
+                >
                   {t("Discount amount")}
                 </label>
                 <Input
@@ -483,19 +538,19 @@ export function CartPanel({
                   inputMode="decimal"
                   aria-label={t("Discount amount")}
                 />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="size-11 shrink-0 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                    aria-label={t("Remove discount")}
-                    onClick={() => {
-                      setDiscountAmount(0);
-                      setDiscountOpen(false);
-                    }}
-                  >
-                    <X className="size-4" />
-                  </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-11 shrink-0 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  aria-label={t("Remove discount")}
+                  onClick={() => {
+                    setDiscountAmount(0);
+                    setDiscountOpen(false);
+                  }}
+                >
+                  <X className="size-4" />
+                </Button>
               </div>
             ) : null}
           </div>
@@ -514,7 +569,7 @@ export function CartPanel({
             >
               <Percent className="size-3.5 shrink-0" />
               {t("Discount")}
-              <kbd className="ms-1 hidden rounded border border-border/60 bg-background/80 px-1 text-[10px] font-normal text-muted-foreground lg:inline">
+              <kbd className="ms-1 hidden rounded border border-border/60 bg-background/80 px-1 text-[10px] font-normal text-muted-foreground min-[900px]:inline">
                 {OPERATOR_SHORTCUTS.discount}
               </kbd>
             </Button>
@@ -531,7 +586,7 @@ export function CartPanel({
           >
             <Pause className="size-3.5 shrink-0" />
             {t("Hold")}
-            <kbd className="ms-1 hidden rounded border border-border/60 bg-background/80 px-1 text-[10px] font-normal text-muted-foreground lg:inline">
+            <kbd className="ms-1 hidden rounded border border-border/60 bg-background/80 px-1 text-[10px] font-normal text-muted-foreground min-[900px]:inline">
               {OPERATOR_SHORTCUTS.hold}
             </kbd>
           </Button>
@@ -547,7 +602,7 @@ export function CartPanel({
           >
             <Trash2 className="size-3.5 shrink-0" />
             {t("Clear")}
-            <kbd className="ms-1 hidden rounded border border-border/60 bg-background/80 px-1 text-[10px] font-normal text-muted-foreground lg:inline">
+            <kbd className="ms-1 hidden rounded border border-border/60 bg-background/80 px-1 text-[10px] font-normal text-muted-foreground min-[900px]:inline">
               {OPERATOR_SHORTCUTS.delete}
             </kbd>
           </Button>
@@ -562,8 +617,8 @@ export function CartPanel({
               : methods.length === 3
                 ? "grid-cols-3"
                 : methods.length === 4
-                  ? "grid-cols-4 lg:grid-cols-2"
-                  : "grid-cols-5 lg:grid-cols-3"
+                  ? "grid-cols-4 min-[900px]:grid-cols-2"
+                  : "grid-cols-5 min-[900px]:grid-cols-3",
           )}
           aria-keyshortcuts="F1"
           title={t("Complete sale using current payment method (F1)")}
@@ -578,13 +633,13 @@ export function CartPanel({
                 disabled={payDisabled}
                 aria-label={t(meta.label)}
                 className={cn(
-                  "h-11 min-h-11 flex-col gap-0 rounded-xl border px-1 font-bold shadow-none transition active:scale-[0.98] lg:h-12 lg:min-h-12 lg:flex-row lg:gap-1 lg:px-2",
-                  meta.className
+                  "h-11 min-h-11 flex-col gap-0 rounded-xl border px-1 font-bold shadow-none transition active:scale-[0.98] min-[900px]:h-12 min-[900px]:min-h-12 min-[900px]:flex-row min-[900px]:gap-1 min-[900px]:px-2",
+                  meta.className,
                 )}
                 onClick={() => handlePay(method)}
               >
-                <Icon className="size-4 lg:size-5" aria-hidden />
-                <span className="max-w-full truncate text-[11px] leading-tight lg:text-xs">
+                <Icon className="size-4 min-[900px]:size-5" aria-hidden />
+                <span className="max-w-full truncate text-[11px] leading-tight min-[900px]:text-xs">
                   {t(meta.label)}
                 </span>
               </Button>

@@ -44,13 +44,16 @@ export function ProductTile({
   const variantPrices = product.variants
     .map((variant) => variant.price)
     .filter((price) => Number.isFinite(price));
-  const showVariantPrice = showVariants && product.hasVariants && variantPrices.length > 0;
-  const { amount: displayPrice, rangeLabel: priceRange } = resolveDisplayPriceRange({
-    variantPrices: showVariantPrice || product.hasVariants ? variantPrices : [],
-    baseAmount: product.base_price,
-    showRange: showVariantPrice,
-    rangeSeparator: language === "ar" ? "arabic" : "en-dash",
-  });
+  const showVariantPrice =
+    showVariants && product.hasVariants && variantPrices.length > 0;
+  const { amount: displayPrice, rangeLabel: priceRange } =
+    resolveDisplayPriceRange({
+      variantPrices:
+        showVariantPrice || product.hasVariants ? variantPrices : [],
+      baseAmount: product.base_price,
+      showRange: showVariantPrice,
+      rangeSeparator: language === "ar" ? "arabic" : "en-dash",
+    });
   const stockLabel = badgeLabel
     ? product.stockBadge === "out" && allowNegativeStock
       ? t("Out of stock — sale allowed")
@@ -74,13 +77,13 @@ export function ProductTile({
       disabled={disabled || blockOutOfStock}
       aria-label={accessibleLabel}
       className={cn(
-        "group relative flex min-h-[108px] flex-col overflow-hidden rounded-xl bg-card text-start text-card-foreground shadow-none ring-1 ring-border/65 transition duration-150 hover:ring-primary/35 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[124px] sm:rounded-[14px]"
+        "group relative flex min-h-[108px] flex-col overflow-hidden rounded-xl bg-card text-start text-card-foreground shadow-none ring-1 ring-border/65 transition duration-150 hover:ring-primary/35 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[124px] sm:rounded-[14px]",
       )}
     >
       <div
-        className="relative flex aspect-[16/9] min-h-[50px] w-full items-center justify-center overflow-hidden sm:min-h-[58px]"
+        className="relative flex aspect-[16/9] min-h-[50px] w-full items-center justify-center overflow-hidden bg-muted/70 sm:min-h-[58px]"
         style={{
-          background: `linear-gradient(145deg, ${product.categoryColor}22, ${product.categoryColor}44)`,
+          backgroundImage: `linear-gradient(145deg, ${product.categoryColor}22, ${product.categoryColor}44)`,
         }}
       >
         {product.image_url ? (
@@ -99,7 +102,7 @@ export function ProductTile({
         <span
           className={cn(
             "text-2xl font-bold opacity-30 transition group-hover:scale-105 motion-reduce:transition-none sm:text-3xl",
-            product.image_url && "opacity-0"
+            product.image_url && "opacity-0",
           )}
           style={{ color: product.categoryColor }}
         >
@@ -117,7 +120,7 @@ export function ProductTile({
             className={cn(
               "absolute end-1.5 top-1.5 max-w-[calc(100%-0.75rem)] truncate rounded-full bg-background/90 px-1.5 py-0.5 text-[10px] shadow-sm backdrop-blur max-[390px]:end-1 max-[390px]:top-1 max-[390px]:px-1 max-[390px]:text-[9px]",
               product.stockBadge === "low" &&
-                "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200"
+                "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200",
             )}
           >
             {badgeLabel ? t(badgeLabel) : null}

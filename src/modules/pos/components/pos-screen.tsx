@@ -42,7 +42,10 @@ import {
 } from "@/modules/pos/components/receipt-print";
 import { openCashDrawerAction } from "@/modules/pos/actions/cash-drawer.action";
 import type { CheckoutFlowResult } from "@/modules/pos/services/pos-checkout-flow.service";
-import type { POSProduct, POSVariant } from "@/modules/pos/services/catalog.service";
+import type {
+  POSProduct,
+  POSVariant,
+} from "@/modules/pos/services/catalog.service";
 import {
   buildWhatsAppReceiptUrl,
   type ReceiptPayload,
@@ -56,8 +59,18 @@ import {
   playPosSuccessSound,
   unlockPosAudio,
 } from "@/modules/pos/lib/pos-sounds";
-import type { Category, CostCenter, ExpenseCategory, PromotionRule } from "@/lib/types";
-import type { CartLine, Customer, PaymentMethod, PaymentSplit } from "@/lib/types";
+import type {
+  Category,
+  CostCenter,
+  ExpenseCategory,
+  PromotionRule,
+} from "@/lib/types";
+import type {
+  CartLine,
+  Customer,
+  PaymentMethod,
+  PaymentSplit,
+} from "@/lib/types";
 import type { FeatureFlag, SalesMode } from "@/lib/constants";
 import type { ReportBranding } from "@/modules/reports/core/report-context";
 import { usePosStore, type HeldCart } from "@/stores/pos-store";
@@ -71,7 +84,12 @@ import type { PosReadinessState } from "@/lib/auth/pos-readiness-copy";
 import { POS_READINESS_COPY } from "@/lib/auth/pos-readiness-copy";
 import { ExpenseWizard } from "@/modules/expenses/components/expense-wizard";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import {
@@ -109,13 +127,15 @@ import { roundMoney } from "@/lib/money";
 
 let modifierLineSeq = 0;
 
-function toStaffOnlineProductOptions(products: POSProduct[]): StaffOnlineProductOption[] {
+function toStaffOnlineProductOptions(
+  products: POSProduct[],
+): StaffOnlineProductOption[] {
   return products
     .filter(
       (product) =>
         product.product_type === "finished" &&
         product.inventory_product_type === "finished_product" &&
-        (product.sale_price ?? product.base_price) > 0
+        (product.sale_price ?? product.base_price) > 0,
     )
     .map((product) => ({
       id: product.id,
@@ -156,7 +176,10 @@ async function postPosCheckout(input: {
   const elapsedMs = Math.round(performance.now() - started);
   if (!data || typeof data !== "object" || !("success" in data)) {
     const message =
-      data && typeof data === "object" && "error" in data && typeof data.error === "string"
+      data &&
+      typeof data === "object" &&
+      "error" in data &&
+      typeof data.error === "string"
         ? data.error
         : "Could not complete sale";
     console.info(`[pos-checkout] ${elapsedMs}ms`, message);
@@ -164,7 +187,7 @@ async function postPosCheckout(input: {
   }
   console.info(
     `[pos-checkout] ${elapsedMs}ms`,
-    data.success ? data.orderNumber : data.error
+    data.success ? data.orderNumber : data.error,
   );
   return data;
 }
@@ -184,7 +207,10 @@ async function postPosCustomerPayment(input: {
   });
   const data = (await res.json()) as { success?: boolean; error?: string };
   if (!res.ok || !data.success) {
-    return { success: false, error: data.error || "Could not record collection" };
+    return {
+      success: false,
+      error: data.error || "Could not record collection",
+    };
   }
   return { success: true };
 }
@@ -306,27 +332,34 @@ export function PosScreen({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const restoreScannerFocusRef = useRef(false);
   const [pickerProduct, setPickerProduct] = useState<POSProduct | null>(null);
-  const [modifierProduct, setModifierProduct] = useState<POSProduct | null>(null);
-  const [pendingModifierVariant, setPendingModifierVariant] = useState<POSVariant | null>(
-    null
+  const [modifierProduct, setModifierProduct] = useState<POSProduct | null>(
+    null,
   );
+  const [pendingModifierVariant, setPendingModifierVariant] =
+    useState<POSVariant | null>(null);
   const [lastReceipt, setLastReceipt] = useState<ReceiptPayload | null>(null);
   const [pending, startTransition] = useTransition();
   const { run: runBackground } = useBackgroundMutation();
   const checkoutMutationKey = backgroundMutationKey(
     "pos",
     "checkout",
-    sessionId ?? storeId ?? "no-session"
+    sessionId ?? storeId ?? "no-session",
   );
   const checkoutSaving = useBackgroundMutationStore(
-    (s) => s.mutations[checkoutMutationKey]?.status === "pending"
+    (s) => s.mutations[checkoutMutationKey]?.status === "pending",
   );
-  const [catalogCategories, setCatalogCategories] = useState<Category[]>(categoriesProp);
-  const [catalogProducts, setCatalogProducts] = useState<POSProduct[]>(initialProducts);
+  const [catalogCategories, setCatalogCategories] =
+    useState<Category[]>(categoriesProp);
+  const [catalogProducts, setCatalogProducts] =
+    useState<POSProduct[]>(initialProducts);
   const [liveOnlineOrders, setLiveOnlineOrders] =
     useState<OnlineOrderWithItems[]>(onlineOrdersProp);
-  const seenOnlineOrderIds = useRef(new Set(onlineOrdersProp.map((order) => order.id)));
-  const onlineOrdersSeeded = useRef(onlineOrdersProp.length > 0 || !loadCatalogClient);
+  const seenOnlineOrderIds = useRef(
+    new Set(onlineOrdersProp.map((order) => order.id)),
+  );
+  const onlineOrdersSeeded = useRef(
+    onlineOrdersProp.length > 0 || !loadCatalogClient,
+  );
   const [catalogLoading, setCatalogLoading] = useState(loadCatalogClient);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const addItem = usePosStore((s) => s.addItem);
@@ -358,7 +391,7 @@ export function PosScreen({
       onlineOrderProductsProp.length > 0
         ? onlineOrderProductsProp
         : toStaffOnlineProductOptions(catalogProducts),
-    [onlineOrderProductsProp, catalogProducts]
+    [onlineOrderProductsProp, catalogProducts],
   );
 
   useEffect(() => {
@@ -372,7 +405,9 @@ export function PosScreen({
     }
 
     restoreScannerFocusRef.current = false;
-    const frame = window.requestAnimationFrame(() => searchInputRef.current?.focus());
+    const frame = window.requestAnimationFrame(() =>
+      searchInputRef.current?.focus(),
+    );
     return () => window.cancelAnimationFrame(frame);
   }, [modifierProduct, pickerProduct, weightProduct]);
 
@@ -385,14 +420,21 @@ export function PosScreen({
 
   useEffect(() => {
     function focusProductSearch(event: KeyboardEvent) {
-      if (event.defaultPrevented || event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) {
+      if (
+        event.defaultPrevented ||
+        event.key !== "/" ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey
+      ) {
         return;
       }
 
       const target = event.target;
       if (
         target instanceof HTMLElement &&
-        (target.isContentEditable || Boolean(target.closest("input, textarea, select")))
+        (target.isContentEditable ||
+          Boolean(target.closest("input, textarea, select")))
       ) {
         return;
       }
@@ -412,12 +454,18 @@ export function PosScreen({
 
     async function pollOnlineOrders() {
       try {
-        const ordersRes = await fetch("/api/pos/online-orders", { credentials: "same-origin" });
+        const ordersRes = await fetch("/api/pos/online-orders", {
+          credentials: "same-origin",
+        });
         if (!ordersRes.ok) return;
-        const ordersJson = (await ordersRes.json()) as { orders?: OnlineOrderWithItems[] };
+        const ordersJson = (await ordersRes.json()) as {
+          orders?: OnlineOrderWithItems[];
+        };
         const next = ordersJson.orders ?? [];
         if (cancelled) return;
-        const hasNew = next.some((order) => !seenOnlineOrderIds.current.has(order.id));
+        const hasNew = next.some(
+          (order) => !seenOnlineOrderIds.current.has(order.id),
+        );
         seenOnlineOrderIds.current = new Set(next.map((order) => order.id));
         setLiveOnlineOrders(next);
         if (onlineOrdersSeeded.current && hasNew) {
@@ -469,7 +517,7 @@ export function PosScreen({
           if (!cancelled) {
             setLiveOnlineOrders(ordersJson.orders ?? []);
             seenOnlineOrderIds.current = new Set(
-              (ordersJson.orders ?? []).map((order) => order.id)
+              (ordersJson.orders ?? []).map((order) => order.id),
             );
             onlineOrdersSeeded.current = true;
           }
@@ -477,7 +525,11 @@ export function PosScreen({
       } catch (error) {
         if (!cancelled) {
           setCatalogError(
-            t(error instanceof Error ? error.message : "Could not load products")
+            t(
+              error instanceof Error
+                ? error.message
+                : "Could not load products",
+            ),
           );
         }
       } finally {
@@ -492,7 +544,10 @@ export function PosScreen({
   }, [loadCatalogClient, storeId, t]);
 
   useEffect(() => {
-    if (categoryId && !categories.some((category) => category.id === categoryId)) {
+    if (
+      categoryId &&
+      !categories.some((category) => category.id === categoryId)
+    ) {
       setCategoryId(null);
     }
   }, [categories, categoryId]);
@@ -529,10 +584,11 @@ export function PosScreen({
         usage_limit_total: rule.usage_limit_total,
         usage_count: rule.usage_count,
       })),
-    [promotionRules]
+    [promotionRules],
   );
   const promoPreview = useMemo(() => {
-    if (!promotionsEnabled || promoRuleInputs.length === 0 || cart.length === 0) return null;
+    if (!promotionsEnabled || promoRuleInputs.length === 0 || cart.length === 0)
+      return null;
     return previewPosPromotions({
       rules: promoRuleInputs,
       cart,
@@ -540,7 +596,14 @@ export function PosScreen({
       saleMode: salesMode,
       couponCode,
     });
-  }, [promotionsEnabled, promoRuleInputs, cart, storeId, salesMode, couponCode]);
+  }, [
+    promotionsEnabled,
+    promoRuleInputs,
+    cart,
+    storeId,
+    salesMode,
+    couponCode,
+  ]);
   const cartTotals = useMemo(
     () =>
       computePosCartTotals({
@@ -549,7 +612,7 @@ export function PosScreen({
         loyaltyAmount: loyaltyRedemption?.amount ?? 0,
         promoPreview,
       }),
-    [cart, discountAmount, loyaltyRedemption?.amount, promoPreview]
+    [cart, discountAmount, loyaltyRedemption?.amount, promoPreview],
   );
   const {
     promoCartDiscount,
@@ -563,7 +626,7 @@ export function PosScreen({
       promoPreview?.applications
         ?.map((app) => app.rule_name?.trim())
         .filter((name): name is string => Boolean(name)) ?? [],
-    [promoPreview]
+    [promoPreview],
   );
   const loyaltyEnabled = featureFlags.loyalty !== false;
   const cartItemCount = cart.reduce((total, line) => total + line.quantity, 0);
@@ -579,11 +642,12 @@ export function PosScreen({
         : readinessState === "no_session"
           ? "Open a cashier session first"
           : checkoutBlocked
-            ? POS_READINESS_COPY[readinessState]?.title ?? "POS is not ready"
+            ? (POS_READINESS_COPY[readinessState]?.title ?? "POS is not ready")
             : noPaymentMethods
               ? "No payment method is enabled"
               : null;
-  const payLocked = checkoutBlocked || pending || checkoutSaving || noPaymentMethods;
+  const payLocked =
+    checkoutBlocked || pending || checkoutSaving || noPaymentMethods;
 
   function cartCheckout(method?: PaymentMethod) {
     if (!method) return;
@@ -639,7 +703,7 @@ export function PosScreen({
   });
 
   const activeOnlineOrdersCount = onlineOrders.filter(
-    (order) => order.status !== "cancelled" && order.status !== "invoiced"
+    (order) => order.status !== "cancelled" && order.status !== "invoiced",
   ).length;
 
   const productSearchIndex = useMemo(
@@ -663,9 +727,9 @@ export function PosScreen({
             .filter(Boolean)
             .join(" ")
             .toLowerCase(),
-        ])
+        ]),
       ),
-    [initialProductsLive]
+    [initialProductsLive],
   );
 
   const products = useMemo(() => {
@@ -677,14 +741,14 @@ export function PosScreen({
     if (!normalizedSearch) return categoryProducts;
 
     return categoryProducts.filter((product) =>
-      productSearchIndex.get(product.id)?.includes(normalizedSearch)
+      productSearchIndex.get(product.id)?.includes(normalizedSearch),
     );
   }, [categoryId, initialProductsLive, productSearchIndex, searchTerm]);
 
   /** When variants exist, checkout SQL requires a variant_id — even if UI variants are off. */
   function resolveCheckoutVariant(
     product: POSProduct,
-    preferred: POSVariant | null = null
+    preferred: POSVariant | null = null,
   ): POSVariant | null {
     if (!product.hasVariants || product.variants.length === 0) return null;
     if (preferred) return preferred;
@@ -694,7 +758,7 @@ export function PosScreen({
   function addToCart(
     product: POSProduct,
     variant: POSVariant | null,
-    modifiers: { name: string; price: number }[] = []
+    modifiers: { name: string; price: number }[] = [],
   ) {
     const resolved = resolveCheckoutVariant(product, variant);
     const name =
@@ -740,13 +804,15 @@ export function PosScreen({
 
   function handleBarcodeSubmit(raw: string) {
     const trimmed = raw.trim();
-    const match = barcodeEnabled ? findPosProductByBarcode(initialProductsLive, trimmed) : null;
+    const match = barcodeEnabled
+      ? findPosProductByBarcode(initialProductsLive, trimmed)
+      : null;
 
     if (!match && products.length !== 1) {
       const message = t(
         products.length > 1
           ? "Narrow the search to one product, or scan an exact barcode."
-          : "Product not found"
+          : "Product not found",
       );
       playPosErrorSound();
       setSearchError(message);
@@ -758,7 +824,10 @@ export function PosScreen({
       return;
     }
 
-    const { product, variant } = match ?? { product: products[0]!, variant: null };
+    const { product, variant } = match ?? {
+      product: products[0]!,
+      variant: null,
+    };
     setSearchError(null);
     playPosScanSound();
     const useWeightFlow =
@@ -799,7 +868,7 @@ export function PosScreen({
     payments: PaymentSplit[],
     overrideReason?: string,
     accountCollection = 0,
-    overridePin?: string
+    overridePin?: string,
   ) {
     if (checkoutSaving) {
       toast.message(t("The previous invoice is still saving. Wait a moment."));
@@ -809,10 +878,11 @@ export function PosScreen({
     const checkoutPaymentMethod = payments[0]?.method ?? paymentMethod;
     const needsDiscountOverride = requiresManagerDiscountOverride(
       discountAmount,
-      managerDiscountOverrideAmount
+      managerDiscountOverrideAmount,
     );
     const sessionExpired =
-      readinessState === "session_expired" && requireManagerOverrideForExpiredSale;
+      readinessState === "session_expired" &&
+      requireManagerOverrideForExpiredSale;
     const state = usePosStore.getState();
     const receiptCart = [...state.cart];
     const receiptCustomer = state.customer
@@ -823,7 +893,10 @@ export function PosScreen({
       payments.find((payment) => payment.method !== "credit")?.method ?? "cash";
     const redemptionAmount = state.loyaltyRedemption?.amount ?? 0;
     const receiptDiscount =
-      state.discountAmount + redemptionAmount + promoCartDiscount + promoItemSavings;
+      state.discountAmount +
+      redemptionAmount +
+      promoCartDiscount +
+      promoItemSavings;
     const receiptTotal = cartPayableTotal;
     const checkoutCart = [...state.cart];
     const checkoutCustomer = state.customer;
@@ -873,9 +946,13 @@ export function PosScreen({
         }
         return result;
       },
-      successMessage: (result) => `${t("Order completed")} ${result.orderNumber}`,
+      successMessage: (result) =>
+        `${t("Order completed")} ${result.orderNumber}`,
       onSuccess: (result) => {
-        if (cashDrawerEnabled && payments.some((payment) => payment.method === "cash")) {
+        if (
+          cashDrawerEnabled &&
+          payments.some((payment) => payment.method === "cash")
+        ) {
           openCashDrawerHook();
         }
         if (receiptEnabled) {
@@ -911,11 +988,13 @@ export function PosScreen({
           }).then((collected) => {
             if (!collected.success) {
               playPosErrorSound();
-              toast.error(`${t("Sale completed, but balance collection failed")}: ${t(collected.error)}`);
+              toast.error(
+                `${t("Sale completed, but balance collection failed")}: ${t(collected.error)}`,
+              );
               return;
             }
             toast.success(
-              `${t("Collected")} ${formatCurrency(accountCollection)} ${t("from customer account with the invoice")}`
+              `${t("Collected")} ${formatCurrency(accountCollection)} ${t("from customer account with the invoice")}`,
             );
           });
         }
@@ -939,7 +1018,10 @@ export function PosScreen({
     });
   }
 
-  function handleCreditConfirm({ payments, accountCollection }: CreditCheckoutConfirm) {
+  function handleCreditConfirm({
+    payments,
+    accountCollection,
+  }: CreditCheckoutConfirm) {
     handleComplete(payments, accountCollection);
   }
 
@@ -951,10 +1033,11 @@ export function PosScreen({
     }
     const needsDiscountOverride = requiresManagerDiscountOverride(
       discountAmount,
-      managerDiscountOverrideAmount
+      managerDiscountOverrideAmount,
     );
     const needsExpiredSessionOverride =
-      readinessState === "session_expired" && requireManagerOverrideForExpiredSale;
+      readinessState === "session_expired" &&
+      requireManagerOverrideForExpiredSale;
     if (needsDiscountOverride || needsExpiredSessionOverride) {
       const both = needsDiscountOverride && needsExpiredSessionOverride;
       setOverrideDialog({
@@ -992,13 +1075,18 @@ export function PosScreen({
     return <PosCashierPinGate currentUserName={currentUserName} />;
   }
 
-  if (readinessState === "store_required" || readinessState === "store_mismatch") {
+  if (
+    readinessState === "store_required" ||
+    readinessState === "store_mismatch"
+  ) {
     return (
       <PosStoreGate
         stores={stores}
         activeStoreId={storeId}
         readinessState={readinessState}
-        title={readinessState === "store_mismatch" ? "Change store" : "Choose store"}
+        title={
+          readinessState === "store_mismatch" ? "Change store" : "Choose store"
+        }
         description={
           readinessState === "store_mismatch"
             ? "The active store is different. Choose the correct store to continue."
@@ -1027,9 +1115,12 @@ export function PosScreen({
         cashierName={cashierName ?? t("Cashier")}
         costCenterMap={costCenterMap}
         categoryMap={expenseCategoryMap}
-        triggerVariant={readinessState === "session_expired" ? "destructive" : "outline"}
+        triggerVariant={
+          readinessState === "session_expired" ? "destructive" : "outline"
+        }
         triggerChildren={
-          readinessState === "session_expired" || readinessState === "session_warning"
+          readinessState === "session_expired" ||
+          readinessState === "session_warning"
             ? t("Close shift")
             : t("Close session")
         }
@@ -1052,7 +1143,13 @@ export function PosScreen({
         setOverrideDialog(null);
         toast.success(t("Cash drawer opened"));
       } catch (error) {
-        toast.error(t(error instanceof Error ? error.message : "Could not open cash drawer"));
+        toast.error(
+          t(
+            error instanceof Error
+              ? error.message
+              : "Could not open cash drawer",
+          ),
+        );
       }
     });
   }
@@ -1068,7 +1165,10 @@ export function PosScreen({
     if (!lastReceipt) {
       throw new Error(t("Could not print receipt"));
     }
-    if (typeof document !== "undefined" && !document.getElementById("Velora-receipt")) {
+    if (
+      typeof document !== "undefined" &&
+      !document.getElementById("Velora-receipt")
+    ) {
       throw new Error(t("Could not print receipt — receipt is not ready"));
     }
     setTimeout(() => triggerReceiptPrint(), 50);
@@ -1085,619 +1185,683 @@ export function PosScreen({
 
   return (
     <>
-    <div className="print:hidden flex h-dvh max-h-dvh flex-col gap-2 overflow-hidden p-2 pt-[max(0.5rem,env(safe-area-inset-top))] max-[390px]:gap-1.5 max-[390px]:p-1.5 sm:gap-3 sm:p-3 lg:gap-4 lg:p-4">
-      <div className="flex shrink-0 flex-col gap-1.5 max-[390px]:gap-1 sm:gap-2">
-        <PosReadinessBanner state={readinessState} action={sessionBannerAction} />
-
-        <div className="flex min-w-0 items-center gap-1.5 max-[390px]:gap-1 sm:gap-2">
-          {currentUserName ? (
-            <span className="hidden max-w-40 truncate rounded-full border border-border/70 bg-muted/60 px-3 py-1 text-xs font-medium text-muted-foreground lg:inline-flex">
-              {currentUserName}
-            </span>
-          ) : null}
-
-        {hasActiveSession ? (
-          <div className="flex min-w-0 flex-1 items-stretch gap-1.5 max-[390px]:gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              className="relative h-11 min-w-0 flex-1 justify-center gap-1.5 rounded-xl border-sky-200 bg-sky-50 px-2 text-sm font-semibold text-sky-900 hover:bg-sky-100 max-lg:size-11 max-lg:flex-none max-lg:px-0 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200 dark:hover:bg-sky-500/20"
-              onClick={() => setOnlineOrdersOpen(true)}
-            >
-              <ClipboardList className="size-4 shrink-0" />
-              <span className="truncate max-lg:sr-only">{t("Online")}</span>
-              {activeOnlineOrdersCount > 0 ? (
-                <span className="rounded-full bg-sky-700 px-1.5 py-0.5 text-[11px] font-bold text-white tabular-nums max-lg:absolute max-lg:-end-1 max-lg:-top-1 dark:bg-sky-400 dark:text-sky-950">
-                  {activeOnlineOrdersCount}
-                </span>
-              ) : null}
-            </Button>
-            {canCollectPayment ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="hidden h-11 min-w-0 flex-1 justify-center gap-1.5 rounded-xl border-emerald-200 bg-emerald-50 px-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-100 lg:inline-flex dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20"
-                onClick={() => setCollectOpen(true)}
-              >
-                <Banknote className="size-4 shrink-0" />
-                <span className="truncate">{t("Collect")}</span>
-              </Button>
-            ) : null}
-            {canPaySupplier ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="hidden h-11 min-w-0 flex-1 justify-center gap-1.5 rounded-xl border-amber-200 bg-amber-50 px-2 text-sm font-semibold text-amber-900 hover:bg-amber-100 lg:inline-flex dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200 dark:hover:bg-amber-500/20"
-                onClick={() => setSupplierPayOpen(true)}
-              >
-                <Truck className="size-4 shrink-0" />
-                <span className="truncate">{t("Supplier")}</span>
-              </Button>
-            ) : null}
-            {canAddSessionExpense && storeId && cashierId && sessionId ? (
-              <div className="hidden min-w-0 flex-1 lg:block [&_button]:h-11 [&_button]:w-full">
-                <ExpenseWizard
-                  storeId={storeId}
-                  sessionId={sessionId}
-                  userId={cashierId}
-                  costCenters={costCenters}
-                  categories={expenseCategories}
-                  sessionMode
-                  trigger={
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="justify-center gap-1.5 rounded-xl border-rose-200 bg-rose-50 px-2 text-sm font-semibold text-rose-900 hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/20"
-                    >
-                      <Wallet className="size-4 shrink-0" />
-                      <span className="truncate">{t("Expense")}</span>
-                    </Button>
-                  }
-                />
-              </div>
-            ) : null}
-            {cashDrawerEnabled ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="hidden h-11 min-w-0 flex-1 justify-center gap-1.5 rounded-xl border-violet-200 bg-violet-50 px-2 text-sm font-semibold text-violet-900 hover:bg-violet-100 lg:inline-flex dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200 dark:hover:bg-violet-500/20"
-                disabled={pending}
-                onClick={handleOpenCashDrawer}
-              >
-                <Archive className="size-4 shrink-0" />
-                <span className="truncate">{t("Drawer")}</span>
-              </Button>
-            ) : null}
-            {(canCollectPayment ||
-              canPaySupplier ||
-              (canAddSessionExpense && storeId && cashierId && sessionId) ||
-              cashDrawerEnabled ||
-              hasActiveSession) ? (
-              <DropdownMenu open={cashierMoreOpen} onOpenChange={setCashierMoreOpen}>
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="size-11 shrink-0 rounded-xl px-0 lg:hidden"
-                      aria-label={t("More cashier actions")}
-                    />
-                  }
-                >
-                  <MoreHorizontal className="size-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-48">
-                  {canCollectPayment ? (
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setCashierMoreOpen(false);
-                        setCollectOpen(true);
-                      }}
-                      className="min-h-11 gap-2 lg:hidden"
-                    >
-                      <Banknote className="size-4" />
-                      {t("Collect from customer")}
-                    </DropdownMenuItem>
-                  ) : null}
-                  {canPaySupplier ? (
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setCashierMoreOpen(false);
-                        setSupplierPayOpen(true);
-                      }}
-                      className="min-h-11 gap-2 lg:hidden"
-                    >
-                      <Truck className="size-4" />
-                      {t("Pay supplier")}
-                    </DropdownMenuItem>
-                  ) : null}
-                  {cashDrawerEnabled ? (
-                    <DropdownMenuItem
-                      disabled={pending}
-                      onClick={() => {
-                        setCashierMoreOpen(false);
-                        handleOpenCashDrawer();
-                      }}
-                      className="min-h-11 gap-2 lg:hidden"
-                    >
-                      <Archive className="size-4" />
-                      {t("Open drawer")}
-                    </DropdownMenuItem>
-                  ) : null}
-                  {canAddSessionExpense && storeId && cashierId && sessionId ? (
-                    <div className="lg:hidden [&_button]:h-11 [&_button]:w-full [&_button]:justify-start [&_button]:rounded-md [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-2 [&_button]:py-2 [&_button]:text-sm [&_button]:font-normal [&_button]:shadow-none [&_button]:hover:bg-accent">
-                      <ExpenseWizard
-                        storeId={storeId}
-                        sessionId={sessionId}
-                        userId={cashierId}
-                        costCenters={costCenters}
-                        categories={expenseCategories}
-                        sessionMode
-                        onOpenChange={(expenseOpen) => {
-                          if (expenseOpen) setCashierMoreOpen(false);
-                        }}
-                        trigger={
-                          <Button type="button" variant="ghost" size="sm">
-                            <Wallet className="size-4" />
-                            {t("Session expense")}
-                          </Button>
-                        }
-                      />
-                    </div>
-                  ) : null}
-                  {readinessState === "ready" && activeSession && sessionReconciliation ? (
-                    <DropdownMenuItem
-                      className="min-h-11 gap-2 lg:hidden"
-                      onClick={() => {
-                        setCashierMoreOpen(false);
-                        setCloseSessionOpen(true);
-                      }}
-                    >
-                      {t("Close session")}
-                    </DropdownMenuItem>
-                  ) : null}
-                  <div className="lg:hidden">
-                    <PosPinSwitch returnTo={posPath} menuItem />
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : null}
-          </div>
-        ) : (
-          <div className="min-w-0 flex-1" />
-        )}
-
-        <div className="flex shrink-0 items-center gap-1.5 max-[390px]:gap-1">
-          {checkoutSaving ? (
-            <span
-              className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/10 px-2.5 text-sm font-semibold text-primary max-lg:size-11 max-lg:px-0"
-              role="status"
-              aria-live="polite"
-            >
-              <Loader2 className="size-4 shrink-0 animate-spin" />
-              <span className="truncate max-lg:sr-only">{t("Saving invoice…")}</span>
-            </span>
-          ) : null}
-          <OperatorShortcutHint variant="pos" className="me-1 hidden lg:block" />
-          {hasActiveSession ? <PosHeldCartsBar /> : null}
-          {readinessState === "ready" && hasActiveSession && activeSession && sessionReconciliation ? (
-            <div className="hidden lg:block">
-              <PosCloseSessionDialog
-                open={closeSessionOpen}
-                onOpenChange={setCloseSessionOpen}
-                session={activeSession}
-                reconciliation={sessionReconciliation}
-                sessionExpenses={sessionExpenses}
-                cashierName={cashierName ?? t("Cashier")}
-                costCenterMap={costCenterMap}
-                categoryMap={expenseCategoryMap}
-                triggerSize="sm"
-                triggerClassName="h-11 rounded-full px-3"
-                triggerChildren={t("Close")}
-              />
-            </div>
-          ) : null}
-          <div className={hasActiveSession ? "hidden lg:block" : undefined}>
-            <PosPinSwitch returnTo={posPath} />
-          </div>
-        </div>
-        </div>
-      </div>
-      <div className="flex min-h-0 flex-1 gap-2 max-[390px]:gap-1.5 sm:gap-3 lg:gap-4">
-        <section className="flex min-w-0 flex-1 flex-col gap-2 max-[390px]:gap-1.5 sm:gap-3">
-          <CategoryRail
-            categories={categories}
-            selectedId={categoryId}
-            onSelect={setCategoryId}
+      <div className="print:hidden flex h-dvh max-h-dvh flex-col gap-2 overflow-hidden bg-background p-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-foreground max-[390px]:gap-1.5 max-[390px]:p-1.5 sm:gap-3 sm:p-3 lg:gap-4 lg:p-4">
+        <div className="flex shrink-0 flex-col gap-1.5 max-[390px]:gap-1 sm:gap-2">
+          <PosReadinessBanner
+            state={readinessState}
+            action={sessionBannerAction}
           />
-          <form
-            className="flex flex-wrap gap-1.5"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (searchTerm.trim()) handleBarcodeSubmit(searchTerm);
-            }}
-          >
-            <div className="relative min-w-0 flex-1">
-              {barcodeEnabled ? (
-                <ScanBarcode className="pointer-events-none absolute start-3 top-1/2 size-5 -translate-y-1/2 text-primary" aria-hidden />
-              ) : (
-                <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-              )}
-              <Input
-                ref={searchInputRef}
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setSearchError(null);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape" && searchTerm) {
-                    event.preventDefault();
-                    setSearchTerm("");
-                    setSearchError(null);
-                  }
-                }}
-                placeholder={t(barcodeEnabled ? "Search or scan barcode…" : "Search products…")}
-                aria-label={t(barcodeEnabled ? "Search or scan barcode" : "Search products")}
-                aria-describedby={
-                  [barcodeEnabled ? "pos-barcode-hint" : null, searchError ? "pos-search-error" : null]
-                    .filter(Boolean)
-                    .join(" ") || undefined
-                }
-                aria-invalid={Boolean(searchError)}
-                aria-keyshortcuts="/ Escape"
-                className="h-11 rounded-xl bg-card ps-11 pe-11 text-base shadow-none ring-1 ring-border/50 focus-visible:ring-2 aria-invalid:ring-destructive/70 sm:pe-24"
-                autoComplete="off"
-                enterKeyHint="search"
-                inputMode="search"
-              />
-              {searchTerm ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchTerm("");
-                    setSearchError(null);
-                    searchInputRef.current?.focus();
-                  }}
-                  className="absolute end-0 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-xl text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-                  aria-label={t("Clear search")}
-                >
-                  <X className="size-4" aria-hidden />
-                </button>
-              ) : barcodeEnabled ? (
-                <span className="pointer-events-none absolute end-3 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded-md bg-primary/8 px-2 py-1 text-[10px] font-semibold text-primary sm:flex">
-                  <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
-                  {t("Scanner ready")}
-                </span>
-              ) : null}
-              {barcodeEnabled ? (
-                <span id="pos-barcode-hint" className="sr-only">
-                  {t("Scan barcode or type a product name, then press Enter to add")}
-                </span>
-              ) : null}
-            </div>
-            <Button
-              type="submit"
-              variant="outline"
-              className="hidden h-11 shrink-0 rounded-xl px-4 sm:inline-flex"
-              aria-label={t("Add from search")}
-            >
-              <Plus className="size-4" aria-hidden />
-              {t("Add")}
-            </Button>
-            {searchError ? (
-              <p
-                id="pos-search-error"
-                className="basis-full px-1 text-xs font-medium text-destructive"
-                role="alert"
-              >
-                {searchError}
-              </p>
-            ) : null}
-          </form>
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain rounded-xl bg-muted/45 p-1.5 ring-1 ring-border/70 sm:p-2 lg:p-2.5">
-            {catalogLoading ? (
-              <EmptyStateBlock
-                title={t("Loading products…")}
-                description={t("This will only take a moment.")}
-                className="flex min-h-32 flex-col items-center justify-center border-border/70 bg-card/80 p-3 py-5 sm:min-h-40 sm:py-7"
-              />
-            ) : catalogError ? (
-              <EmptyStateBlock
-                title={t("Could not load products")}
-                description={catalogError}
-                className="flex min-h-32 flex-col items-center justify-center border-border/70 bg-card/80 p-3 py-5 sm:min-h-40 sm:py-7"
-              />
-            ) : products.length === 0 ? (
-              <EmptyStateBlock
-                title={t(searchTerm.trim() ? "No results" : "No products")}
-                description={
-                  searchTerm.trim()
-                    ? t("Try a different name or barcode.")
-                    : categoryId
-                      ? t("No products in this category.")
-                      : t("Add products to the catalog to start selling.")
-                }
-                action={
-                  searchTerm.trim() || categoryId ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-11 rounded-xl px-4"
-                      onClick={clearCatalogFilters}
-                    >
-                      {t(searchTerm.trim() && categoryId ? "Clear filters" : categoryId ? "Show all products" : "Clear search")}
-                    </Button>
-                  ) : undefined
-                }
-                className="flex min-h-32 flex-col items-center justify-center border-border/70 bg-card/80 p-3 py-5 sm:min-h-40 sm:py-7"
-              />
-            ) : (
-              <div className="grid grid-cols-2 gap-1.5 min-[350px]:grid-cols-3 sm:grid-cols-[repeat(auto-fit,minmax(112px,1fr))] sm:gap-2 lg:grid-cols-[repeat(auto-fit,minmax(118px,1fr))]">
-                {products.map((product) => (
-                  <ProductTile
-                    key={product.id}
-                    product={product}
-                    showVariants={enableVariants}
-                    allowNegativeStock={allowNegativeStock}
-                    onAdd={() => handleAdd(product)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
 
-        <aside className="hidden min-h-0 w-[min(340px,40vw)] shrink-0 flex-col md:flex lg:w-[min(380px,34vw)]">
-          <CartPanel
-            onCheckout={cartCheckout}
-            checkoutDisabled={payLocked || cart.length === 0}
-            checkoutBlockedReason={checkoutBlockedReason ? t(checkoutBlockedReason) : null}
-            discountsEnabled={discountsEnabled}
-            promoCartDiscount={promoCartDiscount}
-            promoItemSavings={promoItemSavings}
-            promoAdjustedSubtotal={promoAdjustedSubtotal}
-            promoLabels={promoLabels}
-            loyaltyEnabled={loyaltyEnabled}
-            enabledPaymentMethods={enabledPaymentMethods}
-            loyaltyRedemptionRate={loyaltyRedemptionRate}
-            minimumLoyaltyRedeemPoints={minimumLoyaltyRedeemPoints}
-            attachExpanded={attachExpanded}
-            onAttachExpandedChange={setAttachExpanded}
-            discountOpen={discountOpen}
-            onDiscountOpenChange={setDiscountOpen}
-            onRequestClearCart={() => setClearConfirmOpen(true)}
-          />
-          {checkoutBlocked ? (
-            <div className="mt-2.5 space-y-2.5 rounded-2xl border border-amber-500/25 bg-amber-50/80 p-3.5 text-center dark:bg-amber-500/10">
-              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-                {checkoutBlockedReason ? t(checkoutBlockedReason) : null}
-              </p>
-              {readinessState === "no_session" ? (
-                <QuickOpenSessionButton
-                  className="w-full"
-                  label="Start selling"
-                  pendingOpeningFloat={pendingOpeningFloat}
-                />
-              ) : null}
-            </div>
-          ) : null}
-        </aside>
-
-        <Sheet open={cartOpen} onOpenChange={setCartOpen}>
-          <SheetContent
-            side="bottom"
-            showCloseButton
-            className="flex h-[min(94dvh,100%)] max-h-[min(94dvh,100%)] flex-col gap-0 overflow-hidden rounded-t-2xl border-t p-0 max-[390px]:h-[min(96dvh,100%)] max-[390px]:max-h-[min(96dvh,100%)] data-[side=bottom]:h-[min(94dvh,100%)] data-[side=bottom]:max-[390px]:h-[min(96dvh,100%)]"
-          >
-            <div className="flex justify-center pb-0.5 pt-1.5" aria-hidden>
-              <span className="h-1 w-9 rounded-full bg-muted-foreground/35" />
-            </div>
-            <SheetHeader className="flex shrink-0 flex-row items-center justify-between gap-2 border-b border-border/60 px-3 py-1.5 pe-14 text-start">
-              <SheetTitle className="min-w-0 truncate text-sm font-semibold">
-                {t("Cart")}
-                {cartItemCount > 0 ? (
-                  <span className="ms-1.5 text-xs font-medium text-muted-foreground">
-                    · {cartItemCount} {t(cartItemCount === 1 ? "item" : "items")}
-                  </span>
-                ) : null}
-              </SheetTitle>
-              <SheetDescription className="shrink-0 text-xs font-bold tabular-nums text-foreground">
-                {cartTotal === 0 ? t("Add items to continue") : `${t("Total")} ${formatCurrency(cartTotal, "EGP", locale)}`}
-              </SheetDescription>
-            </SheetHeader>
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <CartPanel
-                onCheckout={(method) => {
-                  setCartOpen(false);
-                  cartCheckout(method);
-                }}
-                checkoutDisabled={payLocked || cart.length === 0}
-                checkoutBlockedReason={checkoutBlockedReason ? t(checkoutBlockedReason) : null}
-                discountsEnabled={discountsEnabled}
-                promoCartDiscount={promoCartDiscount}
-                promoItemSavings={promoItemSavings}
-                promoAdjustedSubtotal={promoAdjustedSubtotal}
-                promoLabels={promoLabels}
-                loyaltyEnabled={loyaltyEnabled}
-                enabledPaymentMethods={enabledPaymentMethods}
-                loyaltyRedemptionRate={loyaltyRedemptionRate}
-                minimumLoyaltyRedeemPoints={minimumLoyaltyRedeemPoints}
-                attachExpanded={attachExpanded}
-                onAttachExpandedChange={setAttachExpanded}
-                discountOpen={discountOpen}
-                onDiscountOpenChange={setDiscountOpen}
-                onRequestClearCart={() => setClearConfirmOpen(true)}
-              />
-              {checkoutBlocked ? (
-                <div className="space-y-2 border-t border-border/60 p-2.5 text-center">
-                  <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-                    {checkoutBlockedReason ? t(checkoutBlockedReason) : null}
-                  </p>
-                  {readinessState === "no_session" ? (
-                    <QuickOpenSessionButton
-                      className="w-full"
-                      label={t("Start selling now")}
-                      pendingOpeningFloat={pendingOpeningFloat}
-                    />
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-          </SheetContent>
-        </Sheet>
-
-        <PosCreditCheckoutDialog
-          open={creditOpen}
-          onOpenChange={setCreditOpen}
-          total={cartPayableTotal}
-          customer={customer}
-          enabledMethods={enabledPaymentMethods}
-          loading={checkoutSaving}
-          onConfirm={handleCreditConfirm}
-        />
-
-        <VariantPickerDialog
-          open={Boolean(pickerProduct)}
-          product={pickerProduct}
-          allowNegativeStock={allowNegativeStock}
-          onClose={() => setPickerProduct(null)}
-          onSelect={(product, variant) => {
-            if (enableModifiers) {
-              setPendingModifierVariant(variant);
-              setPickerProduct(null);
-              setModifierProduct(product);
-              return;
-            }
-            addToCart(product, variant);
-          }}
-        />
-        <PosModifierPicker
-          open={Boolean(modifierProduct)}
-          productId={modifierProduct?.id ?? ""}
-          productName={modifierProduct?.name ?? ""}
-          currency={receiptBranding.currency ?? "EGP"}
-          onClose={() => {
-            setModifierProduct(null);
-            setPendingModifierVariant(null);
-          }}
-          onConfirm={(modifiers) => {
-            if (!modifierProduct) return;
-            addToCart(modifierProduct, pendingModifierVariant, modifiers);
-            setModifierProduct(null);
-            setPendingModifierVariant(null);
-          }}
-        />
-        <Dialog open={onlineOrdersOpen} onOpenChange={setOnlineOrdersOpen}>
-          <DialogContent className="max-h-[min(94dvh,100%)] w-[calc(100%-0.75rem)] max-w-[min(980px,calc(100%-0.75rem))] overflow-hidden p-0 max-sm:rounded-2xl sm:max-w-[min(980px,calc(100%-1rem))]">
-            <DialogHeader className="border-b border-border/70 px-3 py-3 sm:px-4">
-              <DialogTitle className="flex items-center gap-2 pe-8 text-base sm:text-lg">
-                <ClipboardList className="size-5 text-primary" />
-                {t("Online Orders")}
-                {activeOnlineOrdersCount > 0 ? (
-                  <span className="rounded-full bg-sky-700 px-2 py-0.5 text-xs font-bold text-white tabular-nums dark:bg-sky-400 dark:text-sky-950">
-                    {activeOnlineOrdersCount}
-                  </span>
-                ) : null}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="max-h-[calc(94dvh-56px)] overflow-y-auto overscroll-y-contain p-2">
-              <OnlineOrdersPageClient
-                orders={onlineOrders}
-                products={onlineOrderProducts}
-                compact
-                enabledPaymentMethods={enabledPaymentMethods}
-                receiptBranding={receiptBranding}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
-        {canCollectPayment ? (
-          <PosCollectFlowDialog open={collectOpen} onOpenChange={setCollectOpen} />
-        ) : null}
-        {canPaySupplier ? (
-          <PosSupplierPayDialog
-            open={supplierPayOpen}
-            onOpenChange={setSupplierPayOpen}
-            storeId={storeId}
-          />
-        ) : null}
-      <WeightAmountModal
-        open={Boolean(weightProduct)}
-        onOpenChange={(open) => {
-          if (!open) setWeightProduct(null);
-        }}
-        product={weightProduct}
-        scaleEnabled={scaleEnabled}
-        scaleSettings={scaleSettings}
-        onConfirm={({ quantity, unitPrice, saleInputMode, enteredAmount }) => {
-          if (!weightProduct) return;
-          const resolved = resolveCheckoutVariant(weightProduct);
-          addItem({
-            productId: weightProduct.id,
-            variantId: resolved?.id ?? null,
-            name: weightProduct.name,
-            quantity,
-            unitPrice: unitPrice > 0 ? unitPrice : (resolved?.price ?? weightProduct.base_price),
-            categoryId: weightProduct.category_id ?? null,
-            modifiers: [],
-            imageUrl: weightProduct.image_url,
-            saleUnit: weightProduct.sale_unit,
-            saleInputMode,
-            enteredAmount,
-          });
-          setWeightProduct(null);
-        }}
-      />
-      </div>
-
-      <div className="shrink-0 pb-[max(0rem,calc(env(safe-area-inset-bottom)-0.5rem))] md:hidden">
-      <Button
-        type="button"
-        className="flex h-12 w-full items-center justify-between gap-2.5 rounded-xl px-2.5 py-1 text-sm shadow-md transition active:scale-[0.99] sm:h-13 sm:px-3"
-        onClick={() => setCartOpen(true)}
-        aria-label={
-          cartItemCount > 0
-            ? `${t("Open cart")}, ${cartItemCount} ${t("items")}, ${t("Total")} ${formatCurrency(cartTotal, "EGP", locale)}`
-            : t("Open cart")
-        }
-      >
-        <span className="flex min-w-0 items-center gap-2.5">
-          <span className="relative flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary-foreground/15 sm:size-10">
-            <ShoppingCart className="size-4.5" />
-            {cartItemCount > 0 ? (
-              <span className="absolute -top-1 -end-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-background px-1 text-[11px] font-bold text-primary tabular-nums">
-                {cartItemCount > 99 ? "99+" : cartItemCount}
+          <div className="flex min-w-0 items-center gap-1.5 max-[390px]:gap-1 sm:gap-2">
+            {currentUserName ? (
+              <span className="hidden max-w-40 truncate rounded-full border border-border/70 bg-muted/60 px-3 py-1 text-xs font-medium text-muted-foreground lg:inline-flex">
+                {currentUserName}
               </span>
             ) : null}
-          </span>
-          <span className="min-w-0 text-start">
-            <span className="block truncate text-sm font-semibold leading-tight">
-              {cartItemCount === 0
-                ? t("Cart is empty")
-                : `${cartItemCount} ${t(cartItemCount === 1 ? "item" : "items")}`}
-            </span>
-            <span className="block text-xs font-medium text-primary-foreground/80">
-              {t(cartItemCount === 0 ? "Tap to continue" : "Tap to pay")}
-            </span>
-          </span>
-        </span>
-        <span className="flex shrink-0 flex-col items-end gap-0.5">
-          <span className="text-lg font-bold tabular-nums leading-none">
-            {cartTotal === 0 ? "—" : formatCurrency(cartTotal)}
-          </span>
-          {cartItemCount > 0 ? (
-            <span className="rounded-full bg-primary-foreground/15 px-2 py-0.5 text-[11px] font-bold tracking-wide text-primary-foreground">
-              {t("Pay")}
-            </span>
-          ) : null}
-        </span>
-      </Button>
-      </div>
 
-    </div>
+            {hasActiveSession ? (
+              <div className="flex min-w-0 flex-1 items-stretch gap-1.5 max-[390px]:gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="relative h-11 min-w-0 flex-1 justify-center gap-1.5 rounded-xl border-sky-200 bg-sky-50 px-2 text-sm font-semibold text-sky-900 hover:bg-sky-100 max-lg:size-11 max-lg:flex-none max-lg:px-0 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200 dark:hover:bg-sky-500/20"
+                  onClick={() => setOnlineOrdersOpen(true)}
+                >
+                  <ClipboardList className="size-4 shrink-0" />
+                  <span className="truncate max-lg:sr-only">{t("Online")}</span>
+                  {activeOnlineOrdersCount > 0 ? (
+                    <span className="rounded-full bg-sky-700 px-1.5 py-0.5 text-[11px] font-bold text-white tabular-nums max-lg:absolute max-lg:-end-1 max-lg:-top-1 dark:bg-sky-400 dark:text-sky-950">
+                      {activeOnlineOrdersCount}
+                    </span>
+                  ) : null}
+                </Button>
+                {canCollectPayment ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="hidden h-11 min-w-0 flex-1 justify-center gap-1.5 rounded-xl border-emerald-200 bg-emerald-50 px-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-100 lg:inline-flex dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20"
+                    onClick={() => setCollectOpen(true)}
+                  >
+                    <Banknote className="size-4 shrink-0" />
+                    <span className="truncate">{t("Collect")}</span>
+                  </Button>
+                ) : null}
+                {canPaySupplier ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="hidden h-11 min-w-0 flex-1 justify-center gap-1.5 rounded-xl border-amber-200 bg-amber-50 px-2 text-sm font-semibold text-amber-900 hover:bg-amber-100 lg:inline-flex dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200 dark:hover:bg-amber-500/20"
+                    onClick={() => setSupplierPayOpen(true)}
+                  >
+                    <Truck className="size-4 shrink-0" />
+                    <span className="truncate">{t("Supplier")}</span>
+                  </Button>
+                ) : null}
+                {canAddSessionExpense && storeId && cashierId && sessionId ? (
+                  <div className="hidden min-w-0 flex-1 lg:block [&_button]:h-11 [&_button]:w-full">
+                    <ExpenseWizard
+                      storeId={storeId}
+                      sessionId={sessionId}
+                      userId={cashierId}
+                      costCenters={costCenters}
+                      categories={expenseCategories}
+                      sessionMode
+                      trigger={
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="justify-center gap-1.5 rounded-xl border-rose-200 bg-rose-50 px-2 text-sm font-semibold text-rose-900 hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/20"
+                        >
+                          <Wallet className="size-4 shrink-0" />
+                          <span className="truncate">{t("Expense")}</span>
+                        </Button>
+                      }
+                    />
+                  </div>
+                ) : null}
+                {cashDrawerEnabled ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="hidden h-11 min-w-0 flex-1 justify-center gap-1.5 rounded-xl border-violet-200 bg-violet-50 px-2 text-sm font-semibold text-violet-900 hover:bg-violet-100 lg:inline-flex dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200 dark:hover:bg-violet-500/20"
+                    disabled={pending}
+                    onClick={handleOpenCashDrawer}
+                  >
+                    <Archive className="size-4 shrink-0" />
+                    <span className="truncate">{t("Drawer")}</span>
+                  </Button>
+                ) : null}
+                {canCollectPayment ||
+                canPaySupplier ||
+                (canAddSessionExpense && storeId && cashierId && sessionId) ||
+                cashDrawerEnabled ||
+                hasActiveSession ? (
+                  <DropdownMenu
+                    open={cashierMoreOpen}
+                    onOpenChange={setCashierMoreOpen}
+                  >
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="size-11 shrink-0 rounded-xl px-0 lg:hidden"
+                          aria-label={t("More cashier actions")}
+                        />
+                      }
+                    >
+                      <MoreHorizontal className="size-4" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-48">
+                      {canCollectPayment ? (
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setCashierMoreOpen(false);
+                            setCollectOpen(true);
+                          }}
+                          className="min-h-11 gap-2 lg:hidden"
+                        >
+                          <Banknote className="size-4" />
+                          {t("Collect from customer")}
+                        </DropdownMenuItem>
+                      ) : null}
+                      {canPaySupplier ? (
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setCashierMoreOpen(false);
+                            setSupplierPayOpen(true);
+                          }}
+                          className="min-h-11 gap-2 lg:hidden"
+                        >
+                          <Truck className="size-4" />
+                          {t("Pay supplier")}
+                        </DropdownMenuItem>
+                      ) : null}
+                      {cashDrawerEnabled ? (
+                        <DropdownMenuItem
+                          disabled={pending}
+                          onClick={() => {
+                            setCashierMoreOpen(false);
+                            handleOpenCashDrawer();
+                          }}
+                          className="min-h-11 gap-2 lg:hidden"
+                        >
+                          <Archive className="size-4" />
+                          {t("Open drawer")}
+                        </DropdownMenuItem>
+                      ) : null}
+                      {canAddSessionExpense &&
+                      storeId &&
+                      cashierId &&
+                      sessionId ? (
+                        <div className="lg:hidden [&_button]:h-11 [&_button]:w-full [&_button]:justify-start [&_button]:rounded-md [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-2 [&_button]:py-2 [&_button]:text-sm [&_button]:font-normal [&_button]:shadow-none [&_button]:hover:bg-accent">
+                          <ExpenseWizard
+                            storeId={storeId}
+                            sessionId={sessionId}
+                            userId={cashierId}
+                            costCenters={costCenters}
+                            categories={expenseCategories}
+                            sessionMode
+                            onOpenChange={(expenseOpen) => {
+                              if (expenseOpen) setCashierMoreOpen(false);
+                            }}
+                            trigger={
+                              <Button type="button" variant="ghost" size="sm">
+                                <Wallet className="size-4" />
+                                {t("Session expense")}
+                              </Button>
+                            }
+                          />
+                        </div>
+                      ) : null}
+                      {readinessState === "ready" &&
+                      activeSession &&
+                      sessionReconciliation ? (
+                        <DropdownMenuItem
+                          className="min-h-11 gap-2 lg:hidden"
+                          onClick={() => {
+                            setCashierMoreOpen(false);
+                            setCloseSessionOpen(true);
+                          }}
+                        >
+                          {t("Close session")}
+                        </DropdownMenuItem>
+                      ) : null}
+                      <div className="lg:hidden">
+                        <PosPinSwitch returnTo={posPath} menuItem />
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : null}
+              </div>
+            ) : (
+              <div className="min-w-0 flex-1" />
+            )}
+
+            <div className="flex shrink-0 items-center gap-1.5 max-[390px]:gap-1">
+              {checkoutSaving ? (
+                <span
+                  className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/10 px-2.5 text-sm font-semibold text-primary max-lg:size-11 max-lg:px-0"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <Loader2 className="size-4 shrink-0 animate-spin" />
+                  <span className="truncate max-lg:sr-only">
+                    {t("Saving invoice…")}
+                  </span>
+                </span>
+              ) : null}
+              <OperatorShortcutHint
+                variant="pos"
+                className="me-1 hidden lg:block"
+              />
+              {hasActiveSession ? <PosHeldCartsBar /> : null}
+              {readinessState === "ready" &&
+              hasActiveSession &&
+              activeSession &&
+              sessionReconciliation ? (
+                <div className="hidden lg:block">
+                  <PosCloseSessionDialog
+                    open={closeSessionOpen}
+                    onOpenChange={setCloseSessionOpen}
+                    session={activeSession}
+                    reconciliation={sessionReconciliation}
+                    sessionExpenses={sessionExpenses}
+                    cashierName={cashierName ?? t("Cashier")}
+                    costCenterMap={costCenterMap}
+                    categoryMap={expenseCategoryMap}
+                    triggerSize="sm"
+                    triggerClassName="h-11 rounded-full px-3"
+                    triggerChildren={t("Close")}
+                  />
+                </div>
+              ) : null}
+              <div className={hasActiveSession ? "hidden lg:block" : undefined}>
+                <PosPinSwitch returnTo={posPath} />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex min-h-0 flex-1 gap-2 max-[390px]:gap-1.5 sm:gap-3 lg:gap-4">
+          <section className="flex min-w-0 flex-1 flex-col gap-2 max-[390px]:gap-1.5 sm:gap-3">
+            <CategoryRail
+              categories={categories}
+              selectedId={categoryId}
+              onSelect={setCategoryId}
+            />
+            <form
+              className="flex flex-wrap gap-1.5"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (searchTerm.trim()) handleBarcodeSubmit(searchTerm);
+              }}
+            >
+              <div className="relative min-w-0 flex-1">
+                {barcodeEnabled ? (
+                  <ScanBarcode
+                    className="pointer-events-none absolute start-3 top-1/2 size-5 -translate-y-1/2 text-primary"
+                    aria-hidden
+                  />
+                ) : (
+                  <Search
+                    className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                    aria-hidden
+                  />
+                )}
+                <Input
+                  ref={searchInputRef}
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setSearchError(null);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape" && searchTerm) {
+                      event.preventDefault();
+                      setSearchTerm("");
+                      setSearchError(null);
+                    }
+                  }}
+                  placeholder={t(
+                    barcodeEnabled
+                      ? "Search or scan barcode…"
+                      : "Search products…",
+                  )}
+                  aria-label={t(
+                    barcodeEnabled
+                      ? "Search or scan barcode"
+                      : "Search products",
+                  )}
+                  aria-describedby={
+                    [
+                      barcodeEnabled ? "pos-barcode-hint" : null,
+                      searchError ? "pos-search-error" : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" ") || undefined
+                  }
+                  aria-invalid={Boolean(searchError)}
+                  aria-keyshortcuts="/ Escape"
+                  className="h-11 rounded-xl bg-card ps-11 pe-11 text-base shadow-none ring-1 ring-border/50 focus-visible:ring-2 aria-invalid:ring-destructive/70 sm:pe-24"
+                  autoComplete="off"
+                  enterKeyHint="search"
+                  inputMode="search"
+                />
+                {searchTerm ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchTerm("");
+                      setSearchError(null);
+                      searchInputRef.current?.focus();
+                    }}
+                    className="absolute end-0 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-xl text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                    aria-label={t("Clear search")}
+                  >
+                    <X className="size-4" aria-hidden />
+                  </button>
+                ) : barcodeEnabled ? (
+                  <span className="pointer-events-none absolute end-3 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded-md bg-primary/8 px-2 py-1 text-[10px] font-semibold text-primary sm:flex">
+                    <span
+                      className="size-1.5 rounded-full bg-emerald-500"
+                      aria-hidden
+                    />
+                    {t("Scanner ready")}
+                  </span>
+                ) : null}
+                {barcodeEnabled ? (
+                  <span id="pos-barcode-hint" className="sr-only">
+                    {t(
+                      "Scan barcode or type a product name, then press Enter to add",
+                    )}
+                  </span>
+                ) : null}
+              </div>
+              <Button
+                type="submit"
+                variant="outline"
+                className="hidden h-11 shrink-0 rounded-xl px-4 sm:inline-flex"
+                aria-label={t("Add from search")}
+              >
+                <Plus className="size-4" aria-hidden />
+                {t("Add")}
+              </Button>
+              {searchError ? (
+                <p
+                  id="pos-search-error"
+                  className="basis-full px-1 text-xs font-medium text-destructive"
+                  role="alert"
+                >
+                  {searchError}
+                </p>
+              ) : null}
+            </form>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain rounded-xl bg-muted/45 p-1.5 ring-1 ring-border/70 sm:p-2 lg:p-2.5">
+              {catalogLoading ? (
+                <EmptyStateBlock
+                  title={t("Loading products…")}
+                  description={t("This will only take a moment.")}
+                  className="flex min-h-32 flex-col items-center justify-center border-border/70 bg-card/80 p-3 py-5 sm:min-h-40 sm:py-7"
+                />
+              ) : catalogError ? (
+                <EmptyStateBlock
+                  title={t("Could not load products")}
+                  description={catalogError}
+                  className="flex min-h-32 flex-col items-center justify-center border-border/70 bg-card/80 p-3 py-5 sm:min-h-40 sm:py-7"
+                />
+              ) : products.length === 0 ? (
+                <EmptyStateBlock
+                  title={t(searchTerm.trim() ? "No results" : "No products")}
+                  description={
+                    searchTerm.trim()
+                      ? t("Try a different name or barcode.")
+                      : categoryId
+                        ? t("No products in this category.")
+                        : t("Add products to the catalog to start selling.")
+                  }
+                  action={
+                    searchTerm.trim() || categoryId ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-11 rounded-xl px-4"
+                        onClick={clearCatalogFilters}
+                      >
+                        {t(
+                          searchTerm.trim() && categoryId
+                            ? "Clear filters"
+                            : categoryId
+                              ? "Show all products"
+                              : "Clear search",
+                        )}
+                      </Button>
+                    ) : undefined
+                  }
+                  className="flex min-h-32 flex-col items-center justify-center border-border/70 bg-card/80 p-3 py-5 sm:min-h-40 sm:py-7"
+                />
+              ) : (
+                <div className="grid grid-cols-2 gap-1.5 min-[350px]:grid-cols-3 sm:grid-cols-[repeat(auto-fit,minmax(112px,1fr))] sm:gap-2 lg:grid-cols-[repeat(auto-fit,minmax(118px,1fr))]">
+                  {products.map((product) => (
+                    <ProductTile
+                      key={product.id}
+                      product={product}
+                      showVariants={enableVariants}
+                      allowNegativeStock={allowNegativeStock}
+                      onAdd={() => handleAdd(product)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+
+          <aside className="hidden min-h-0 w-[min(340px,40vw)] shrink-0 flex-col min-[900px]:flex lg:w-[min(380px,34vw)]">
+            <CartPanel
+              onCheckout={cartCheckout}
+              checkoutDisabled={payLocked || cart.length === 0}
+              checkoutBlockedReason={
+                checkoutBlockedReason ? t(checkoutBlockedReason) : null
+              }
+              discountsEnabled={discountsEnabled}
+              promoCartDiscount={promoCartDiscount}
+              promoItemSavings={promoItemSavings}
+              promoAdjustedSubtotal={promoAdjustedSubtotal}
+              promoLabels={promoLabels}
+              loyaltyEnabled={loyaltyEnabled}
+              enabledPaymentMethods={enabledPaymentMethods}
+              loyaltyRedemptionRate={loyaltyRedemptionRate}
+              minimumLoyaltyRedeemPoints={minimumLoyaltyRedeemPoints}
+              attachExpanded={attachExpanded}
+              onAttachExpandedChange={setAttachExpanded}
+              discountOpen={discountOpen}
+              onDiscountOpenChange={setDiscountOpen}
+              onRequestClearCart={() => setClearConfirmOpen(true)}
+            />
+            {checkoutBlocked ? (
+              <div className="mt-2.5 space-y-2.5 rounded-2xl border border-amber-500/25 bg-amber-50/80 p-3.5 text-center dark:bg-amber-500/10">
+                <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                  {checkoutBlockedReason ? t(checkoutBlockedReason) : null}
+                </p>
+                {readinessState === "no_session" ? (
+                  <QuickOpenSessionButton
+                    className="w-full"
+                    label="Start selling"
+                    pendingOpeningFloat={pendingOpeningFloat}
+                  />
+                ) : null}
+              </div>
+            ) : null}
+          </aside>
+
+          <Sheet open={cartOpen} onOpenChange={setCartOpen}>
+            <SheetContent
+              side="bottom"
+              showCloseButton
+              className="flex h-[min(94dvh,100%)] max-h-[min(94dvh,100%)] flex-col gap-0 overflow-hidden rounded-t-2xl border-t p-0 max-[390px]:h-[min(96dvh,100%)] max-[390px]:max-h-[min(96dvh,100%)] data-[side=bottom]:h-[min(94dvh,100%)] data-[side=bottom]:max-[390px]:h-[min(96dvh,100%)]"
+            >
+              <div className="flex justify-center pb-0.5 pt-1.5" aria-hidden>
+                <span className="h-1 w-9 rounded-full bg-muted-foreground/35" />
+              </div>
+              <SheetHeader className="flex shrink-0 flex-row items-center justify-between gap-2 border-b border-border/60 px-3 py-1.5 pe-14 text-start">
+                <SheetTitle className="min-w-0 truncate text-sm font-semibold">
+                  {t("Cart")}
+                  {cartItemCount > 0 ? (
+                    <span className="ms-1.5 text-xs font-medium text-muted-foreground">
+                      · {cartItemCount}{" "}
+                      {t(cartItemCount === 1 ? "item" : "items")}
+                    </span>
+                  ) : null}
+                </SheetTitle>
+                <SheetDescription className="shrink-0 text-xs font-bold tabular-nums text-foreground">
+                  {cartTotal === 0
+                    ? t("Add items to continue")
+                    : `${t("Total")} ${formatCurrency(cartTotal, "EGP", locale)}`}
+                </SheetDescription>
+              </SheetHeader>
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                <CartPanel
+                  onCheckout={(method) => {
+                    setCartOpen(false);
+                    cartCheckout(method);
+                  }}
+                  checkoutDisabled={payLocked || cart.length === 0}
+                  checkoutBlockedReason={
+                    checkoutBlockedReason ? t(checkoutBlockedReason) : null
+                  }
+                  discountsEnabled={discountsEnabled}
+                  promoCartDiscount={promoCartDiscount}
+                  promoItemSavings={promoItemSavings}
+                  promoAdjustedSubtotal={promoAdjustedSubtotal}
+                  promoLabels={promoLabels}
+                  loyaltyEnabled={loyaltyEnabled}
+                  enabledPaymentMethods={enabledPaymentMethods}
+                  loyaltyRedemptionRate={loyaltyRedemptionRate}
+                  minimumLoyaltyRedeemPoints={minimumLoyaltyRedeemPoints}
+                  attachExpanded={attachExpanded}
+                  onAttachExpandedChange={setAttachExpanded}
+                  discountOpen={discountOpen}
+                  onDiscountOpenChange={setDiscountOpen}
+                  onRequestClearCart={() => setClearConfirmOpen(true)}
+                />
+                {checkoutBlocked ? (
+                  <div className="space-y-2 border-t border-border/60 p-2.5 text-center">
+                    <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                      {checkoutBlockedReason ? t(checkoutBlockedReason) : null}
+                    </p>
+                    {readinessState === "no_session" ? (
+                      <QuickOpenSessionButton
+                        className="w-full"
+                        label={t("Start selling now")}
+                        pendingOpeningFloat={pendingOpeningFloat}
+                      />
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          <PosCreditCheckoutDialog
+            open={creditOpen}
+            onOpenChange={setCreditOpen}
+            total={cartPayableTotal}
+            customer={customer}
+            enabledMethods={enabledPaymentMethods}
+            loading={checkoutSaving}
+            onConfirm={handleCreditConfirm}
+          />
+
+          <VariantPickerDialog
+            open={Boolean(pickerProduct)}
+            product={pickerProduct}
+            allowNegativeStock={allowNegativeStock}
+            onClose={() => setPickerProduct(null)}
+            onSelect={(product, variant) => {
+              if (enableModifiers) {
+                setPendingModifierVariant(variant);
+                setPickerProduct(null);
+                setModifierProduct(product);
+                return;
+              }
+              addToCart(product, variant);
+            }}
+          />
+          <PosModifierPicker
+            open={Boolean(modifierProduct)}
+            productId={modifierProduct?.id ?? ""}
+            productName={modifierProduct?.name ?? ""}
+            currency={receiptBranding.currency ?? "EGP"}
+            onClose={() => {
+              setModifierProduct(null);
+              setPendingModifierVariant(null);
+            }}
+            onConfirm={(modifiers) => {
+              if (!modifierProduct) return;
+              addToCart(modifierProduct, pendingModifierVariant, modifiers);
+              setModifierProduct(null);
+              setPendingModifierVariant(null);
+            }}
+          />
+          <Dialog open={onlineOrdersOpen} onOpenChange={setOnlineOrdersOpen}>
+            <DialogContent className="max-h-[min(94dvh,100%)] w-[calc(100%-0.75rem)] max-w-[min(980px,calc(100%-0.75rem))] overflow-hidden p-0 max-sm:rounded-2xl sm:max-w-[min(980px,calc(100%-1rem))]">
+              <DialogHeader className="border-b border-border/70 px-3 py-3 sm:px-4">
+                <DialogTitle className="flex items-center gap-2 pe-8 text-base sm:text-lg">
+                  <ClipboardList className="size-5 text-primary" />
+                  {t("Online Orders")}
+                  {activeOnlineOrdersCount > 0 ? (
+                    <span className="rounded-full bg-sky-700 px-2 py-0.5 text-xs font-bold text-white tabular-nums dark:bg-sky-400 dark:text-sky-950">
+                      {activeOnlineOrdersCount}
+                    </span>
+                  ) : null}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="max-h-[calc(94dvh-56px)] overflow-y-auto overscroll-y-contain p-2">
+                <OnlineOrdersPageClient
+                  orders={onlineOrders}
+                  products={onlineOrderProducts}
+                  compact
+                  enabledPaymentMethods={enabledPaymentMethods}
+                  receiptBranding={receiptBranding}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+          {canCollectPayment ? (
+            <PosCollectFlowDialog
+              open={collectOpen}
+              onOpenChange={setCollectOpen}
+            />
+          ) : null}
+          {canPaySupplier ? (
+            <PosSupplierPayDialog
+              open={supplierPayOpen}
+              onOpenChange={setSupplierPayOpen}
+              storeId={storeId}
+            />
+          ) : null}
+          <WeightAmountModal
+            open={Boolean(weightProduct)}
+            onOpenChange={(open) => {
+              if (!open) setWeightProduct(null);
+            }}
+            product={weightProduct}
+            scaleEnabled={scaleEnabled}
+            scaleSettings={scaleSettings}
+            onConfirm={({
+              quantity,
+              unitPrice,
+              saleInputMode,
+              enteredAmount,
+            }) => {
+              if (!weightProduct) return;
+              const resolved = resolveCheckoutVariant(weightProduct);
+              addItem({
+                productId: weightProduct.id,
+                variantId: resolved?.id ?? null,
+                name: weightProduct.name,
+                quantity,
+                unitPrice:
+                  unitPrice > 0
+                    ? unitPrice
+                    : (resolved?.price ?? weightProduct.base_price),
+                categoryId: weightProduct.category_id ?? null,
+                modifiers: [],
+                imageUrl: weightProduct.image_url,
+                saleUnit: weightProduct.sale_unit,
+                saleInputMode,
+                enteredAmount,
+              });
+              setWeightProduct(null);
+            }}
+          />
+        </div>
+
+        <div className="shrink-0 pb-[max(0rem,calc(env(safe-area-inset-bottom)-0.5rem))] min-[900px]:hidden">
+          <Button
+            type="button"
+            className="flex h-12 w-full items-center justify-between gap-2.5 rounded-xl px-2.5 py-1 text-sm shadow-md transition active:scale-[0.99] sm:h-13 sm:px-3"
+            onClick={() => setCartOpen(true)}
+            aria-label={
+              cartItemCount > 0
+                ? `${t("Open cart")}, ${cartItemCount} ${t("items")}, ${t("Total")} ${formatCurrency(cartTotal, "EGP", locale)}`
+                : t("Open cart")
+            }
+          >
+            <span className="flex min-w-0 items-center gap-2.5">
+              <span className="relative flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary-foreground/15 sm:size-10">
+                <ShoppingCart className="size-4.5" />
+                {cartItemCount > 0 ? (
+                  <span className="absolute -top-1 -end-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-background px-1 text-[11px] font-bold text-primary tabular-nums">
+                    {cartItemCount > 99 ? "99+" : cartItemCount}
+                  </span>
+                ) : null}
+              </span>
+              <span className="min-w-0 text-start">
+                <span className="block truncate text-sm font-semibold leading-tight">
+                  {cartItemCount === 0
+                    ? t("Cart is empty")
+                    : `${cartItemCount} ${t(cartItemCount === 1 ? "item" : "items")}`}
+                </span>
+                <span className="block text-xs font-medium text-primary-foreground/80">
+                  {t(cartItemCount === 0 ? "Tap to continue" : "Tap to pay")}
+                </span>
+              </span>
+            </span>
+            <span className="flex shrink-0 flex-col items-end gap-0.5">
+              <span className="text-lg font-bold tabular-nums leading-none">
+                {cartTotal === 0 ? "—" : formatCurrency(cartTotal)}
+              </span>
+              {cartItemCount > 0 ? (
+                <span className="rounded-full bg-primary-foreground/15 px-2 py-0.5 text-[11px] font-bold tracking-wide text-primary-foreground">
+                  {t("Pay")}
+                </span>
+              ) : null}
+            </span>
+          </Button>
+        </div>
+      </div>
       {lastReceipt && receiptEnabled ? (
         <PosReceiptSuccessDialog
           open={Boolean(lastReceipt)}
@@ -1714,7 +1878,9 @@ export function PosScreen({
         open={clearConfirmOpen}
         onOpenChange={setClearConfirmOpen}
         title={t("Clear cart?")}
-        description={t("All items in the current sale will be removed. Held carts are not affected.")}
+        description={t(
+          "All items in the current sale will be removed. Held carts are not affected.",
+        )}
         confirmLabel={t("Clear cart")}
         destructive
         onConfirm={() => {
@@ -1722,31 +1888,31 @@ export function PosScreen({
           setDiscountOpen(false);
         }}
       />
-    <ManagerOverrideDialog
-      open={Boolean(overrideDialog)}
-      onOpenChange={(open) => {
-        if (!open) setOverrideDialog(null);
-      }}
-      title={overrideDialog?.title ?? t("Manager approval")}
-      defaultReason={overrideDialog?.defaultReason ?? ""}
-      onConfirm={(reason, pin) => {
-        if (!overrideDialog) return;
-        if (overrideDialog.kind === "cash_drawer") {
-          if (pending) return;
-          confirmCashDrawer(reason, pin);
-          return;
-        }
-        if (checkoutSaving) return;
-        if (overrideDialog.payments) {
-          runCheckout(
-            overrideDialog.payments,
-            reason,
-            overrideDialog.accountCollection ?? 0,
-            pin
-          );
-        }
-      }}
-    />
+      <ManagerOverrideDialog
+        open={Boolean(overrideDialog)}
+        onOpenChange={(open) => {
+          if (!open) setOverrideDialog(null);
+        }}
+        title={overrideDialog?.title ?? t("Manager approval")}
+        defaultReason={overrideDialog?.defaultReason ?? ""}
+        onConfirm={(reason, pin) => {
+          if (!overrideDialog) return;
+          if (overrideDialog.kind === "cash_drawer") {
+            if (pending) return;
+            confirmCashDrawer(reason, pin);
+            return;
+          }
+          if (checkoutSaving) return;
+          if (overrideDialog.payments) {
+            runCheckout(
+              overrideDialog.payments,
+              reason,
+              overrideDialog.accountCollection ?? 0,
+              pin,
+            );
+          }
+        }}
+      />
     </>
   );
 }
