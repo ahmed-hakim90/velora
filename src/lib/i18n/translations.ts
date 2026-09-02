@@ -25,7 +25,8 @@ export const arTranslations: Record<string, string> = {
   "Metric comparison": "مقارنة المؤشرات",
   "Average margin %": "متوسط الهامش %",
   "Expenses report": "تقرير المصروفات",
-  "Expenses by cost center and category": "المصروفات حسب مركز التكلفة والتصنيف.",
+  "Expenses by cost center and category":
+    "المصروفات حسب مركز التكلفة والتصنيف.",
   "Margin ranking": "ترتيب الهوامش",
   "Highest product and category margins based on item cost":
     "أعلى هوامش المنتجات والتصنيفات حسب تكلفة البنود.",
@@ -44,7 +45,8 @@ export const arTranslations: Record<string, string> = {
   "Tax by day": "الضريبة حسب اليوم",
   "No orders in this period": "لا توجد طلبات في هذه الفترة.",
   "Inventory report": "تقرير المخزون",
-  "Valuation, batches, expiry, and waste": "التقييم والتشغيلات والانتهاء والهالك.",
+  "Valuation, batches, expiry, and waste":
+    "التقييم والتشغيلات والانتهاء والهالك.",
   Batch: "التشغيلة",
   "Expiry date": "تاريخ الانتهاء",
   "Low-stock products": "منتجات منخفضة المخزون",
@@ -52,12 +54,14 @@ export const arTranslations: Record<string, string> = {
   "Inventory valuation": "تقييم المخزون",
   "Expiry and batches": "الانتهاء والتشغيلات",
   "Sales report": "تقرير المبيعات",
-  "Revenue, trends, products, and quick reports": "الإيراد والاتجاهات والمنتجات والتقارير السريعة.",
+  "Revenue, trends, products, and quick reports":
+    "الإيراد والاتجاهات والمنتجات والتقارير السريعة.",
   "Quick reports": "تقارير سريعة",
   "Open a focused report quickly": "افتح تقريرًا محددًا بسرعة.",
   "Quantity and revenue for one product": "كمية وإيراد منتج واحد.",
   "Branch summary": "ملخص الفرع",
-  "Revenue, products, and staff for one branch": "إيراد ومنتجات وموظفو فرع واحد.",
+  "Revenue, products, and staff for one branch":
+    "إيراد ومنتجات وموظفو فرع واحد.",
   "Cashier summary": "ملخص الكاشير",
   "Cashier revenue and sessions": "إيراد وجلسات الكاشير.",
   "Revenue by day": "الإيراد حسب اليوم",
@@ -101,12 +105,15 @@ export const arTranslations: Record<string, string> = {
     "قيمة البيع ناقص تكلفة الكميات الحالية.",
   "No sales in this period": "لا توجد مبيعات في هذه الفترة.",
   "Top-selling products and profit": "الأكثر مبيعًا وربحًا",
-  "No completed sales invoices in this period": "لا توجد فواتير بيع مكتملة في هذه الفترة.",
+  "No completed sales invoices in this period":
+    "لا توجد فواتير بيع مكتملة في هذه الفترة.",
   "Expected profit by purchase invoice": "الربح المتوقع حسب فاتورة الشراء",
-  "No received purchase invoices in this period": "لا توجد فواتير شراء مستلمة في هذه الفترة.",
+  "No received purchase invoices in this period":
+    "لا توجد فواتير شراء مستلمة في هذه الفترة.",
   "Totals by day": "الإجمالي حسب اليوم",
   "No days with sales in this period": "لا توجد أيام بها مبيعات في هذه الفترة.",
-  "Product totals (sales, cost, and profit)": "إجمالي المنتجات: البيع والتكلفة والربح",
+  "Product totals (sales, cost, and profit)":
+    "إجمالي المنتجات: البيع والتكلفة والربح",
   "No sold products in this period": "لا توجد منتجات مباعة في هذه الفترة.",
   "Customer credit balances": "أرصدة العملاء الآجلة",
   "Supplier balances": "أرصدة الموردين",
@@ -139,7 +146,8 @@ export const arTranslations: Record<string, string> = {
   "Modifier added": "تمت الإضافة",
   "Save modifier": "حفظ الإضافة",
   "Could not load wholesale tiers": "تعذر تحميل شرائح الجملة",
-  "Minimum quantity must be greater than zero": "أقل كمية يجب أن تكون أكبر من صفر",
+  "Minimum quantity must be greater than zero":
+    "أقل كمية يجب أن تكون أكبر من صفر",
   "Unit price is required": "سعر الوحدة مطلوب",
   "Could not save price tier": "تعذر حفظ الشريحة",
   "Invalid quantity or price": "الكمية أو السعر غير صالح",
@@ -225,7 +233,8 @@ export const arTranslations: Record<string, string> = {
   "List name": "اسم القائمة",
   "Section title": "عنوان القسم",
   "Frozen food · Sauces · Mozzarella": "مجمدات · صوصات · موتزريلا",
-  "Suggested margin % when no sale price exists": "هامش ربح مقترح % عند عدم وجود سعر بيع",
+  "Suggested margin % when no sale price exists":
+    "هامش ربح مقترح % عند عدم وجود سعر بيع",
   "Offer discount %": "خصم العرض %",
   "Background color": "لون الخلفية",
   "Brand color": "لون الهوية",
@@ -320,7 +329,8 @@ export const arTranslations: Record<string, string> = {
   "Link a container from the containers list or purchase order.":
     "اربط الحاوية من قائمة الحاويات أو أمر التوريد.",
   Costs: "المصاريف",
-  "Container invoices include an extra cost of": "فواتير الحاويات تشمل تكلفة إضافية قدرها",
+  "Container invoices include an extra cost of":
+    "فواتير الحاويات تشمل تكلفة إضافية قدرها",
   "This is supplier shipping on the invoice. Do not record it again here.":
     "هذا شحن المورد في الفاتورة. لا تسجله مرة أخرى هنا.",
   "No costs yet": "لا توجد مصاريف بعد",
@@ -333,9 +343,11 @@ export const arTranslations: Record<string, string> = {
     "المصاريف هنا تُضاف لتكلفة المخزون. إذا كان الشحن في فاتورة المورد فلا تسجله هنا مرة أخرى.",
   "Product category": "قسم المنتجات",
   "One product (optional)": "منتج واحد (اختياري)",
-  "Leave empty for all products, or search for one": "اتركه فارغًا لكل المنتجات، أو ابحث عن منتج",
+  "Leave empty for all products, or search for one":
+    "اتركه فارغًا لكل المنتجات، أو ابحث عن منتج",
   "Clear product selection": "إلغاء اختيار المنتج",
-  "Stock count started from zero. Scan barcodes.": "تم بدء الجرد من صفر. امسح الباركود.",
+  "Stock count started from zero. Scan barcodes.":
+    "تم بدء الجرد من صفر. امسح الباركود.",
   "Could not start stock count": "تعذر بدء الجرد",
   "Start stock count": "بدء جرد",
   "Count a warehouse, category, or product. Each barcode scan adds one.":
@@ -377,7 +389,8 @@ export const arTranslations: Record<string, string> = {
   "Could not post differences": "تعذر ترحيل الفروقات",
   "Save the count before printing": "احفظ العد قبل الطباعة",
   "Review differences": "مراجعة الفروقات",
-  "Waiting for manager approval before posting": "بانتظار اعتماد المدير قبل الترحيل",
+  "Waiting for manager approval before posting":
+    "بانتظار اعتماد المدير قبل الترحيل",
   "Approved and ready to post differences": "معتمد وجاهز لترحيل الفروقات",
   "Confirm the count and send it for approval before posting":
     "أكد العد وأرسله للاعتماد قبل الترحيل.",
@@ -442,7 +455,8 @@ export const arTranslations: Record<string, string> = {
   View: "عرض",
   "Create a transfer to move stock between branches.":
     "أنشئ تحويلًا لنقل المخزون بين الفروع.",
-  "Draft saved. Items are saved automatically.": "تم حفظ المسودة. تُحفظ الأصناف تلقائيًا.",
+  "Draft saved. Items are saved automatically.":
+    "تم حفظ المسودة. تُحفظ الأصناف تلقائيًا.",
   "Sending transfer…": "جاري إرسال التحويل…",
   "Receiving transfer…": "جاري استلام التحويل…",
   "Branches updated": "تم تحديث الفروع",
@@ -452,7 +466,8 @@ export const arTranslations: Record<string, string> = {
   "From branch": "من فرع",
   "To branch": "إلى فرع",
   "No items yet": "لا توجد أصناف بعد",
-  "Open the draft to add items on this screen.": "افتح المسودة لإضافة الأصناف في نفس الشاشة.",
+  "Open the draft to add items on this screen.":
+    "افتح المسودة لإضافة الأصناف في نفس الشاشة.",
   "Open transfer": "فتح التحويل",
   "Transfer draft with details and items. Actions stay available below.":
     "مسودة التحويل وتفاصيلها وأصنافها. الأزرار متاحة بالأسفل.",
@@ -477,7 +492,8 @@ export const arTranslations: Record<string, string> = {
   "Unknown warehouse": "مخزن غير معروف",
   "Unknown product": "منتج غير معروف",
   "Reading spreadsheet…": "جاري قراءة الملف…",
-  "Checking products, variants, and recipes…": "جاري فحص المنتجات والخيارات والوصفات…",
+  "Checking products, variants, and recipes…":
+    "جاري فحص المنتجات والخيارات والوصفات…",
   "Ready to import": "جاهز للاستيراد",
   "Importing products…": "جاري استيراد المنتجات…",
   "Import completed": "تم الاستيراد",
@@ -542,7 +558,8 @@ export const arTranslations: Record<string, string> = {
   "New promotion": "عرض جديد",
   "Total promotions": "إجمالي العروض",
   "Usage count": "مرات الاستخدام",
-  "Usage counter, not calculated revenue impact": "عداد استخدام، وليس أثر إيراد محسوبًا",
+  "Usage counter, not calculated revenue impact":
+    "عداد استخدام، وليس أثر إيراد محسوبًا",
   "Promotions list": "قائمة العروض",
   "Search by name or code…": "ابحث بالاسم أو الكود…",
   "Search promotions": "بحث العروض",
@@ -568,14 +585,18 @@ export const arTranslations: Record<string, string> = {
   "Allow stacking with another discount": "السماح بالجمع مع خصم آخر",
   "Promotion not found": "العرض غير موجود",
   "Promotion name is required": "اسم العرض مطلوب",
-  "Discount percent must be between 1 and 100": "نسبة الخصم يجب أن تكون بين 1 و100",
+  "Discount percent must be between 1 and 100":
+    "نسبة الخصم يجب أن تكون بين 1 و100",
   "Invalid discount amount": "مبلغ الخصم غير صالح",
   "Invalid sale price": "سعر العرض غير صالح",
-  "Scheduled sale price requires start and end dates": "سعر العرض المجدول يحتاج تاريخ بداية ونهاية",
+  "Scheduled sale price requires start and end dates":
+    "سعر العرض المجدول يحتاج تاريخ بداية ونهاية",
   "Buy-and-get requires valid quantities": "عرض اشتري واحصل يحتاج كميات صحيحة",
   "Invalid quantity threshold": "حد الكمية غير صالح",
-  "Set a percentage or amount for the quantity discount": "حدد نسبة أو مبلغًا لخصم الكمية",
-  "Select products or categories for the promotion": "اختر منتجات أو فئات للعرض",
+  "Set a percentage or amount for the quantity discount":
+    "حدد نسبة أو مبلغًا لخصم الكمية",
+  "Select products or categories for the promotion":
+    "اختر منتجات أو فئات للعرض",
   Accounting: "الحسابات",
   Action: "الإجراء",
   Active: "نشط",
@@ -727,6 +748,10 @@ export const arTranslations: Record<string, string> = {
   "Highest category": "أعلى تصنيف",
   "Highest cost center": "أعلى مركز تكلفة",
   "Image URL (optional)": "رابط الصورة (اختياري)",
+  "Show product images": "إظهار صور المنتجات",
+  "Hide product images": "إخفاء صور المنتجات",
+  "With images": "بالصور",
+  "Without images": "بدون صور",
   "Import products": "استيراد المنتجات",
   "Imports/Exports": "استيراد/تصدير",
   Insights: "التقارير والتحليلات",
@@ -832,7 +857,8 @@ export const arTranslations: Record<string, string> = {
   "WhatsApp opened": "تم فتح واتساب",
   "Could not open WhatsApp": "تعذر فتح واتساب",
   "Printing…": "جاري الطباعة…",
-  "Customer name must be at least two characters": "اسم العميل يجب أن يكون حرفين على الأقل",
+  "Customer name must be at least two characters":
+    "اسم العميل يجب أن يكون حرفين على الأقل",
   "Enter a valid phone number": "أدخل رقم هاتف صالحًا",
   "Payment source": "مصدر الدفع",
   Pending: "قيد الانتظار",
@@ -931,27 +957,38 @@ export const arTranslations: Record<string, string> = {
   "Total Units": "إجمالي الوحدات",
   Type: "النوع",
   "Add branches and warehouses": "أضف الفروع والمخازن",
-  "Review each branch warehouse. A main warehouse is created automatically, and you can add more when needed.": "راجع مخزن كل فرع. النظام ينشئ مخزنًا رئيسيًا تلقائيًا، وتقدر تضيف مخازن أخرى.",
+  "Review each branch warehouse. A main warehouse is created automatically, and you can add more when needed.":
+    "راجع مخزن كل فرع. النظام ينشئ مخزنًا رئيسيًا تلقائيًا، وتقدر تضيف مخازن أخرى.",
   "Manage warehouses": "إدارة المخازن",
   "Add products and categories": "أضف المنتجات والتصنيفات",
-  "Create categories and products with prices and barcodes. You can also import an Excel file from Products.": "أنشئ التصنيفات والمنتجات بالأسعار والباركود، أو استورد ملف Excel من صفحة المنتجات.",
+  "Create categories and products with prices and barcodes. You can also import an Excel file from Products.":
+    "أنشئ التصنيفات والمنتجات بالأسعار والباركود، أو استورد ملف Excel من صفحة المنتجات.",
   "Enable loyalty": "فعّل برنامج الولاء",
-  "Set how customers earn and redeem points. Points are calculated automatically with every invoice.": "حدد كسب النقاط واستبدالها. النظام يحسبها تلقائيًا مع كل فاتورة.",
+  "Set how customers earn and redeem points. Points are calculated automatically with every invoice.":
+    "حدد كسب النقاط واستبدالها. النظام يحسبها تلقائيًا مع كل فاتورة.",
   "Loyalty settings": "إعدادات الولاء",
   "Open a shift": "افتح وردية",
-  "Open a new cashier shift and enter the opening cash in the drawer.": "افتح وردية جديدة وسجّل النقدية الافتتاحية في الدرج.",
+  "Open a new cashier shift and enter the opening cash in the drawer.":
+    "افتح وردية جديدة وسجّل النقدية الافتتاحية في الدرج.",
   "Sell from POS": "بيع من نقطة البيع",
-  "Open the branch POS, enter the cashier PIN, select or scan products, then collect payment.": "افتح نقطة البيع، أدخل PIN الكاشير، اختار أو امسح المنتجات، ثم استلم الدفع.",
+  "Open the branch POS, enter the cashier PIN, select or scan products, then collect payment.":
+    "افتح نقطة البيع، أدخل PIN الكاشير، اختار أو امسح المنتجات، ثم استلم الدفع.",
   "Redeem loyalty points": "استبدل نقاط الولاء",
-  "Available points appear during payment. Enter an amount or use all points to apply the discount.": "النقاط المتاحة تظهر وقت الدفع. أدخل العدد أو استخدم كل النقاط لتطبيق الخصم.",
+  "Available points appear during payment. Enter an amount or use all points to apply the discount.":
+    "النقاط المتاحة تظهر وقت الدفع. أدخل العدد أو استخدم كل النقاط لتطبيق الخصم.",
   "Close the shift": "اقفل الوردية",
-  "Count the actual cash and close the shift. The system records any variance automatically.": "عدّ النقدية واقفل الوردية. النظام يسجّل الفرق تلقائيًا.",
+  "Count the actual cash and close the shift. The system records any variance automatically.":
+    "عدّ النقدية واقفل الوردية. النظام يسجّل الفرق تلقائيًا.",
   "Default warehouse": "المخزن الافتراضي",
-  "POS sales deduct stock from the branch default warehouse automatically. You can change it from Warehouses.": "مبيعات نقطة البيع تخصم تلقائيًا من مخزن الفرع الافتراضي. تقدر تغيّره من المخازن.",
+  "POS sales deduct stock from the branch default warehouse automatically. You can change it from Warehouses.":
+    "مبيعات نقطة البيع تخصم تلقائيًا من مخزن الفرع الافتراضي. تقدر تغيّره من المخازن.",
   Transfers: "التحويلات",
-  "Move stock between branches and warehouses and track sending and receiving status.": "انقل البضاعة بين الفروع والمخازن وتابع الإرسال والاستلام.",
-  "Run regular stock counts. The system compares actual and recorded quantities and shows the variance.": "اعمل جردًا دوريًا. النظام يقارن الكمية الفعلية بالمسجلة ويعرض الفرق.",
-  "Set up your store and run daily operations with Velora.": "جهّز متجرك وشغّل عملياتك اليومية مع Velora.",
+  "Move stock between branches and warehouses and track sending and receiving status.":
+    "انقل البضاعة بين الفروع والمخازن وتابع الإرسال والاستلام.",
+  "Run regular stock counts. The system compares actual and recorded quantities and shows the variance.":
+    "اعمل جردًا دوريًا. النظام يقارن الكمية الفعلية بالمسجلة ويعرض الفرق.",
+  "Set up your store and run daily operations with Velora.":
+    "جهّز متجرك وشغّل عملياتك اليومية مع Velora.",
   "First-time setup": "الإعداد لأول مرة",
   "Get ready to sell in a few steps.": "خطوات بسيطة وتكون جاهزًا للبيع.",
   "Daily POS workflow": "يوم العمل على نقطة البيع",
@@ -959,20 +996,27 @@ export const arTranslations: Record<string, string> = {
   "Inventory management": "إدارة المخزون",
   "How stock moves through the system.": "كيف تتحرك البضاعة داخل النظام.",
   "Customer loyalty": "ولاء العملاء",
-  "Reward returning customers automatically.": "كافئ العملاء الدائمين تلقائيًا.",
+  "Reward returning customers automatically.":
+    "كافئ العملاء الدائمين تلقائيًا.",
   "Earning points": "كسب النقاط",
-  "Attach the customer to the invoice. Points are calculated automatically after discounts using your loyalty settings.": "اربط العميل بالفاتورة. النظام يحسب النقاط تلقائيًا بعد الخصومات حسب إعدادات الولاء.",
+  "Attach the customer to the invoice. Points are calculated automatically after discounts using your loyalty settings.":
+    "اربط العميل بالفاتورة. النظام يحسب النقاط تلقائيًا بعد الخصومات حسب إعدادات الولاء.",
   "Redeeming points": "استبدال النقاط",
-  "The customer point balance appears during payment. Enter the points or use them all to apply the discount instantly.": "رصيد النقاط يظهر وقت الدفع. أدخل النقاط أو استخدمها كلها لتطبيق الخصم فورًا.",
+  "The customer point balance appears during payment. Enter the points or use them all to apply the discount instantly.":
+    "رصيد النقاط يظهر وقت الدفع. أدخل النقاط أو استخدمها كلها لتطبيق الخصم فورًا.",
   "Device paired.": "تم اقتران الجهاز.",
   "Could not pair the device.": "تعذر اقتران الجهاز.",
   "Pair POS device": "اقتران جهاز الكاشير",
-  "Enter the one-time code from Settings → Devices. The code expires after 15 minutes.": "أدخل الكود من الإعدادات ← الأجهزة. الكود صالح لمدة 15 دقيقة.",
+  "Enter the one-time code from Settings → Devices. The code expires after 15 minutes.":
+    "أدخل الكود من الإعدادات ← الأجهزة. الكود صالح لمدة 15 دقيقة.",
   "Why am I seeing this?": "ليه الرسالة دي ظاهرة؟",
-  "This browser is not registered as a POS device for the current branch. A new code may be needed after changing the URL, clearing cookies, disabling the device, or switching branches.": "المتصفح مش مسجل كجهاز كاشير للفرع الحالي. قد تحتاج كودًا جديدًا بعد تغيير الرابط أو حذف الكوكيز أو تغيير الفرع.",
+  "This browser is not registered as a POS device for the current branch. A new code may be needed after changing the URL, clearing cookies, disabling the device, or switching branches.":
+    "المتصفح مش مسجل كجهاز كاشير للفرع الحالي. قد تحتاج كودًا جديدًا بعد تغيير الرابط أو حذف الكوكيز أو تغيير الفرع.",
   "Use the same URL every day.": "استخدم نفس الرابط كل يوم.",
-  "Refreshing does not remove pairing unless cookies are cleared or blocked.": "تحديث الصفحة لا يلغي الاقتران إلا لو الكوكيز اتحذفت أو اتمنعت.",
-  "If the branch changes, pair the device again from Settings → Devices.": "لو الفرع اتغير، أعد الاقتران من الإعدادات ← الأجهزة.",
+  "Refreshing does not remove pairing unless cookies are cleared or blocked.":
+    "تحديث الصفحة لا يلغي الاقتران إلا لو الكوكيز اتحذفت أو اتمنعت.",
+  "If the branch changes, pair the device again from Settings → Devices.":
+    "لو الفرع اتغير، أعد الاقتران من الإعدادات ← الأجهزة.",
   "8-character code": "كود من 8 أحرف",
   "Pairing…": "جاري الاقتران…",
   "Pair device": "اقتران الجهاز",
@@ -981,15 +1025,19 @@ export const arTranslations: Record<string, string> = {
   "before pairing this device.": "قبل اقتران الجهاز.",
   "Delete product": "حذف المنتج",
   "Product deleted.": "تم حذف المنتج.",
-  "All menu items will be activated with inventory tracking off. Ingredients are not affected. Continue?": "سيتم تفعيل كل أصناف المنيو وإيقاف تتبع مخزونها. المكونات لن تتأثر. متابعة؟",
-  "All sales products will be activated with inventory tracking off. Continue?": "سيتم تفعيل كل منتجات البيع وإيقاف تتبع مخزونها. متابعة؟",
+  "All menu items will be activated with inventory tracking off. Ingredients are not affected. Continue?":
+    "سيتم تفعيل كل أصناف المنيو وإيقاف تتبع مخزونها. المكونات لن تتأثر. متابعة؟",
+  "All sales products will be activated with inventory tracking off. Continue?":
+    "سيتم تفعيل كل منتجات البيع وإيقاف تتبع مخزونها. متابعة؟",
   Updated: "تم تحديث",
   "menu items": "أصناف منيو",
   "Could not update products.": "تعذر تحديث المنتجات.",
   "Choose a category first.": "اختار تصنيفًا أولًا.",
   "Select products from the table first.": "حدد منتجات من الجدول أولًا.",
-  "Enable inventory tracking for all products in": "تفعيل تتبع المخزون لكل منتجات",
-  "Disable inventory tracking for all products in": "إيقاف تتبع المخزون لكل منتجات",
+  "Enable inventory tracking for all products in":
+    "تفعيل تتبع المخزون لكل منتجات",
+  "Disable inventory tracking for all products in":
+    "إيقاف تتبع المخزون لكل منتجات",
   "Enable inventory tracking for": "تفعيل تتبع المخزون لـ",
   "Disable inventory tracking for": "إيقاف تتبع المخزون لـ",
   "Inventory tracking enabled for": "تم تفعيل التتبع لـ",
@@ -1000,8 +1048,10 @@ export const arTranslations: Record<string, string> = {
   "Disable tracking": "إيقاف التتبع",
   "Enable category tracking": "تفعيل التصنيف كامل",
   "Disable category tracking": "إيقاف التصنيف كامل",
-  "Manage menu items, prices, and categories for POS.": "جهّز أصناف المنيو والأسعار والتصنيفات لنقطة البيع.",
-  "Manage sales products, barcodes, purchase prices, and sale prices.": "أدر منتجات البيع والباركود وأسعار الشراء والبيع.",
+  "Manage menu items, prices, and categories for POS.":
+    "جهّز أصناف المنيو والأسعار والتصنيفات لنقطة البيع.",
+  "Manage sales products, barcodes, purchase prices, and sale prices.":
+    "أدر منتجات البيع والباركود وأسعار الشراء والبيع.",
   "Import / Export": "استيراد / تصدير",
   "Reset product inventory tracking": "ضبط تتبع مخزون المنتجات",
   "Active menu items": "أصناف المنيو النشطة",
@@ -1021,11 +1071,13 @@ export const arTranslations: Record<string, string> = {
   "Table view": "عرض جدول",
   "Card view": "عرض كروت",
   "Category selected": "تصنيف محدد",
-  "Edit price, status, and inventory tracking from the table": "عدّل السعر والحالة وتتبع المخزون من الجدول",
+  "Edit price, status, and inventory tracking from the table":
+    "عدّل السعر والحالة وتتبع المخزون من الجدول",
   "Now showing": "يظهر الآن",
   "Could not update product status.": "تعذر تحديث حالة المنتج.",
   "No matching products": "لا توجد منتجات مطابقة",
-  "Change the search or category, or add a new product.": "عدّل البحث أو التصنيف، أو أضف منتجًا جديدًا.",
+  "Change the search or category, or add a new product.":
+    "عدّل البحث أو التصنيف، أو أضف منتجًا جديدًا.",
   "Missing cost": "تكلفة ناقصة",
   Uncategorized: "غير مصنف",
   "Price range": "نطاق السعر",
@@ -1053,19 +1105,23 @@ export const arTranslations: Record<string, string> = {
   "Ingredient added.": "تمت إضافة المكوّن.",
   "Could not save ingredient.": "تعذر حفظ المكوّن.",
   "Edit ingredient": "تعديل مكوّن",
-  "Update the category, unit, and unit cost.": "حدّث التصنيف والوحدة وتكلفة الوحدة.",
+  "Update the category, unit, and unit cost.":
+    "حدّث التصنيف والوحدة وتكلفة الوحدة.",
   "Add a reusable ingredient.": "أضف مكوّنًا قابلًا لإعادة الاستخدام.",
   "Ingredient name": "اسم المكوّن",
   "Milk, sugar, espresso…": "لبن، سكر، بن إسبريسو…",
   "Choose ingredient category": "اختار تصنيف المكوّن",
   "Save ingredient": "حفظ المكوّن",
   "Product updated.": "تم تحديث المنتج.",
-  "Product created. Continue with wholesale prices in the next tab.": "تم إنشاء المنتج. كمّل أسعار الجملة من التبويب التالي.",
+  "Product created. Continue with wholesale prices in the next tab.":
+    "تم إنشاء المنتج. كمّل أسعار الجملة من التبويب التالي.",
   "Product created.": "تم إنشاء المنتج.",
   "Could not save product.": "تعذر حفظ المنتج.",
   "Edit product": "تعديل منتج",
-  "Set the name, sales method, purchase price, and sale price.": "حدد الاسم وطريقة البيع وسعر الشراء والبيع.",
-  "Manage menu details, ingredients, prices, and recipes.": "أدر تفاصيل المنيو والمكونات والأسعار والوصفات.",
+  "Set the name, sales method, purchase price, and sale price.":
+    "حدد الاسم وطريقة البيع وسعر الشراء والبيع.",
+  "Manage menu details, ingredients, prices, and recipes.":
+    "أدر تفاصيل المنيو والمكونات والأسعار والوصفات.",
   "Wholesale prices": "أسعار الجملة",
   "Category name is required.": "اسم التصنيف مطلوب.",
   "Could not save category.": "تعذر حفظ التصنيف.",
@@ -1074,14 +1130,16 @@ export const arTranslations: Record<string, string> = {
   "Delete category": "حذف التصنيف",
   "Could not delete category.": "تعذر حذف التصنيف.",
   "Manage categories": "إدارة التصنيفات",
-  "Create, order, and style product categories.": "أنشئ تصنيفات المنتجات ورتبها وحدد شكلها.",
+  "Create, order, and style product categories.":
+    "أنشئ تصنيفات المنتجات ورتبها وحدد شكلها.",
   Desserts: "حلويات",
   Icon: "الأيقونة",
   Order: "الترتيب",
   Color: "اللون",
   "Category color value": "قيمة لون التصنيف",
   "Cancel category editing": "إلغاء تعديل التصنيف",
-  "Add a category from the form to organize products.": "أضف تصنيفًا من النموذج لتنظيم المنتجات.",
+  "Add a category from the form to organize products.":
+    "أضف تصنيفًا من النموذج لتنظيم المنتجات.",
   "Edit category": "تعديل تصنيف",
   "Product name is required.": "اسم المنتج مطلوب.",
   "Product code is required.": "كود المنتج مطلوب.",
@@ -2163,15 +2221,18 @@ export const arTranslations: Record<string, string> = {
   "Browser print": "طباعة المتصفح",
   "By weight": "بالوزن",
   "By amount": "بالمبلغ",
+  "Sale method": "طريقة البيع",
   "Price per unit": "سعر الوحدة",
   "Enter weight manually. USB scale reading is not enabled on this device.":
     "أدخل الوزن يدويًا. قراءة ميزان USB غير مفعّلة على هذا الجهاز.",
   "Quick select": "اختيار سريع",
   "Other weight (kg)": "وزن آخر (كجم)",
+  "Weight in kilograms": "الوزن بالكيلوجرام",
   Weight: "الوزن",
   "Example: 0.350": "مثال: 0.350",
   "Customer requested amount": "المبلغ المطلوب",
   gram: "جرام",
+  EGP: "ج.م",
   "The owner or manager enters their account PIN, not the device cashier PIN.":
     "يدخل المالك أو المدير PIN حسابه، وليس PIN الكاشير على الجهاز.",
   "Confirm approval": "تأكيد الموافقة",
@@ -2884,6 +2945,7 @@ export const arTranslations: Record<string, string> = {
   "Void completed orders": "إلغاء الطلبات المكتملة",
   "Refund orders": "استرداد الطلبات",
   "Online orders": "طلبات الأونلاين",
+  "Cashier actions": "إجراءات الكاشير",
   "Manage QR online orders": "إدارة طلبات QR الأونلاين",
   "Create and edit products and categories":
     "إنشاء المنتجات والتصنيفات وتعديلها",
@@ -3001,8 +3063,10 @@ export const arTranslations: Record<string, string> = {
   "Preview is still loading. Try again.": "المعاينة لسه بتجهز. حاول تاني.",
   "Could not print the preview.": "تعذرت الطباعة من المعاينة.",
   "Could not load the print page": "تعذر تحميل صفحة الطباعة",
-  "Try again. If the problem continues, send the reference number to support.": "حاول تاني. لو المشكلة مستمرة، ابعت رقم المرجع للدعم.",
-  "No labels are ready. Go back to Barcode Labels and select Print preview again.": "مفيش ملصقات جاهزة. ارجع لملصقات الباركود واضغط معاينة الطباعة تاني.",
+  "Try again. If the problem continues, send the reference number to support.":
+    "حاول تاني. لو المشكلة مستمرة، ابعت رقم المرجع للدعم.",
+  "No labels are ready. Go back to Barcode Labels and select Print preview again.":
+    "مفيش ملصقات جاهزة. ارجع لملصقات الباركود واضغط معاينة الطباعة تاني.",
   "Back to Barcode Labels": "رجوع لملصقات الباركود",
   "Thermal 40×30 mm": "حراري 40×30 مم",
   "Thermal 50×25 mm": "حراري 50×25 مم",
@@ -3011,10 +3075,12 @@ export const arTranslations: Record<string, string> = {
   "Custom size": "مقاس مخصص",
   "No barcode": "بدون باركود",
   "No SKU": "بدون SKU",
-  "The browser blocked the print window. Allow pop-ups and try again.": "المتصفح منع نافذة الطباعة. اسمح بالنوافذ المنبثقة وحاول تاني.",
+  "The browser blocked the print window. Allow pop-ups and try again.":
+    "المتصفح منع نافذة الطباعة. اسمح بالنوافذ المنبثقة وحاول تاني.",
   "Default settings saved.": "تم حفظ الإعدادات الافتراضية.",
   "Could not save settings.": "تعذر حفظ الإعدادات.",
-  "Choose products, adjust the label, then print the preview.": "اختار المنتجات، عدّل الملصق، ثم اطبع المعاينة.",
+  "Choose products, adjust the label, then print the preview.":
+    "اختار المنتجات، عدّل الملصق، ثم اطبع المعاينة.",
   "Label size": "مقاس الملصق",
   "Width (mm)": "العرض (مم)",
   "Height (mm)": "الارتفاع (مم)",
@@ -3034,12 +3100,14 @@ export const arTranslations: Record<string, string> = {
   "Select + to add products.": "اضغط + لإضافة منتج.",
   "Copies for": "عدد نسخ",
   "Total labels": "إجمالي الملصقات",
-  "Printing is blocked because these items have no barcode:": "الطباعة متوقفة لأن المنتجات دي بدون باركود:",
+  "Printing is blocked because these items have no barcode:":
+    "الطباعة متوقفة لأن المنتجات دي بدون باركود:",
   And: "و",
   more: "آخرين",
   "Print labels": "طباعة الملصقات",
   "Live preview": "معاينة مباشرة",
-  "Changes to content, size, or copies appear here instantly.": "أي تغيير يظهر هنا فورًا.",
+  "Changes to content, size, or copies appear here instantly.":
+    "أي تغيير يظهر هنا فورًا.",
   "Add products to see the preview.": "أضف منتجات لعرض المعاينة.",
   "By cost center": "حسب مركز التكلفة",
   "By category": "حسب التصنيف",
@@ -3062,11 +3130,13 @@ export const arTranslations: Record<string, string> = {
   "Supplier Statement": "كشف حساب مورد",
   "Stock Count Sheet": "ورقة جرد المخزون",
   "Choose a warehouse before printing.": "اختار مخزن قبل الطباعة.",
-  "Enter the counted quantity in the blank column.": "اكتب الكمية المعدودة في العمود الفاضي.",
+  "Enter the counted quantity in the blank column.":
+    "اكتب الكمية المعدودة في العمود الفاضي.",
   "Stock Count Report": "تقرير جرد المخزون",
   "System stock": "رصيد النظام",
   Counted: "المعدود",
-  "Only the first 500 products are shown. Narrow the category or product filter to print the rest.": "ظاهر أول 500 منتج فقط. ضيّق التصنيف أو المنتج لطباعة الباقي.",
+  "Only the first 500 products are shown. Narrow the category or product filter to print the rest.":
+    "ظاهر أول 500 منتج فقط. ضيّق التصنيف أو المنتج لطباعة الباقي.",
   "No tracked products match these filters.": "مفيش منتجات مخزون مطابقة.",
   "Average order": "متوسط الطلب",
   "Opening cash": "رصيد الافتتاح",
@@ -3092,7 +3162,8 @@ export const arTranslations: Record<string, string> = {
   "Purchase cost": "تكلفة الشراء",
   "Expected sale value": "قيمة البيع المتوقعة",
   "Expected profit": "الربح المتوقع",
-  "Choose a product to print its stock card.": "اختار منتج لطباعة كارت المخزون.",
+  "Choose a product to print its stock card.":
+    "اختار منتج لطباعة كارت المخزون.",
   In: "داخل",
   Adjusted: "تسوية",
   "Closing stock": "رصيد نهاية الفترة",
@@ -3409,7 +3480,9 @@ function translateDynamicText(
   }
 
   if (targetLanguage === "ar") {
-    const prefixedValue = text.match(/^(Branch|Warehouse|Category|Product): (.+)$/);
+    const prefixedValue = text.match(
+      /^(Branch|Warehouse|Category|Product): (.+)$/,
+    );
     if (prefixedValue) {
       const labels: Record<string, string> = {
         Branch: "الفرع",

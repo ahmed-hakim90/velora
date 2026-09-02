@@ -37,7 +37,7 @@ export interface POSProduct extends Product {
 
 function computeStockBadge(
   quantity: number | null,
-  reorderPoint = 10
+  reorderPoint = 10,
 ): StockBadge {
   if (quantity == null) return "untracked";
   if (quantity <= 0) return "out";
@@ -48,18 +48,19 @@ function computeStockBadge(
 function computeMakeableFromLines(
   lines: Awaited<ReturnType<typeof recipeRepo.getRecipeLines>>,
   levelMap: Map<string, { quantity: number; reorder_point: number }>,
-  ingredientUnitMap: Map<string, string>
+  ingredientUnitMap: Map<string, string>,
 ): { qty: number; badge: StockBadge } {
   if (lines.length === 0) return { qty: 0, badge: "out" };
 
   const makeable = lines.map((line) => {
-    const stockUnit = ingredientUnitMap.get(line.ingredient_product_id) ?? "piece";
+    const stockUnit =
+      ingredientUnitMap.get(line.ingredient_product_id) ?? "piece";
     const level = levelMap.get(line.ingredient_product_id);
     const stockQty = level?.quantity ?? 0;
     const neededPerUnit = convertUnit(
       line.quantity,
       line.unit as Parameters<typeof convertUnit>[1],
-      stockUnit as Parameters<typeof convertUnit>[2]
+      stockUnit as Parameters<typeof convertUnit>[2],
     );
     if (neededPerUnit <= 0) return 0;
     return Math.floor(stockQty / neededPerUnit);
@@ -82,38 +83,39 @@ function emptyLevelMaps(): {
 function buildLevelMaps(levels: StockLevel[]) {
   return {
     baseLevelMap: new Map(
-      levels.filter((l) => !l.variant_id).map((l) => [l.product_id, l])
+      levels.filter((l) => !l.variant_id).map((l) => [l.product_id, l]),
     ),
     variantLevelMap: new Map(
       levels
         .filter((l) => l.variant_id)
-        .map((l) => [`${l.product_id}:${l.variant_id}`, l])
+        .map((l) => [`${l.product_id}:${l.variant_id}`, l]),
     ),
   };
 }
 
-export async function getProductsForPOS(
+async function loadPosCatalog(
   storeId: string,
-  categoryId?: string
-): Promise<POSProduct[]> {
-  const defaultWarehouse = await warehouseRepo.getDefaultWarehouse(storeId);
-  if (!defaultWarehouse) throw new Error("Default warehouse not found");
+  categoryId?: string,
+): Promise<{ categories: Category[]; products: POSProduct[] }> {
+  const [defaultWarehouse, categories, flags, recipeKeys, productsRaw] =
+    await Promise.all([
+      warehouseRepo.getDefaultWarehouse(storeId),
+      catalogRepo.listCategories(),
+      getFeatureFlags(),
+      recipeRepo.listRecipeKeys(),
+      catalogRepo.listProducts({
+        categoryId,
+        activeOnly: true,
+      }),
+    ]);
 
-  const [categories, flags, recipeKeys, productsRaw] = await Promise.all([
-    catalogRepo.listCategories(),
-    getFeatureFlags(),
-    recipeRepo.listRecipeKeys(),
-    catalogRepo.listProducts({
-      categoryId,
-      activeOnly: true,
-    }),
-  ]);
+  if (!defaultWarehouse) throw new Error("Default warehouse not found");
 
   const products = productsRaw.filter(canProductHaveRecipe);
   const recipesEnabled = flags.recipes === true;
   const recipeProductSet = new Set(recipeKeys.map((k) => k.productId));
   const recipeByKey = new Map(
-    recipeKeys.map((k) => [`${k.productId}:${k.variantId ?? ""}`, k])
+    recipeKeys.map((k) => [`${k.productId}:${k.variantId ?? ""}`, k]),
   );
 
   const anyTracked = products.some((p) => p.track_inventory);
@@ -121,21 +123,27 @@ export async function getProductsForPOS(
     recipesEnabled && products.some((p) => recipeProductSet.has(p.id));
   const needsStock = anyTracked || anyRecipeOnCatalog;
 
-  const [variantMap, levels, recipeLinesCache, ingredientUnitMap] = await Promise.all([
-    catalogRepo.listVariantsForProducts(products.map((p) => p.id)),
-    needsStock
-      ? inventoryRepo.listStockLevels(storeId, defaultWarehouse.id)
-      : Promise.resolve([] as StockLevel[]),
-    anyRecipeOnCatalog
-      ? recipeRepo.listAllRecipeLinesByProductKey()
-      : Promise.resolve(new Map<string, Awaited<ReturnType<typeof recipeRepo.getRecipeLines>>>()),
-    anyRecipeOnCatalog
-      ? catalogRepo.listProducts().then((all) => {
-          const ingredients = all.filter(canProductBeRecipeIngredient);
-          return new Map(ingredients.map((p) => [p.id, p.unit]));
-        })
-      : Promise.resolve(new Map<string, string>()),
-  ]);
+  const [variantMap, levels, recipeLinesCache, ingredientUnitMap] =
+    await Promise.all([
+      catalogRepo.listVariantsForProducts(products.map((p) => p.id)),
+      needsStock
+        ? inventoryRepo.listStockLevels(storeId, defaultWarehouse.id)
+        : Promise.resolve([] as StockLevel[]),
+      anyRecipeOnCatalog
+        ? recipeRepo.listAllRecipeLinesByProductKey()
+        : Promise.resolve(
+            new Map<
+              string,
+              Awaited<ReturnType<typeof recipeRepo.getRecipeLines>>
+            >(),
+          ),
+      anyRecipeOnCatalog
+        ? catalogRepo.listProducts().then((all) => {
+            const ingredients = all.filter(canProductBeRecipeIngredient);
+            return new Map(ingredients.map((p) => [p.id, p.unit]));
+          })
+        : Promise.resolve(new Map<string, string>()),
+    ]);
 
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
   const { baseLevelMap, variantLevelMap } = needsStock
@@ -143,16 +151,20 @@ export async function getProductsForPOS(
     : emptyLevelMaps();
   const ingredientLevelMap = baseLevelMap;
 
-  return products.map((product) => {
+  const posProducts = products.map((product) => {
     const cat = categoryMap.get(product.category_id);
-    const rawVariants = (variantMap.get(product.id) ?? []).filter((v) => v.is_active);
+    const rawVariants = (variantMap.get(product.id) ?? []).filter(
+      (v) => v.is_active,
+    );
     const hasVariants = rawVariants.length > 0;
 
     const posVariants: POSVariant[] = rawVariants.map((variant) => {
       const key = `${product.id}:${variant.id}`;
       const hasVariantRecipe = recipesEnabled && recipeByKey.has(key);
       const hasProductRecipe =
-        recipesEnabled && recipeByKey.has(`${product.id}:`) && !hasVariantRecipe;
+        recipesEnabled &&
+        recipeByKey.has(`${product.id}:`) &&
+        !hasVariantRecipe;
       const hasRecipe = hasVariantRecipe || hasProductRecipe;
 
       let stockQuantity: number | null = null;
@@ -164,8 +176,11 @@ export async function getProductsForPOS(
       if (hasRecipe && lines.length > 0) {
         const result = computeMakeableFromLines(
           lines,
-          ingredientLevelMap as Map<string, { quantity: number; reorder_point: number }>,
-          ingredientUnitMap
+          ingredientLevelMap as Map<
+            string,
+            { quantity: number; reorder_point: number }
+          >,
+          ingredientUnitMap,
         );
         stockQuantity = result.qty;
         stockBadge = result.badge;
@@ -204,8 +219,11 @@ export async function getProductsForPOS(
       } else {
         const result = computeMakeableFromLines(
           lines,
-          ingredientLevelMap as Map<string, { quantity: number; reorder_point: number }>,
-          ingredientUnitMap
+          ingredientLevelMap as Map<
+            string,
+            { quantity: number; reorder_point: number }
+          >,
+          ingredientUnitMap,
         );
         stockQuantity = result.qty;
         stockBadge = result.badge;
@@ -229,6 +247,21 @@ export async function getProductsForPOS(
       variants: posVariants,
     };
   });
+
+  return { categories, products: posProducts };
+}
+
+export async function getProductsForPOS(
+  storeId: string,
+  categoryId?: string,
+): Promise<POSProduct[]> {
+  return (await loadPosCatalog(storeId, categoryId)).products;
+}
+
+export async function getCatalogForPOS(
+  storeId: string,
+): Promise<{ categories: Category[]; products: POSProduct[] }> {
+  return loadPosCatalog(storeId);
 }
 
 export async function getCategoriesForPOS(): Promise<Category[]> {

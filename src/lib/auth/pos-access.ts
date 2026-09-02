@@ -1,4 +1,4 @@
-import { requireAuth, requirePermissionOrRole, requireStoreAccess } from "@/lib/auth/guards";
+import { requireAuth, requireStoreAccess } from "@/lib/auth/guards";
 import {
   getActiveCashierId,
   getActiveStoreId,
@@ -6,6 +6,7 @@ import {
   setActiveCashierId,
 } from "@/lib/auth/session";
 import * as deviceRepo from "@/lib/repositories/device.repository";
+import * as permissionRepo from "@/lib/repositories/permission.repository";
 import { getActiveSession } from "@/modules/sessions/services/session.service";
 import type { AppUser } from "@/lib/types";
 export class PosAccessError extends Error {
@@ -19,7 +20,7 @@ export class PosAccessError extends Error {
       | "store_required"
       | "access_denied"
       | "cashier_required"
-      | "role_denied"
+      | "role_denied",
   ) {
     super(message);
     this.name = "PosAccessError";
@@ -41,7 +42,7 @@ export async function resolvePosAccess(
     persistCookies?: boolean;
     /** Heartbeat write — skip on read-only chrome/page readiness checks. */
     touchSeen?: boolean;
-  } = {}
+  } = {},
 ): Promise<PosAccessContext> {
   const persistCookies = options.persistCookies ?? false;
   let user: AppUser;
@@ -51,9 +52,11 @@ export async function resolvePosAccess(
     throw new PosAccessError("Sign in required", "login_required");
   }
 
-  try {
-    await requirePermissionOrRole("pos_access", ["owner", "manager", "cashier"]);
-  } catch {
+  const roleHasPosAccess = ["owner", "manager", "cashier"].includes(user.role);
+  const permissionHasPosAccess = roleHasPosAccess
+    ? true
+    : await permissionRepo.hasPermission("pos_access").catch(() => false);
+  if (!permissionHasPosAccess) {
     throw new PosAccessError("POS not available for this role", "role_denied");
   }
 
@@ -66,14 +69,20 @@ export async function resolvePosAccess(
     throw new PosAccessError("Select a store to continue", "store_required");
   }
 
-  try {
-    await requireStoreAccess(storeId);
-  } catch {
+  let deviceCtx = await getRegisteredDeviceContext();
+  const [storeAccessResult, initialDevice] = await Promise.allSettled([
+    requireStoreAccess(storeId),
+    deviceCtx
+      ? deviceRepo.getDevice(deviceCtx.deviceId)
+      : Promise.resolve(null),
+  ]);
+  if (storeAccessResult.status === "rejected") {
     throw new PosAccessError("Store access denied", "access_denied");
   }
 
-  let deviceCtx = await getRegisteredDeviceContext();
-  let device = deviceCtx ? await deviceRepo.getDevice(deviceCtx.deviceId) : null;
+  let device =
+    initialDevice.status === "fulfilled" ? initialDevice.value : null;
+  if (initialDevice.status === "rejected") throw initialDevice.reason;
   const needsImplicitBind =
     !deviceCtx ||
     deviceCtx.storeId !== storeId ||
@@ -81,7 +90,8 @@ export async function resolvePosAccess(
     device?.store_id !== storeId;
 
   if (needsImplicitBind && persistCookies) {
-    const { ensureImplicitPosDeviceBinding } = await import("@/lib/auth/implicit-pos-device");
+    const { ensureImplicitPosDeviceBinding } =
+      await import("@/lib/auth/implicit-pos-device");
     const bound = await ensureImplicitPosDeviceBinding(user, { storeId });
     if (bound.ok) {
       deviceCtx = { deviceId: bound.deviceId, storeId: bound.storeId };
@@ -94,21 +104,37 @@ export async function resolvePosAccess(
   }
 
   if (deviceCtx.storeId !== storeId) {
-    throw new PosAccessError("Device belongs to another store", "store_mismatch");
+    throw new PosAccessError(
+      "Device belongs to another store",
+      "store_mismatch",
+    );
   }
 
   if (!device || !device.is_active) {
-    throw new PosAccessError("Device is inactive or missing", "device_inactive");
+    throw new PosAccessError(
+      "Device is inactive or missing",
+      "device_inactive",
+    );
   }
 
   if (device.store_id !== storeId) {
-    throw new PosAccessError("Device belongs to another store", "store_mismatch");
+    throw new PosAccessError(
+      "Device belongs to another store",
+      "store_mismatch",
+    );
   }
 
   if (user.role === "cashier") {
-    const allowed = await deviceRepo.cashierCanUseDevice(user.id, storeId, device.id);
+    const allowed = await deviceRepo.cashierCanUseDevice(
+      user.id,
+      storeId,
+      device.id,
+    );
     if (!allowed) {
-      throw new PosAccessError("You are not allowed on this device", "access_denied");
+      throw new PosAccessError(
+        "You are not allowed on this device",
+        "access_denied",
+      );
     }
   }
 
@@ -134,13 +160,16 @@ export async function resolvePosAccess(
     const targetAllowed = await deviceRepo.cashierCanUseDevice(
       activeCashierId,
       storeId,
-      device.id
+      device.id,
     );
     if (!targetAllowed) {
       if (options.clearInvalidCashier && persistCookies) {
         await setActiveCashierId(null);
       }
-      throw new PosAccessError("Switched cashier not allowed on this device", "access_denied");
+      throw new PosAccessError(
+        "Switched cashier not allowed on this device",
+        "access_denied",
+      );
     }
   }
 
@@ -153,7 +182,7 @@ export async function resolvePosAccess(
 }
 
 export async function requirePosAccess(
-  options: { requireCashierRole?: boolean; touchSeen?: boolean } = {}
+  options: { requireCashierRole?: boolean; touchSeen?: boolean } = {},
 ): Promise<PosAccessContext> {
   const ctx = await resolvePosAccess({
     ...options,
@@ -166,7 +195,10 @@ export async function requirePosAccess(
 
 export async function getPosAccessOrNull(): Promise<PosAccessContext | null> {
   try {
-    return await resolvePosAccess({ clearInvalidCashier: true, touchSeen: false });
+    return await resolvePosAccess({
+      clearInvalidCashier: true,
+      touchSeen: false,
+    });
   } catch (e) {
     if (e instanceof PosAccessError) return null;
     throw e;
@@ -175,13 +207,19 @@ export async function getPosAccessOrNull(): Promise<PosAccessContext | null> {
 
 export async function requireCashierOwnSession(
   ctx: PosAccessContext,
-  sessionCashierId: string
+  sessionCashierId: string,
 ): Promise<void> {
   if (sessionCashierId !== ctx.activeCashierId) {
-    throw new PosAccessError("You can only manage the active cashier session", "access_denied");
+    throw new PosAccessError(
+      "You can only manage the active cashier session",
+      "access_denied",
+    );
   }
   if (ctx.user.role === "cashier" && ctx.activeCashierId !== ctx.user.id) {
-    throw new PosAccessError("You can only manage your own session", "access_denied");
+    throw new PosAccessError(
+      "You can only manage your own session",
+      "access_denied",
+    );
   }
 }
 

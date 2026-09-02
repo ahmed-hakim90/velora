@@ -13,7 +13,10 @@ import {
 } from "@/components/ui/dialog";
 import { ConfirmActionDialog } from "@/components/Velora/confirm-action-dialog";
 import { formatCurrency, formatDateTime } from "@/lib/format";
-import { playPosErrorSound, playPosSuccessSound } from "@/modules/pos/lib/pos-sounds";
+import {
+  playPosErrorSound,
+  playPosSuccessSound,
+} from "@/modules/pos/lib/pos-sounds";
 import {
   discardHeldCartAction,
   resumeHeldCartAction,
@@ -21,13 +24,28 @@ import {
 import { getCartSubtotal, usePosStore } from "@/stores/pos-store";
 import { useTranslation } from "@/lib/i18n/use-translation";
 
-export function PosHeldCartsBar() {
+export function PosHeldCartsBar({
+  menuItem = false,
+  open: controlledOpen,
+  hideTrigger = false,
+  onOpenChange,
+}: {
+  menuItem?: boolean;
+  open?: boolean;
+  hideTrigger?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const { t } = useTranslation();
   const heldCarts = usePosStore((s) => s.heldCarts);
   const resumeHeldCart = usePosStore((s) => s.resumeHeldCart);
   const removeHeldCart = usePosStore((s) => s.removeHeldCart);
   const reconcileHeldCartId = usePosStore((s) => s.reconcileHeldCartId);
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const pickerOpen = controlledOpen ?? internalOpen;
+  function setPickerOpen(open: boolean) {
+    if (controlledOpen === undefined) setInternalOpen(open);
+    onOpenChange?.(open);
+  }
   const [heldDeleteId, setHeldDeleteId] = useState<string | null>(null);
   const [discardPending, startDiscardTransition] = useTransition();
 
@@ -149,20 +167,35 @@ export function PosHeldCartsBar() {
 
   return (
     <>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="relative h-11 shrink-0 justify-center gap-1.5 rounded-xl border-orange-200 bg-orange-50 px-2.5 text-sm font-semibold text-orange-950 hover:bg-orange-100 max-lg:size-11 max-lg:px-0 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-200 dark:hover:bg-orange-500/20"
-        onClick={() => setPickerOpen(true)}
-        aria-label={`${t("Held invoices")}: ${heldCarts.length}`}
-      >
-        <Clock3 className="size-4 shrink-0" />
-        <span className="truncate max-lg:sr-only">{t("Held invoices")}</span>
-        <span className="rounded-full bg-orange-700 px-1.5 py-0.5 text-[11px] font-bold text-white tabular-nums max-lg:absolute max-lg:-end-1 max-lg:-top-1 dark:bg-orange-400 dark:text-orange-950">
-          {heldCarts.length}
-        </span>
-      </Button>
+      {!hideTrigger ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={
+            menuItem
+              ? "h-12 w-full justify-start gap-3 rounded-xl border-orange-200 bg-orange-50 px-3 text-sm font-semibold text-orange-950 hover:bg-orange-100 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-200 dark:hover:bg-orange-500/20"
+              : "relative size-11 shrink-0 rounded-lg border-orange-200 bg-orange-50 px-0 text-orange-950 hover:bg-orange-100 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-200 dark:hover:bg-orange-500/20"
+          }
+          onClick={() => setPickerOpen(true)}
+          aria-label={`${t("Held invoices")}: ${heldCarts.length}`}
+          title={`${t("Held invoices")}: ${heldCarts.length}`}
+        >
+          <Clock3 className="size-4 shrink-0" />
+          {menuItem ? (
+            <span className="flex-1 text-start">{t("Held invoices")}</span>
+          ) : null}
+          <span
+            className={
+              menuItem
+                ? "rounded-full bg-orange-700 px-2 py-0.5 text-[11px] font-bold text-white tabular-nums dark:bg-orange-400 dark:text-orange-950"
+                : "absolute -end-1 -top-1 rounded-full bg-orange-700 px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums dark:bg-orange-400 dark:text-orange-950"
+            }
+          >
+            {heldCarts.length}
+          </span>
+        </Button>
+      ) : null}
 
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
         <DialogContent className="flex max-h-[min(94dvh,100%)] max-w-lg flex-col gap-0 overflow-hidden rounded-2xl p-0 max-sm:max-w-[calc(100%-0.5rem)] sm:max-w-lg">
@@ -172,9 +205,13 @@ export function PosHeldCartsBar() {
                 <Clock3 className="size-4" />
               </div>
               <div className="min-w-0">
-                <DialogTitle className="text-base">{t("Held invoices")}</DialogTitle>
+                <DialogTitle className="text-base">
+                  {t("Held invoices")}
+                </DialogTitle>
                 <DialogDescription className="truncate text-xs">
-                  {t("Choose an invoice to resume. Your current cart will be held automatically.")}
+                  {t(
+                    "Choose an invoice to resume. Your current cart will be held automatically.",
+                  )}
                 </DialogDescription>
               </div>
             </div>
@@ -184,7 +221,8 @@ export function PosHeldCartsBar() {
             {heldCarts.map((held) => {
               const itemCount = held.cart.length;
               const subtotal = getCartSubtotal(held.cart);
-              const saving = held.id.startsWith("temp-hold-") && !held.failedCheckout;
+              const saving =
+                held.id.startsWith("temp-hold-") && !held.failedCheckout;
               const failed = Boolean(held.failedCheckout);
               return (
                 <li key={held.id}>
@@ -201,12 +239,15 @@ export function PosHeldCartsBar() {
                       onClick={() => handleResumeHeldCart(held.id)}
                       disabled={saving || discardPending}
                     >
-                      <p className="truncate text-sm font-semibold">{held.name}</p>
+                      <p className="truncate text-sm font-semibold">
+                        {held.name}
+                      </p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         {saving
                           ? t("Saving…")
                           : failed
-                            ? held.failureMessage || t("Tap to restore and try again")
+                            ? held.failureMessage ||
+                              t("Tap to restore and try again")
                             : [
                                 held.customer?.name,
                                 `${itemCount} ${t(itemCount === 1 ? "item" : "items")}`,

@@ -1,22 +1,22 @@
 import { NextResponse } from "next/server";
-import { AuthError, requirePermissionOrRole } from "@/lib/auth/guards";
+import { AuthError } from "@/lib/auth/guards";
 import { requirePosAccess } from "@/lib/auth/pos-access";
-import {
-  getCategoriesForPOS,
-  getProductsForPOS,
-} from "@/modules/pos/services/catalog.service";
+import * as permissionRepo from "@/lib/repositories/permission.repository";
+import { getCatalogForPOS } from "@/modules/pos/services/catalog.service";
 
 export const dynamic = "force-dynamic";
 
 /** Catalog for POS without remounting the page RSC tree. */
 export async function GET() {
   try {
-    await requirePermissionOrRole("checkout_create", ["owner", "manager", "cashier"]);
     const ctx = await requirePosAccess({ touchSeen: false });
-    const [categories, products] = await Promise.all([
-      getCategoriesForPOS(),
-      getProductsForPOS(ctx.storeId),
-    ]);
+    if (
+      !["owner", "manager", "cashier"].includes(ctx.user.role) &&
+      !(await permissionRepo.hasPermission("checkout_create"))
+    ) {
+      throw new AuthError("مفيش صلاحية للعملية دي", 403);
+    }
+    const { categories, products } = await getCatalogForPOS(ctx.storeId);
     return NextResponse.json({
       storeId: ctx.storeId,
       categories,
@@ -24,7 +24,7 @@ export async function GET() {
       fetchedAt: new Date().toISOString(),
     });
   } catch (error) {
-    const status = error instanceof AuthError ? error.status ?? 403 : 500;
+    const status = error instanceof AuthError ? (error.status ?? 403) : 500;
     const message =
       error instanceof Error ? error.message : "فشل تحميل قائمة المنتجات";
     return NextResponse.json({ error: message }, { status });

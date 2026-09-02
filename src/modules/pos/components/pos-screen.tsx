@@ -5,9 +5,14 @@ import { toast } from "sonner";
 import {
   Archive,
   Banknote,
+  CircleStop,
+  CircleUserRound,
+  Clock3,
   ClipboardList,
+  ImageIcon,
+  ImageOff,
   Loader2,
-  MoreHorizontal,
+  Menu,
   Plus,
   ScanBarcode,
   Search,
@@ -16,6 +21,8 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+
+const POS_PRODUCT_IMAGES_PREF_KEY = "velora:pos:product-images:v1";
 import {
   backgroundMutationKey,
   useBackgroundMutation,
@@ -23,14 +30,8 @@ import {
 import { useOperatorShortcuts } from "@/hooks/use-operator-shortcuts";
 import { useBackgroundMutationStore } from "@/stores/background-mutation-store";
 import { ConfirmActionDialog } from "@/components/Velora/confirm-action-dialog";
-import { OperatorShortcutHint } from "@/components/Velora/operator-shortcut-hint";
+import { Skeleton } from "@/components/ui/skeleton";
 import { holdCurrentPosCart } from "@/modules/pos/lib/hold-current-cart";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { CategoryRail } from "@/modules/pos/components/category-rail";
 import { CartPanel } from "@/modules/pos/components/cart-panel";
 import { ProductTile } from "@/modules/pos/components/product-tile";
@@ -77,7 +78,6 @@ import { usePosStore, type HeldCart } from "@/stores/pos-store";
 import { computePosCartTotals } from "@/modules/pos/lib/cart-totals";
 import { previewPosPromotions } from "@/modules/pos/lib/pos-promo-preview";
 import type { PromotionRuleInput } from "@/modules/promotions/lib/evaluate-promotions";
-import { PosReadinessBanner } from "@/components/Velora/pos-readiness-banner";
 import { EmptyStateBlock } from "@/components/Velora/state-blocks";
 import { PosPinSwitch } from "@/modules/pos/components/pos-pin-switch";
 import type { PosReadinessState } from "@/lib/auth/pos-readiness-copy";
@@ -321,14 +321,17 @@ export function PosScreen({
   const [attachExpanded, setAttachExpanded] = useState(false);
   const [discountOpen, setDiscountOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
+  const [mobileExpenseOpen, setMobileExpenseOpen] = useState(false);
+  const [mobileHeldCartsOpen, setMobileHeldCartsOpen] = useState(false);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [onlineOrdersOpen, setOnlineOrdersOpen] = useState(false);
   const [collectOpen, setCollectOpen] = useState(false);
   const [supplierPayOpen, setSupplierPayOpen] = useState(false);
-  const [cashierMoreOpen, setCashierMoreOpen] = useState(false);
   const [closeSessionOpen, setCloseSessionOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [showProductImages, setShowProductImages] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const restoreScannerFocusRef = useRef(false);
   const [pickerProduct, setPickerProduct] = useState<POSProduct | null>(null);
@@ -362,11 +365,15 @@ export function PosScreen({
   );
   const [catalogLoading, setCatalogLoading] = useState(loadCatalogClient);
   const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [catalogLoadAttempt, setCatalogLoadAttempt] = useState(0);
+  const catalogHasLoadedRef = useRef(!loadCatalogClient);
+  const lastCatalogRefreshAtRef = useRef(0);
   const addItem = usePosStore((s) => s.addItem);
   const clearCart = usePosStore((s) => s.clearCart);
   const undoLast = usePosStore((s) => s.undoLast);
   const setHeldCarts = usePosStore((s) => s.setHeldCarts);
   const cart = usePosStore((s) => s.cart);
+  const heldCartCount = usePosStore((s) => s.heldCarts.length);
   const customer = usePosStore((s) => s.customer);
   const paymentMethod = usePosStore((s) => s.paymentMethod);
   const setPaymentMethod = usePosStore((s) => s.setPaymentMethod);
@@ -417,6 +424,20 @@ export function PosScreen({
     // Hydrate once from server props for this device load.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount hydrate
   }, []);
+
+  useEffect(() => {
+    setShowProductImages(
+      window.localStorage.getItem(POS_PRODUCT_IMAGES_PREF_KEY) === "true",
+    );
+  }, []);
+
+  function toggleProductImages() {
+    setShowProductImages((current) => {
+      const next = !current;
+      window.localStorage.setItem(POS_PRODUCT_IMAGES_PREF_KEY, String(next));
+      return next;
+    });
+  }
 
   useEffect(() => {
     function focusProductSearch(event: KeyboardEvent) {
@@ -488,15 +509,20 @@ export function PosScreen({
   useEffect(() => {
     if (!loadCatalogClient) return;
     let cancelled = false;
+    const controller = new AbortController();
+    const isBlockingLoad = !catalogHasLoadedRef.current;
 
-    async function load() {
-      setCatalogLoading(true);
-      setCatalogError(null);
+    async function loadCatalog() {
+      lastCatalogRefreshAtRef.current = Date.now();
+      if (isBlockingLoad) {
+        setCatalogLoading(true);
+        setCatalogError(null);
+      }
       try {
-        const [catalogRes, ordersRes] = await Promise.all([
-          fetch("/api/pos/catalog", { credentials: "same-origin" }),
-          fetch("/api/pos/online-orders", { credentials: "same-origin" }),
-        ]);
+        const catalogRes = await fetch("/api/pos/catalog", {
+          credentials: "same-origin",
+          signal: controller.signal,
+        });
         const catalogJson = (await catalogRes.json()) as {
           categories?: Category[];
           products?: POSProduct[];
@@ -508,22 +534,16 @@ export function PosScreen({
         if (!cancelled) {
           setCatalogCategories(catalogJson.categories ?? []);
           setCatalogProducts(catalogJson.products ?? []);
-        }
-
-        if (ordersRes.ok) {
-          const ordersJson = (await ordersRes.json()) as {
-            orders?: OnlineOrderWithItems[];
-          };
-          if (!cancelled) {
-            setLiveOnlineOrders(ordersJson.orders ?? []);
-            seenOnlineOrderIds.current = new Set(
-              (ordersJson.orders ?? []).map((order) => order.id),
-            );
-            onlineOrdersSeeded.current = true;
-          }
+          setCatalogError(null);
+          catalogHasLoadedRef.current = true;
+          lastCatalogRefreshAtRef.current = Date.now();
         }
       } catch (error) {
-        if (!cancelled) {
+        if (
+          !cancelled &&
+          !controller.signal.aborted &&
+          isBlockingLoad
+        ) {
           setCatalogError(
             t(
               error instanceof Error
@@ -533,15 +553,65 @@ export function PosScreen({
           );
         }
       } finally {
-        if (!cancelled) setCatalogLoading(false);
+        if (!cancelled && isBlockingLoad) setCatalogLoading(false);
       }
     }
 
-    void load();
+    async function loadOnlineOrders() {
+      try {
+        const ordersRes = await fetch("/api/pos/online-orders", {
+          credentials: "same-origin",
+        });
+        if (!ordersRes.ok) return;
+        const ordersJson = (await ordersRes.json()) as {
+          orders?: OnlineOrderWithItems[];
+        };
+        if (cancelled) return;
+        setLiveOnlineOrders(ordersJson.orders ?? []);
+        seenOnlineOrderIds.current = new Set(
+          (ordersJson.orders ?? []).map((order) => order.id),
+        );
+        onlineOrdersSeeded.current = true;
+      } catch {
+        // The orders poll retries independently; catalog loading must not wait.
+      }
+    }
+
+    void loadCatalog();
+    void loadOnlineOrders();
     return () => {
       cancelled = true;
+      controller.abort();
     };
-  }, [loadCatalogClient, storeId, t]);
+  }, [catalogLoadAttempt, loadCatalogClient, storeId, t]);
+
+  useEffect(() => {
+    if (!loadCatalogClient) return;
+
+    function refreshCatalogWhenVisible() {
+      if (
+        document.visibilityState !== "visible" ||
+        Date.now() - lastCatalogRefreshAtRef.current < 60_000
+      ) {
+        return;
+      }
+
+      // Reserve this refresh window immediately so focus + visibility events
+      // cannot start duplicate requests together.
+      lastCatalogRefreshAtRef.current = Date.now();
+      setCatalogLoadAttempt((attempt) => attempt + 1);
+    }
+
+    window.addEventListener("focus", refreshCatalogWhenVisible);
+    document.addEventListener("visibilitychange", refreshCatalogWhenVisible);
+    return () => {
+      window.removeEventListener("focus", refreshCatalogWhenVisible);
+      document.removeEventListener(
+        "visibilitychange",
+        refreshCatalogWhenVisible,
+      );
+    };
+  }, [loadCatalogClient]);
 
   useEffect(() => {
     if (
@@ -949,6 +1019,12 @@ export function PosScreen({
       successMessage: (result) =>
         `${t("Order completed")} ${result.orderNumber}`,
       onSuccess: (result) => {
+        // Inventory changed during checkout. Refresh stock in the background
+        // without blocking the cashier from starting the next sale.
+        if (loadCatalogClient) {
+          lastCatalogRefreshAtRef.current = Date.now();
+          setCatalogLoadAttempt((attempt) => attempt + 1);
+        }
         if (
           cashDrawerEnabled &&
           payments.some((payment) => payment.method === "cash")
@@ -1100,33 +1176,6 @@ export function PosScreen({
     return <PosAccessDenied state={readinessState} />;
   }
 
-  const sessionBannerAction =
-    readinessState === "no_session" ? (
-      <QuickOpenSessionButton
-        size="sm"
-        label={t("Start selling")}
-        pendingOpeningFloat={pendingOpeningFloat}
-      />
-    ) : activeSession && sessionReconciliation ? (
-      <PosCloseSessionDialog
-        session={activeSession}
-        reconciliation={sessionReconciliation}
-        sessionExpenses={sessionExpenses}
-        cashierName={cashierName ?? t("Cashier")}
-        costCenterMap={costCenterMap}
-        categoryMap={expenseCategoryMap}
-        triggerVariant={
-          readinessState === "session_expired" ? "destructive" : "outline"
-        }
-        triggerChildren={
-          readinessState === "session_expired" ||
-          readinessState === "session_warning"
-            ? t("Close shift")
-            : t("Close session")
-        }
-      />
-    ) : null;
-
   function handleOpenCashDrawer() {
     setOverrideDialog({
       kind: "cash_drawer",
@@ -1185,32 +1234,47 @@ export function PosScreen({
 
   return (
     <>
-      <div className="print:hidden flex h-dvh max-h-dvh flex-col gap-2 overflow-hidden bg-background p-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-foreground max-[390px]:gap-1.5 max-[390px]:p-1.5 sm:gap-3 sm:p-3 lg:gap-4 lg:p-4">
-        <div className="flex shrink-0 flex-col gap-1.5 max-[390px]:gap-1 sm:gap-2">
-          <PosReadinessBanner
-            state={readinessState}
-            action={sessionBannerAction}
-          />
-
-          <div className="flex min-w-0 items-center gap-1.5 max-[390px]:gap-1 sm:gap-2">
+      <div className="print:hidden flex h-dvh max-h-dvh flex-col gap-2 overflow-hidden bg-background px-2 pb-2 text-foreground max-[390px]:gap-1.5 max-[390px]:px-1.5 max-[390px]:pb-1.5 max-sm:pt-[env(safe-area-inset-top)] sm:gap-3 sm:px-3 sm:pb-3 lg:gap-4 lg:px-4 lg:pb-4">
+        <div className="flex shrink-0 flex-col gap-1.5 max-[390px]:gap-1 max-sm:hidden sm:gap-2">
+          <div
+            className="-mx-2 flex min-h-12 min-w-0 items-center gap-1 border-b border-border/70 bg-card/95 px-2 pb-1 pt-[max(0.25rem,env(safe-area-inset-top))] max-[390px]:-mx-1.5 max-[390px]:px-1.5 sm:-mx-3 sm:px-3 lg:-mx-4 lg:px-4"
+            data-testid="pos-topbar"
+          >
             {currentUserName ? (
-              <span className="hidden max-w-40 truncate rounded-full border border-border/70 bg-muted/60 px-3 py-1 text-xs font-medium text-muted-foreground lg:inline-flex">
-                {currentUserName}
+              <span
+                className="flex h-10 min-w-0 max-w-36 shrink items-center gap-1.5 rounded-lg bg-muted/60 px-2 text-xs font-semibold text-foreground"
+                title={currentUserName}
+              >
+                <CircleUserRound
+                  className="size-4 shrink-0 text-primary"
+                  aria-hidden
+                />
+                <span className="truncate max-[390px]:sr-only">
+                  {currentUserName}
+                </span>
               </span>
             ) : null}
 
+            {currentUserName ? (
+              <span
+                className="mx-0.5 h-6 w-px shrink-0 bg-border/70"
+                aria-hidden
+              />
+            ) : null}
+
             {hasActiveSession ? (
-              <div className="flex min-w-0 flex-1 items-stretch gap-1.5 max-[390px]:gap-1">
+              <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="relative h-11 min-w-0 flex-1 justify-center gap-1.5 rounded-xl border-sky-200 bg-sky-50 px-2 text-sm font-semibold text-sky-900 hover:bg-sky-100 max-lg:size-11 max-lg:flex-none max-lg:px-0 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200 dark:hover:bg-sky-500/20"
+                  className="relative size-11 shrink-0 rounded-lg border-sky-200 bg-sky-50 px-0 text-sky-900 hover:bg-sky-100 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200 dark:hover:bg-sky-500/20"
                   onClick={() => setOnlineOrdersOpen(true)}
+                  aria-label={t("Online orders")}
+                  title={t("Online orders")}
                 >
                   <ClipboardList className="size-4 shrink-0" />
-                  <span className="truncate max-lg:sr-only">{t("Online")}</span>
                   {activeOnlineOrdersCount > 0 ? (
-                    <span className="rounded-full bg-sky-700 px-1.5 py-0.5 text-[11px] font-bold text-white tabular-nums max-lg:absolute max-lg:-end-1 max-lg:-top-1 dark:bg-sky-400 dark:text-sky-950">
+                    <span className="absolute -end-1 -top-1 rounded-full bg-sky-700 px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums dark:bg-sky-400 dark:text-sky-950">
                       {activeOnlineOrdersCount}
                     </span>
                   ) : null}
@@ -1219,26 +1283,28 @@ export function PosScreen({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="hidden h-11 min-w-0 flex-1 justify-center gap-1.5 rounded-xl border-emerald-200 bg-emerald-50 px-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-100 lg:inline-flex dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20"
+                    className="size-11 shrink-0 rounded-lg border-emerald-200 bg-emerald-50 px-0 text-emerald-900 hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20"
                     onClick={() => setCollectOpen(true)}
+                    aria-label={t("Collect from customer")}
+                    title={t("Collect from customer")}
                   >
                     <Banknote className="size-4 shrink-0" />
-                    <span className="truncate">{t("Collect")}</span>
                   </Button>
                 ) : null}
                 {canPaySupplier ? (
                   <Button
                     variant="outline"
                     size="sm"
-                    className="hidden h-11 min-w-0 flex-1 justify-center gap-1.5 rounded-xl border-amber-200 bg-amber-50 px-2 text-sm font-semibold text-amber-900 hover:bg-amber-100 lg:inline-flex dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200 dark:hover:bg-amber-500/20"
+                    className="size-11 shrink-0 rounded-lg border-amber-200 bg-amber-50 px-0 text-amber-900 hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200 dark:hover:bg-amber-500/20"
                     onClick={() => setSupplierPayOpen(true)}
+                    aria-label={t("Pay supplier")}
+                    title={t("Pay supplier")}
                   >
                     <Truck className="size-4 shrink-0" />
-                    <span className="truncate">{t("Supplier")}</span>
                   </Button>
                 ) : null}
                 {canAddSessionExpense && storeId && cashierId && sessionId ? (
-                  <div className="hidden min-w-0 flex-1 lg:block [&_button]:h-11 [&_button]:w-full">
+                  <div className="shrink-0">
                     <ExpenseWizard
                       storeId={storeId}
                       sessionId={sessionId}
@@ -1250,10 +1316,11 @@ export function PosScreen({
                         <Button
                           variant="outline"
                           size="sm"
-                          className="justify-center gap-1.5 rounded-xl border-rose-200 bg-rose-50 px-2 text-sm font-semibold text-rose-900 hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/20"
+                          className="size-11 rounded-lg border-rose-200 bg-rose-50 px-0 text-rose-900 hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/20"
+                          aria-label={t("Session expense")}
+                          title={t("Session expense")}
                         >
                           <Wallet className="size-4 shrink-0" />
-                          <span className="truncate">{t("Expense")}</span>
                         </Button>
                       }
                     />
@@ -1263,145 +1330,62 @@ export function PosScreen({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="hidden h-11 min-w-0 flex-1 justify-center gap-1.5 rounded-xl border-violet-200 bg-violet-50 px-2 text-sm font-semibold text-violet-900 hover:bg-violet-100 lg:inline-flex dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200 dark:hover:bg-violet-500/20"
+                    className="size-11 shrink-0 rounded-lg border-violet-200 bg-violet-50 px-0 text-violet-900 hover:bg-violet-100 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200 dark:hover:bg-violet-500/20"
                     disabled={pending}
                     onClick={handleOpenCashDrawer}
+                    aria-label={t("Open drawer")}
+                    title={t("Open drawer")}
                   >
                     <Archive className="size-4 shrink-0" />
-                    <span className="truncate">{t("Drawer")}</span>
                   </Button>
-                ) : null}
-                {canCollectPayment ||
-                canPaySupplier ||
-                (canAddSessionExpense && storeId && cashierId && sessionId) ||
-                cashDrawerEnabled ||
-                hasActiveSession ? (
-                  <DropdownMenu
-                    open={cashierMoreOpen}
-                    onOpenChange={setCashierMoreOpen}
-                  >
-                    <DropdownMenuTrigger
-                      render={
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="size-11 shrink-0 rounded-xl px-0 lg:hidden"
-                          aria-label={t("More cashier actions")}
-                        />
-                      }
-                    >
-                      <MoreHorizontal className="size-4" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="min-w-48">
-                      {canCollectPayment ? (
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setCashierMoreOpen(false);
-                            setCollectOpen(true);
-                          }}
-                          className="min-h-11 gap-2 lg:hidden"
-                        >
-                          <Banknote className="size-4" />
-                          {t("Collect from customer")}
-                        </DropdownMenuItem>
-                      ) : null}
-                      {canPaySupplier ? (
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setCashierMoreOpen(false);
-                            setSupplierPayOpen(true);
-                          }}
-                          className="min-h-11 gap-2 lg:hidden"
-                        >
-                          <Truck className="size-4" />
-                          {t("Pay supplier")}
-                        </DropdownMenuItem>
-                      ) : null}
-                      {cashDrawerEnabled ? (
-                        <DropdownMenuItem
-                          disabled={pending}
-                          onClick={() => {
-                            setCashierMoreOpen(false);
-                            handleOpenCashDrawer();
-                          }}
-                          className="min-h-11 gap-2 lg:hidden"
-                        >
-                          <Archive className="size-4" />
-                          {t("Open drawer")}
-                        </DropdownMenuItem>
-                      ) : null}
-                      {canAddSessionExpense &&
-                      storeId &&
-                      cashierId &&
-                      sessionId ? (
-                        <div className="lg:hidden [&_button]:h-11 [&_button]:w-full [&_button]:justify-start [&_button]:rounded-md [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-2 [&_button]:py-2 [&_button]:text-sm [&_button]:font-normal [&_button]:shadow-none [&_button]:hover:bg-accent">
-                          <ExpenseWizard
-                            storeId={storeId}
-                            sessionId={sessionId}
-                            userId={cashierId}
-                            costCenters={costCenters}
-                            categories={expenseCategories}
-                            sessionMode
-                            onOpenChange={(expenseOpen) => {
-                              if (expenseOpen) setCashierMoreOpen(false);
-                            }}
-                            trigger={
-                              <Button type="button" variant="ghost" size="sm">
-                                <Wallet className="size-4" />
-                                {t("Session expense")}
-                              </Button>
-                            }
-                          />
-                        </div>
-                      ) : null}
-                      {readinessState === "ready" &&
-                      activeSession &&
-                      sessionReconciliation ? (
-                        <DropdownMenuItem
-                          className="min-h-11 gap-2 lg:hidden"
-                          onClick={() => {
-                            setCashierMoreOpen(false);
-                            setCloseSessionOpen(true);
-                          }}
-                        >
-                          {t("Close session")}
-                        </DropdownMenuItem>
-                      ) : null}
-                      <div className="lg:hidden">
-                        <PosPinSwitch returnTo={posPath} menuItem />
-                      </div>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 ) : null}
               </div>
             ) : (
               <div className="min-w-0 flex-1" />
             )}
 
-            <div className="flex shrink-0 items-center gap-1.5 max-[390px]:gap-1">
+            <Button
+              type="button"
+              variant={showProductImages ? "secondary" : "ghost"}
+              size="sm"
+              className="size-11 shrink-0 rounded-lg px-0"
+              aria-label={
+                showProductImages
+                  ? t("Hide product images")
+                  : t("Show product images")
+              }
+              aria-pressed={showProductImages}
+              title={
+                showProductImages
+                  ? t("Hide product images")
+                  : t("Show product images")
+              }
+              onClick={toggleProductImages}
+            >
+              {showProductImages ? (
+                <ImageOff className="size-4" aria-hidden />
+              ) : (
+                <ImageIcon className="size-4" aria-hidden />
+              )}
+            </Button>
+
+            <div className="flex shrink-0 items-center gap-1">
               {checkoutSaving ? (
                 <span
-                  className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/10 px-2.5 text-sm font-semibold text-primary max-lg:size-11 max-lg:px-0"
+                  className="inline-flex size-11 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-primary"
                   role="status"
                   aria-live="polite"
+                  aria-label={t("Saving invoice…")}
                 >
                   <Loader2 className="size-4 shrink-0 animate-spin" />
-                  <span className="truncate max-lg:sr-only">
-                    {t("Saving invoice…")}
-                  </span>
                 </span>
               ) : null}
-              <OperatorShortcutHint
-                variant="pos"
-                className="me-1 hidden lg:block"
-              />
               {hasActiveSession ? <PosHeldCartsBar /> : null}
               {readinessState === "ready" &&
               hasActiveSession &&
               activeSession &&
               sessionReconciliation ? (
-                <div className="hidden lg:block">
+                <div title={t("Close session")}>
                   <PosCloseSessionDialog
                     open={closeSessionOpen}
                     onOpenChange={setCloseSessionOpen}
@@ -1411,13 +1395,21 @@ export function PosScreen({
                     cashierName={cashierName ?? t("Cashier")}
                     costCenterMap={costCenterMap}
                     categoryMap={expenseCategoryMap}
-                    triggerSize="sm"
-                    triggerClassName="h-11 rounded-full px-3"
-                    triggerChildren={t("Close")}
+                    triggerSize="icon"
+                    triggerClassName="size-11 rounded-lg"
+                    triggerChildren={
+                      <>
+                        <CircleStop className="size-4" aria-hidden />
+                        <span className="sr-only">{t("Close session")}</span>
+                      </>
+                    }
                   />
                 </div>
               ) : null}
-              <div className={hasActiveSession ? "hidden lg:block" : undefined}>
+              <div
+                className="[&_button]:size-11 [&_button]:rounded-lg [&_button]:px-0 [&_span]:sr-only"
+                title={t("Lock screen")}
+              >
                 <PosPinSwitch returnTo={posPath} />
               </div>
             </div>
@@ -1440,12 +1432,12 @@ export function PosScreen({
               <div className="relative min-w-0 flex-1">
                 {barcodeEnabled ? (
                   <ScanBarcode
-                    className="pointer-events-none absolute start-3 top-1/2 size-5 -translate-y-1/2 text-primary"
+                    className="pointer-events-none absolute start-3 top-1/2 size-5 -translate-y-1/2 text-primary md:start-4 md:size-6"
                     aria-hidden
                   />
                 ) : (
                   <Search
-                    className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                    className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground md:start-4 md:size-5"
                     aria-hidden
                   />
                 )}
@@ -1483,7 +1475,7 @@ export function PosScreen({
                   }
                   aria-invalid={Boolean(searchError)}
                   aria-keyshortcuts="/ Escape"
-                  className="h-11 rounded-xl bg-card ps-11 pe-11 text-base shadow-none ring-1 ring-border/50 focus-visible:ring-2 aria-invalid:ring-destructive/70 sm:pe-24"
+                  className="h-11 rounded-xl bg-card ps-11 pe-11 text-base shadow-none ring-1 ring-border/50 focus-visible:ring-2 aria-invalid:ring-destructive/70 sm:pe-24 md:h-14 md:rounded-2xl md:ps-13 md:pe-36 md:text-lg"
                   autoComplete="off"
                   enterKeyHint="search"
                   inputMode="search"
@@ -1496,13 +1488,13 @@ export function PosScreen({
                       setSearchError(null);
                       searchInputRef.current?.focus();
                     }}
-                    className="absolute end-0 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-xl text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                    className="absolute end-0 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-xl text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 md:size-14 md:rounded-2xl"
                     aria-label={t("Clear search")}
                   >
                     <X className="size-4" aria-hidden />
                   </button>
                 ) : barcodeEnabled ? (
-                  <span className="pointer-events-none absolute end-3 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded-md bg-primary/8 px-2 py-1 text-[10px] font-semibold text-primary sm:flex">
+                  <span className="pointer-events-none absolute end-3 top-1/2 hidden -translate-y-1/2 items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-[11px] font-semibold text-primary sm:flex md:end-4 md:px-3 md:py-2 md:text-xs">
                     <span
                       className="size-1.5 rounded-full bg-emerald-500"
                       aria-hidden
@@ -1521,7 +1513,7 @@ export function PosScreen({
               <Button
                 type="submit"
                 variant="outline"
-                className="hidden h-11 shrink-0 rounded-xl px-4 sm:inline-flex"
+                className="hidden h-11 shrink-0 rounded-xl px-4 sm:inline-flex md:h-14 md:rounded-2xl md:px-5 md:text-base"
                 aria-label={t("Add from search")}
               >
                 <Plus className="size-4" aria-hidden />
@@ -1539,15 +1531,42 @@ export function PosScreen({
             </form>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain rounded-xl bg-muted/45 p-1.5 ring-1 ring-border/70 sm:p-2 lg:p-2.5">
               {catalogLoading ? (
-                <EmptyStateBlock
-                  title={t("Loading products…")}
-                  description={t("This will only take a moment.")}
-                  className="flex min-h-32 flex-col items-center justify-center border-border/70 bg-card/80 p-3 py-5 sm:min-h-40 sm:py-7"
-                />
+                <div
+                  className="grid grid-cols-2 gap-1.5 min-[350px]:grid-cols-3 sm:grid-cols-[repeat(auto-fit,minmax(112px,1fr))] sm:gap-2 lg:grid-cols-[repeat(auto-fit,minmax(118px,1fr))]"
+                  role="status"
+                  aria-live="polite"
+                  aria-label={t("Loading products…")}
+                >
+                  {Array.from({ length: 15 }, (_, index) => (
+                    <div
+                      key={index}
+                      className="flex min-h-[84px] flex-col gap-2 rounded-xl bg-card p-2 ring-1 ring-border/60 sm:min-h-[96px] sm:rounded-[14px]"
+                      aria-hidden
+                    >
+                      <Skeleton className="h-4 w-4/5" />
+                      <Skeleton className="h-4 w-2/3" />
+                      <Skeleton className="mt-auto h-3 w-1/3 self-end rounded-full" />
+                    </div>
+                  ))}
+                  <span className="sr-only">{t("Loading products…")}</span>
+                </div>
               ) : catalogError ? (
                 <EmptyStateBlock
                   title={t("Could not load products")}
                   description={catalogError}
+                  action={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-11 rounded-xl px-4"
+                      onClick={() =>
+                        setCatalogLoadAttempt((attempt) => attempt + 1)
+                      }
+                    >
+                      {t("Try again")}
+                    </Button>
+                  }
                   className="flex min-h-32 flex-col items-center justify-center border-border/70 bg-card/80 p-3 py-5 sm:min-h-40 sm:py-7"
                 />
               ) : products.length === 0 ? (
@@ -1587,6 +1606,7 @@ export function PosScreen({
                     <ProductTile
                       key={product.id}
                       product={product}
+                      showImage={showProductImages}
                       showVariants={enableVariants}
                       allowNegativeStock={allowNegativeStock}
                       onAdd={() => handleAdd(product)}
@@ -1597,7 +1617,7 @@ export function PosScreen({
             </div>
           </section>
 
-          <aside className="hidden min-h-0 w-[min(340px,40vw)] shrink-0 flex-col min-[900px]:flex lg:w-[min(380px,34vw)]">
+          <aside className="hidden min-h-0 w-[min(340px,40vw)] shrink-0 flex-col md:flex lg:w-[min(380px,34vw)]">
             <CartPanel
               onCheckout={cartCheckout}
               checkoutDisabled={payLocked || cart.length === 0}
@@ -1634,6 +1654,193 @@ export function PosScreen({
               </div>
             ) : null}
           </aside>
+
+          <Sheet open={mobileActionsOpen} onOpenChange={setMobileActionsOpen}>
+            <SheetContent
+              side={language === "ar" ? "right" : "left"}
+              className="w-[min(88vw,22rem)] gap-0 p-0 sm:hidden"
+            >
+              <SheetHeader className="border-b border-border/70 px-4 py-4 text-start">
+                <SheetTitle>{t("Cashier actions")}</SheetTitle>
+                <SheetDescription className="flex items-center gap-2">
+                  <CircleUserRound
+                    className="size-4 text-primary"
+                    aria-hidden
+                  />
+                  <span className="truncate">
+                    {currentUserName ?? cashierName ?? t("Cashier")}
+                  </span>
+                </SheetDescription>
+              </SheetHeader>
+              <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-y-contain p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                {hasActiveSession ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-12 w-full justify-start gap-3 rounded-xl border-sky-200 bg-sky-50 px-3 text-sky-900 hover:bg-sky-100 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200 dark:hover:bg-sky-500/20"
+                      onClick={() => {
+                        setMobileActionsOpen(false);
+                        setOnlineOrdersOpen(true);
+                      }}
+                    >
+                      <ClipboardList className="size-4" aria-hidden />
+                      <span className="flex-1 text-start">
+                        {t("Online orders")}
+                      </span>
+                      {activeOnlineOrdersCount > 0 ? (
+                        <span className="rounded-full bg-sky-700 px-2 py-0.5 text-[11px] font-bold text-white tabular-nums dark:bg-sky-400 dark:text-sky-950">
+                          {activeOnlineOrdersCount}
+                        </span>
+                      ) : null}
+                    </Button>
+                    {canCollectPayment ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-12 w-full justify-start gap-3 rounded-xl border-emerald-200 bg-emerald-50 px-3 text-emerald-900 hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20"
+                        onClick={() => {
+                          setMobileActionsOpen(false);
+                          setCollectOpen(true);
+                        }}
+                      >
+                        <Banknote className="size-4" aria-hidden />
+                        {t("Collect from customer")}
+                      </Button>
+                    ) : null}
+                    {canPaySupplier ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-12 w-full justify-start gap-3 rounded-xl border-amber-200 bg-amber-50 px-3 text-amber-900 hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200 dark:hover:bg-amber-500/20"
+                        onClick={() => {
+                          setMobileActionsOpen(false);
+                          setSupplierPayOpen(true);
+                        }}
+                      >
+                        <Truck className="size-4" aria-hidden />
+                        {t("Pay supplier")}
+                      </Button>
+                    ) : null}
+                    {canAddSessionExpense &&
+                    storeId &&
+                    cashierId &&
+                    sessionId ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-12 w-full justify-start gap-3 rounded-xl border-rose-200 bg-rose-50 px-3 text-rose-900 hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/20"
+                        onClick={() => {
+                          setMobileActionsOpen(false);
+                          setMobileExpenseOpen(true);
+                        }}
+                      >
+                        <Wallet className="size-4" aria-hidden />
+                        {t("Session expense")}
+                      </Button>
+                    ) : null}
+                    {cashDrawerEnabled ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-12 w-full justify-start gap-3 rounded-xl border-violet-200 bg-violet-50 px-3 text-violet-900 hover:bg-violet-100 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200 dark:hover:bg-violet-500/20"
+                        disabled={pending}
+                        onClick={() => {
+                          setMobileActionsOpen(false);
+                          handleOpenCashDrawer();
+                        }}
+                      >
+                        <Archive className="size-4" aria-hidden />
+                        {t("Open drawer")}
+                      </Button>
+                    ) : null}
+                    {heldCartCount > 0 ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-12 w-full justify-start gap-3 rounded-xl border-orange-200 bg-orange-50 px-3 text-orange-950 hover:bg-orange-100 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-200 dark:hover:bg-orange-500/20"
+                        onClick={() => {
+                          setMobileActionsOpen(false);
+                          setMobileHeldCartsOpen(true);
+                        }}
+                      >
+                        <Clock3 className="size-4" aria-hidden />
+                        <span className="flex-1 text-start">
+                          {t("Held invoices")}
+                        </span>
+                        <span className="rounded-full bg-orange-700 px-2 py-0.5 text-[11px] font-bold text-white tabular-nums dark:bg-orange-400 dark:text-orange-950">
+                          {heldCartCount}
+                        </span>
+                      </Button>
+                    ) : null}
+                  </>
+                ) : null}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-12 w-full justify-start gap-3 rounded-xl px-3"
+                  aria-pressed={showProductImages}
+                  onClick={() => {
+                    toggleProductImages();
+                    setMobileActionsOpen(false);
+                  }}
+                >
+                  {showProductImages ? (
+                    <ImageOff className="size-4" aria-hidden />
+                  ) : (
+                    <ImageIcon className="size-4" aria-hidden />
+                  )}
+                  {showProductImages ? t("Without images") : t("With images")}
+                </Button>
+
+                {readinessState === "ready" &&
+                hasActiveSession &&
+                activeSession &&
+                sessionReconciliation ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-12 w-full justify-start gap-3 rounded-xl px-3"
+                    onClick={() => {
+                      setMobileActionsOpen(false);
+                      setCloseSessionOpen(true);
+                    }}
+                  >
+                    <CircleStop className="size-4" aria-hidden />
+                    {t("Close session")}
+                  </Button>
+                ) : null}
+
+                <div className="mt-auto [&_button]:h-12 [&_button]:w-full [&_button]:justify-start [&_button]:gap-3 [&_button]:rounded-xl [&_button]:border [&_button]:bg-muted/35 [&_button]:px-3">
+                  <PosPinSwitch returnTo={posPath} menuItem />
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          {mobileExpenseOpen &&
+          canAddSessionExpense &&
+          storeId &&
+          cashierId &&
+          sessionId ? (
+            <ExpenseWizard
+              storeId={storeId}
+              sessionId={sessionId}
+              userId={cashierId}
+              costCenters={costCenters}
+              categories={expenseCategories}
+              sessionMode
+              defaultOpen
+              onOpenChange={setMobileExpenseOpen}
+            />
+          ) : null}
+
+          <PosHeldCartsBar
+            hideTrigger
+            open={mobileHeldCartsOpen}
+            onOpenChange={setMobileHeldCartsOpen}
+          />
 
           <Sheet open={cartOpen} onOpenChange={setCartOpen}>
             <SheetContent
@@ -1818,10 +2025,10 @@ export function PosScreen({
           />
         </div>
 
-        <div className="shrink-0 pb-[max(0rem,calc(env(safe-area-inset-bottom)-0.5rem))] min-[900px]:hidden">
+        <div className="flex shrink-0 gap-2 pb-[max(0rem,calc(env(safe-area-inset-bottom)-0.5rem))] md:hidden">
           <Button
             type="button"
-            className="flex h-12 w-full items-center justify-between gap-2.5 rounded-xl px-2.5 py-1 text-sm shadow-md transition active:scale-[0.99] sm:h-13 sm:px-3"
+            className="flex h-12 min-w-0 flex-1 items-center justify-between gap-2.5 rounded-xl px-2.5 py-1 text-sm shadow-md transition active:scale-[0.99] sm:h-13 sm:px-3"
             onClick={() => setCartOpen(true)}
             aria-label={
               cartItemCount > 0
@@ -1859,6 +2066,17 @@ export function PosScreen({
                 </span>
               ) : null}
             </span>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="size-12 shrink-0 rounded-xl sm:hidden"
+            onClick={() => setMobileActionsOpen(true)}
+            aria-label={t("Cashier actions")}
+            title={t("Cashier actions")}
+          >
+            <Menu className="size-5" aria-hidden />
           </Button>
         </div>
       </div>

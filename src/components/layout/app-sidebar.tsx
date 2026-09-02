@@ -213,7 +213,7 @@ export function AppSidebar({
                   key={group.label}
                   className={cn(
                     "rounded-[var(--mds-radius-md)]",
-                    !collapsed && hasActiveItem && "bg-sidebar-accent/35"
+                    !collapsed && hasActiveItem && "bg-sidebar-foreground/[0.045]"
                   )}
                 >
                   {!collapsed && (
@@ -228,13 +228,18 @@ export function AppSidebar({
                         "group mb-0.5 flex w-full items-center justify-between gap-2 rounded-[var(--mds-radius-md)] border px-2 py-1.5 text-start text-xs font-semibold transition-colors",
                         forceExpanded ? "min-h-11" : "min-h-9",
                         hasActiveItem
-                          ? "border-sidebar-primary/30 bg-sidebar-accent text-sidebar-primary"
-                          : "border-sidebar-border/70 bg-sidebar-foreground/[0.035] text-sidebar-foreground/85 hover:border-sidebar-primary/25 hover:bg-[var(--mds-sidebar-hover)] hover:text-sidebar-foreground"
+                          ? "border-sidebar-primary/45 bg-sidebar-foreground/[0.09] text-sidebar-foreground"
+                          : "border-sidebar-border/70 bg-sidebar-foreground/[0.035] text-sidebar-foreground/95 hover:border-sidebar-primary/35 hover:bg-[var(--mds-sidebar-hover)] hover:text-sidebar-foreground"
                       )}
                     >
                       <span className="flex min-w-0 items-center gap-2">
-                        <span className="flex size-6 shrink-0 items-center justify-center rounded-[var(--mds-radius-sm)] bg-sidebar-foreground/[0.07]">
-                          <GroupIcon className="size-3.5 opacity-90" aria-hidden />
+                        <span
+                          className={cn(
+                            "flex size-6 shrink-0 items-center justify-center rounded-[var(--mds-radius-sm)] bg-sidebar-foreground/[0.07]",
+                            hasActiveItem && "bg-sidebar-primary/15 text-sidebar-primary"
+                          )}
+                        >
+                          <GroupIcon className="size-3.5" aria-hidden />
                         </span>
                         <span className="truncate">{t(group.label)}</span>
                       </span>
@@ -278,8 +283,8 @@ export function AppSidebar({
                                       className={cn(
                                         "relative flex items-center justify-center rounded-[var(--mds-radius-md)] p-2.5 text-sm transition-colors",
                                         active
-                                          ? "bg-sidebar-accent text-sidebar-primary"
-                                          : "text-sidebar-foreground/75 hover:bg-[var(--mds-sidebar-hover)] hover:text-sidebar-foreground"
+                                          ? "bg-sidebar-foreground/[0.1] text-sidebar-foreground ring-1 ring-inset ring-sidebar-primary/30"
+                                          : "text-sidebar-foreground/90 hover:bg-[var(--mds-sidebar-hover)] hover:text-sidebar-foreground"
                                       )}
                                     />
                                   }
@@ -299,8 +304,8 @@ export function AppSidebar({
                                   "relative flex items-center gap-2 rounded-[var(--mds-radius-sm)] px-2 py-1.5 text-[12px] transition-colors",
                                   forceExpanded ? "min-h-11" : "min-h-8",
                                   active
-                                    ? "bg-sidebar-accent font-semibold text-sidebar-primary"
-                                    : "font-medium text-sidebar-foreground/80 hover:bg-[var(--mds-sidebar-hover)] hover:text-sidebar-foreground"
+                                    ? "bg-sidebar-foreground/[0.1] font-semibold text-sidebar-foreground ring-1 ring-inset ring-sidebar-primary/30"
+                                    : "font-medium text-sidebar-foreground/90 hover:bg-[var(--mds-sidebar-hover)] hover:text-sidebar-foreground"
                                 )}
                               >
                                 {active ? (
@@ -309,7 +314,12 @@ export function AppSidebar({
                                     aria-hidden
                                   />
                                 ) : null}
-                                <Icon className="size-3.5 shrink-0 opacity-80" />
+                                <Icon
+                                  className={cn(
+                                    "size-3.5 shrink-0",
+                                    active ? "text-sidebar-primary" : "opacity-90"
+                                  )}
+                                />
                                 <span className="truncate">{t(item.label)}</span>
                               </Link>
                             )}

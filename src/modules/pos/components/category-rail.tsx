@@ -23,7 +23,9 @@ export function CategoryRail({
   useEffect(() => {
     const selectedButton = buttonRefs.current.get(selectedKey);
     if (!selectedButton) return;
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     selectedButton.scrollIntoView({
       behavior: reduceMotion ? "auto" : "smooth",
       block: "nearest",
@@ -40,7 +42,7 @@ export function CategoryRail({
 
   return (
     <div
-      className="flex h-12 touch-pan-x gap-0.5 overflow-x-auto overscroll-x-contain rounded-lg border border-border/60 bg-card/70 p-0.5 scroll-px-0.5 scroll-ps-14 snap-x snap-proximity [-webkit-overflow-scrolling:touch] scrollbar-none"
+      className="flex h-12 touch-pan-x gap-0.5 overflow-x-auto overscroll-x-contain rounded-lg border border-border/70 bg-card/85 p-0.5 scroll-px-0.5 scroll-ps-14 snap-x snap-proximity [-webkit-overflow-scrolling:touch] scrollbar-none dark:bg-card/95"
       role="group"
       aria-label={t("Product categories")}
     >
@@ -53,7 +55,7 @@ export function CategoryRail({
           "sticky start-0 z-10 h-11 shrink-0 snap-start rounded-md px-2.5 text-xs font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 sm:px-3 sm:text-sm",
           selectedId === null
             ? "bg-primary text-primary-foreground shadow-sm"
-            : "bg-card text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground"
+            : "bg-card text-foreground/80 shadow-sm hover:bg-muted hover:text-foreground dark:text-foreground/85 dark:hover:bg-muted/70",
         )}
       >
         {t("All")}
@@ -69,13 +71,13 @@ export function CategoryRail({
             "flex h-11 shrink-0 snap-start items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 sm:px-2.5 sm:text-sm",
             selectedId === cat.id
               ? "bg-primary font-semibold text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              : "text-foreground/75 hover:bg-muted hover:text-foreground dark:text-foreground/80 dark:hover:bg-muted/70",
           )}
         >
           <span
             className={cn(
               "size-2 shrink-0 rounded-full ring-1 ring-black/10",
-              selectedId === cat.id && "ring-white/50"
+              selectedId === cat.id && "ring-white/50",
             )}
             style={{ backgroundColor: cat.color }}
             aria-hidden

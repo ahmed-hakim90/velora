@@ -3,10 +3,12 @@ import { resolvePosAccess, PosAccessError } from "@/lib/auth/pos-access";
 import * as guards from "@/lib/auth/guards";
 import * as session from "@/lib/auth/session";
 import * as deviceRepo from "@/lib/repositories/device.repository";
+import * as permissionRepo from "@/lib/repositories/permission.repository";
 
 vi.mock("@/lib/auth/guards");
 vi.mock("@/lib/auth/session");
 vi.mock("@/lib/repositories/device.repository");
+vi.mock("@/lib/repositories/permission.repository");
 
 const managerUser = {
   id: "mgr-1",
@@ -19,11 +21,18 @@ const managerUser = {
   store_ids: ["store-1"],
 };
 
+const inventoryUser = {
+  ...managerUser,
+  id: "inventory-1",
+  role: "inventory" as const,
+};
+
 describe("resolvePosAccess pos_access permission", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(session.getActiveStoreId).mockResolvedValue("store-1");
     vi.mocked(guards.requireStoreAccess).mockResolvedValue(managerUser);
+    vi.mocked(permissionRepo.hasPermission).mockResolvedValue(false);
     vi.mocked(session.getRegisteredDeviceContext).mockResolvedValue({
       deviceId: "dev-1",
       storeId: "store-1",
@@ -43,10 +52,7 @@ describe("resolvePosAccess pos_access permission", () => {
   });
 
   it("denies when pos_access permission check fails", async () => {
-    vi.mocked(guards.requireAuth).mockResolvedValue(managerUser);
-    vi.mocked(guards.requirePermissionOrRole).mockRejectedValue(
-      new guards.AuthError("Insufficient permissions")
-    );
+    vi.mocked(guards.requireAuth).mockResolvedValue(inventoryUser);
 
     await expect(resolvePosAccess()).rejects.toMatchObject({
       code: "role_denied",
@@ -55,21 +61,24 @@ describe("resolvePosAccess pos_access permission", () => {
 
   it("allows when pos_access permission passes", async () => {
     vi.mocked(guards.requireAuth).mockResolvedValue(managerUser);
-    vi.mocked(guards.requirePermissionOrRole).mockResolvedValue(managerUser);
 
     const ctx = await resolvePosAccess();
     expect(ctx.storeId).toBe("store-1");
     expect(ctx.deviceId).toBe("dev-1");
-    expect(guards.requirePermissionOrRole).toHaveBeenCalledWith("pos_access", [
-      "owner",
-      "manager",
-      "cashier",
-    ]);
+    expect(permissionRepo.hasPermission).not.toHaveBeenCalled();
+  });
+
+  it("allows an outside role when pos_access is granted", async () => {
+    vi.mocked(guards.requireAuth).mockResolvedValue(inventoryUser);
+    vi.mocked(permissionRepo.hasPermission).mockResolvedValue(true);
+
+    const ctx = await resolvePosAccess();
+    expect(ctx.user.role).toBe("inventory");
+    expect(permissionRepo.hasPermission).toHaveBeenCalledWith("pos_access");
   });
 
   it("requires PIN switch when manager has no active cashier cookie", async () => {
     vi.mocked(guards.requireAuth).mockResolvedValue(managerUser);
-    vi.mocked(guards.requirePermissionOrRole).mockResolvedValue(managerUser);
     vi.mocked(session.getActiveCashierId).mockResolvedValue(null);
 
     await expect(resolvePosAccess()).rejects.toMatchObject({
@@ -84,7 +93,6 @@ describe("resolvePosAccess pos_access permission", () => {
       role: "cashier" as const,
     };
     vi.mocked(guards.requireAuth).mockResolvedValue(cashierUser);
-    vi.mocked(guards.requirePermissionOrRole).mockResolvedValue(cashierUser);
     vi.mocked(session.getActiveCashierId).mockResolvedValue(null);
     vi.mocked(deviceRepo.cashierCanUseDevice).mockResolvedValue(true);
     vi.mocked(session.setActiveCashierId).mockResolvedValue(undefined);
