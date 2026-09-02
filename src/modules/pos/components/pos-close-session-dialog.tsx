@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { CloseSessionStepper } from "@/modules/sessions/components/close-session-stepper";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -49,10 +50,15 @@ export function PosCloseSessionDialog({
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   function setOpen(nextOpen: boolean) {
+    if (nextOpen) {
+      setLoading(true);
+      setLoadError(null);
+    }
     if (controlledOpen === undefined) setInternalOpen(nextOpen);
     onOpenChange?.(nextOpen);
   }
   const [loading, setLoading] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reconciliation, setReconciliation] =
     useState<SessionReconciliation>(initialReconciliation);
@@ -94,7 +100,7 @@ export function PosCloseSessionDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, session.id, initialReconciliation, initialExpenses, t]);
+  }, [open, reloadKey, session.id, initialReconciliation, initialExpenses, t]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -119,19 +125,26 @@ export function PosCloseSessionDialog({
           ) : (
             <>
               {loadError ? (
-                <p className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
-                  {loadError} — {t("Showing the last saved summary.")}
-                </p>
+                <div className="flex flex-col items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-5 text-center text-sm text-amber-900 dark:text-amber-100" role="alert">
+                  <p>{loadError}</p>
+                  <p className="text-xs opacity-80">{t("Closing is disabled until the live summary loads.")}</p>
+                  <Button type="button" variant="outline" className="h-11 rounded-xl" onClick={() => setReloadKey((value) => value + 1)}>
+                    <RefreshCw className="size-4" aria-hidden />
+                    {t("Retry")}
+                  </Button>
+                </div>
+              ) : open ? (
+                <CloseSessionStepper
+                  key={`${session.id}-${reloadKey}`}
+                  session={session}
+                  reconciliation={reconciliation}
+                  sessionExpenses={sessionExpenses}
+                  cashierName={cashierName}
+                  costCenterMap={costCenterMap}
+                  categoryMap={categoryMap}
+                  embedded
+                />
               ) : null}
-              <CloseSessionStepper
-                session={session}
-                reconciliation={reconciliation}
-                sessionExpenses={sessionExpenses}
-                cashierName={cashierName}
-                costCenterMap={costCenterMap}
-                categoryMap={categoryMap}
-                embedded
-              />
             </>
           )}
         </div>

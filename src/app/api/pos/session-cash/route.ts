@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { AuthError, requirePermissionOrRole } from "@/lib/auth/guards";
+import { AuthError } from "@/lib/auth/guards";
 import { requirePosAccess, getActiveSessionForPos } from "@/lib/auth/pos-access";
+import * as permissionRepo from "@/lib/repositories/permission.repository";
 import { loadSessionCashBundle } from "@/modules/sessions/services/reconciliation.service";
 
 export const dynamic = "force-dynamic";
@@ -8,8 +9,13 @@ export const dynamic = "force-dynamic";
 /** Live session cash totals for POS close — avoids stale RSC props after API checkout. */
 export async function GET(request: Request) {
   try {
-    await requirePermissionOrRole("session_close", ["owner", "manager", "cashier"]);
     const ctx = await requirePosAccess({ touchSeen: false });
+    if (
+      !["owner", "manager", "cashier"].includes(ctx.user.role) &&
+      !(await permissionRepo.hasPermission("session_close"))
+    ) {
+      throw new AuthError("مفيش صلاحية للعملية دي", 403);
+    }
     const session = await getActiveSessionForPos(ctx);
     if (!session) {
       return NextResponse.json({ error: "لا توجد جلسة نشطة" }, { status: 404 });

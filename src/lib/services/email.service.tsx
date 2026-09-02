@@ -43,9 +43,14 @@ function normalizeRecipients(to: string | string[]): string[] {
 }
 
 export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
+  const emailEnabled = process.env.EMAIL_ENABLED?.trim().toLowerCase() !== "false";
   const apiKey = process.env.RESEND_API_KEY?.trim();
   const from = process.env.EMAIL_FROM?.trim();
   const recipients = normalizeRecipients(input.to);
+
+  if (!emailEnabled) {
+    return { ok: false, skipped: true };
+  }
 
   if (!recipients.length) {
     return { ok: false, skipped: true };

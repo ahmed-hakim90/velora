@@ -1,7 +1,5 @@
-import * as sessionRepo from "@/lib/repositories/session.repository";
-import * as orderRepo from "@/lib/repositories/order.repository";
-import * as expenseRepo from "@/lib/repositories/expense.repository";
-import * as paymentRepo from "@/lib/repositories/supplier-payment.repository";
+import { callRpc, throwDbError } from "@/lib/repositories/client";
+import { mapExpense, mapSupplierPayment } from "@/lib/repositories/mappers";
 import type { Expense, SupplierPayment } from "@/lib/types";
 
 export interface SessionReconciliation {
@@ -36,93 +34,34 @@ function emptyReconciliation(): SessionReconciliation {
   };
 }
 
-function sumCashPayments(
-  payments: Awaited<ReturnType<typeof orderRepo.getOrderPaymentsForOrders>>
-) {
-  return payments.filter((p) => p.method === "cash").reduce((s, p) => s + p.amount, 0);
-}
-
-function approvedSessionCashExpenses(expenses: Expense[]) {
-  return expenses
-    .filter(
-      (e) =>
-        e.expense_source === "session_cash" &&
-        e.payment_method === "cash" &&
-        e.status === "approved"
-    )
-    .reduce((s, e) => s + e.amount, 0);
-}
-
-function sessionCashSupplierPayments(payments: SupplierPayment[]) {
-  return payments
-    .filter((p) => !p.voided_at && p.payment_method === "cash")
-    .reduce((s, p) => s + p.amount, 0);
-}
-
 /** One session-scoped load for close-shift UI + expected cash. */
 export async function loadSessionCashBundle(sessionId: string): Promise<SessionCashBundle> {
-  const session = await sessionRepo.getSession(sessionId);
-  if (!session) {
+  type RpcBundle = {
+    reconciliation?: Partial<SessionReconciliation>;
+    expenses?: Parameters<typeof mapExpense>[0][];
+    supplierPayments?: Parameters<typeof mapSupplierPayment>[0][];
+  };
+  const { data, error } = await callRpc<RpcBundle>("pos_session_cash_bundle", {
+    p_session_id: sessionId,
+  });
+  if (error) throwDbError(error, "pos_session_cash_bundle");
+  if (!data) {
     return { reconciliation: emptyReconciliation(), expenses: [], supplierPayments: [] };
   }
-
-  const [orders, expenses, supplierPayments] = await Promise.all([
-    orderRepo.listOrdersBySessionIds([sessionId]),
-    expenseRepo.listExpenses({
-      storeId: session.store_id,
-      sessionId,
-    }),
-    paymentRepo.listPaymentsForSessions([sessionId]),
-  ]);
-
-  const relevantIds = orders
-    .filter(
-      (o) =>
-        o.status === "completed" || o.status === "voided" || o.status === "refunded"
-    )
-    .map((o) => o.id);
-
-  const payments = await orderRepo.getOrderPaymentsForOrders(relevantIds);
-  const paymentsByOrder = new Map<string, typeof payments>();
-  for (const payment of payments) {
-    const list = paymentsByOrder.get(payment.order_id) ?? [];
-    list.push(payment);
-    paymentsByOrder.set(payment.order_id, list);
-  }
-
-  let cashSales = 0;
-  let cashRefunds = 0;
-  let totalSales = 0;
-  let orderCount = 0;
-  for (const order of orders) {
-    const cashTotal = sumCashPayments(paymentsByOrder.get(order.id) ?? []);
-    if (order.status === "completed") {
-      cashSales += cashTotal;
-      totalSales += order.total;
-      orderCount += 1;
-    } else if (order.status === "voided" || order.status === "refunded") {
-      cashRefunds += cashTotal;
-    }
-  }
-
-  const expenseTotal = approvedSessionCashExpenses(expenses);
-  const supplierPaymentTotal = sessionCashSupplierPayments(supplierPayments);
-  const expectedCash =
-    session.opening_cash + cashSales - cashRefunds - expenseTotal - supplierPaymentTotal;
-
+  const raw = data.reconciliation ?? {};
   return {
     reconciliation: {
-      openingCash: session.opening_cash,
-      cashSales,
-      cashRefunds,
-      expenses: expenseTotal,
-      supplierPayments: supplierPaymentTotal,
-      expectedCash,
-      totalSales,
-      orderCount,
+      openingCash: Number(raw.openingCash ?? 0),
+      cashSales: Number(raw.cashSales ?? 0),
+      cashRefunds: Number(raw.cashRefunds ?? 0),
+      expenses: Number(raw.expenses ?? 0),
+      supplierPayments: Number(raw.supplierPayments ?? 0),
+      expectedCash: Number(raw.expectedCash ?? 0),
+      totalSales: Number(raw.totalSales ?? 0),
+      orderCount: Number(raw.orderCount ?? 0),
     },
-    expenses,
-    supplierPayments,
+    expenses: (data.expenses ?? []).map(mapExpense),
+    supplierPayments: (data.supplierPayments ?? []).map(mapSupplierPayment),
   };
 }
 

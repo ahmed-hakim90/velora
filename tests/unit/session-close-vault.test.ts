@@ -98,4 +98,16 @@ describe("closeSession vault retry", () => {
       })
     ).rejects.toThrow(/متكررش الإغلاق/);
   });
+
+  it("rejects negative actual cash before updating the session", async () => {
+    await expect(
+      closeSession({
+        sessionId: "s1",
+        expectedCash: 0,
+        actualCash: -1,
+        userId: "c1",
+      })
+    ).rejects.toThrow("صفر أو أكبر");
+    expect(sessionRepo.getSession).not.toHaveBeenCalled();
+  });
 });

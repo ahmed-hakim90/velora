@@ -19,6 +19,7 @@ Velora supports **local demo** (seed data) and **production** (onboarding only).
 | `ONBOARDING_REQUIRE_INVITE` | No | Server only | When `true`, forces invite-gated onboarding even outside `NODE_ENV=production` (useful for staging-like local). **Ignored as a bypass:** production always requires an invite — there is no env flag that opens onboarding in prod. |
 | `RESEND_API_KEY` | Yes (prod mail) | Server only | Resend API key for transactional email (password reset, invites, session/discount owner alerts). When unset, sends are skipped and core flows continue. |
 | `EMAIL_FROM` | Yes (prod mail) | Server only | Verified Resend from address, e.g. `Velora <noreply@yourdomain.com>`. Domain must be verified in Resend. |
+| `EMAIL_ENABLED` | Optional | Server only | Set to `false` to temporarily skip all outbound email without removing Resend credentials. Defaults to enabled. |
 | `EMAIL_REPLY_TO` | No | Server only | Optional reply-to address for outbound mail. |
 
 ### Resend / transactional email

@@ -1,4 +1,4 @@
-import { requireAuth, requireStoreAccess } from "@/lib/auth/guards";
+import { requireAuth } from "@/lib/auth/guards";
 import {
   getActiveCashierId,
   getActiveStoreId,
@@ -69,20 +69,18 @@ export async function resolvePosAccess(
     throw new PosAccessError("Select a store to continue", "store_required");
   }
 
-  let deviceCtx = await getRegisteredDeviceContext();
-  const [storeAccessResult, initialDevice] = await Promise.allSettled([
-    requireStoreAccess(storeId),
-    deviceCtx
-      ? deviceRepo.getDevice(deviceCtx.deviceId)
-      : Promise.resolve(null),
-  ]);
-  if (storeAccessResult.status === "rejected") {
+  if (
+    user.role !== "owner" &&
+    user.role !== "manager" &&
+    !user.store_ids.includes(storeId)
+  ) {
     throw new PosAccessError("Store access denied", "access_denied");
   }
 
-  let device =
-    initialDevice.status === "fulfilled" ? initialDevice.value : null;
-  if (initialDevice.status === "rejected") throw initialDevice.reason;
+  let deviceCtx = await getRegisteredDeviceContext();
+  let device = deviceCtx
+    ? await deviceRepo.getDevice(deviceCtx.deviceId)
+    : null;
   const needsImplicitBind =
     !deviceCtx ||
     deviceCtx.storeId !== storeId ||

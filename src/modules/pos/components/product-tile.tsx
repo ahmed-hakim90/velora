@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Layers3 } from "lucide-react";
+import { Layers3, ShoppingCart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -30,6 +30,8 @@ interface ProductTileProps {
    * Badge still shows "نفد" so the cashier sees the shortage.
    */
   allowNegativeStock?: boolean;
+  /** Total quantity for this product across the current cart lines. */
+  quantityInCart?: number;
 }
 
 export function ProductTile({
@@ -39,11 +41,17 @@ export function ProductTile({
   showImage = false,
   showVariants = true,
   allowNegativeStock = false,
+  quantityInCart = 0,
 }: ProductTileProps) {
   const { t, language } = useTranslation();
   const badgeLabel = BADGE_LABELS[product.stockBadge];
   const outOfStock = product.stockBadge === "out";
   const blockOutOfStock = outOfStock && !allowNegativeStock;
+  const isInCart = quantityInCart > 0;
+  const quantityLabel = new Intl.NumberFormat(
+    language === "ar" ? "ar-EG" : "en-EG",
+    { maximumFractionDigits: 3 },
+  ).format(quantityInCart);
   const variantPrices = product.variants
     .map((variant) => variant.price)
     .filter((price) => Number.isFinite(price));
@@ -69,6 +77,7 @@ export function ProductTile({
     showVariants && product.hasVariants
       ? `${product.variants.length} ${t("Variants")}`
       : null,
+    isInCart ? `${quantityLabel} ${t("In cart")}` : null,
   ]
     .filter(Boolean)
     .join(", ");
@@ -81,6 +90,7 @@ export function ProductTile({
       aria-label={accessibleLabel}
       className={cn(
         "group relative flex flex-col overflow-hidden rounded-xl bg-card text-start text-card-foreground shadow-none ring-1 ring-border/65 transition duration-150 hover:ring-primary/35 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 disabled:cursor-not-allowed disabled:opacity-50 sm:rounded-[14px]",
+        isInCart && "bg-primary/[0.04] ring-2 ring-primary/70",
         showImage
           ? "min-h-[108px] sm:min-h-[124px]"
           : "min-h-[84px] sm:min-h-[96px]",
@@ -172,27 +182,45 @@ export function ProductTile({
             </span>
           ) : null}
         </div>
-        {!showImage && badgeLabel ? (
-          <div className="mt-auto flex justify-end pt-1">
-            <Badge
-              variant={
-                product.stockBadge === "low"
-                  ? "outline"
-                  : product.stockBadge === "out"
-                    ? "destructive"
-                    : "secondary"
-              }
-              className={cn(
-                "max-w-[55%] shrink-0 truncate rounded-full px-1.5 py-0 text-[9px] shadow-none sm:text-[10px]",
-                product.stockBadge === "in_stock" &&
-                  "bg-emerald-50 text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-200",
-                product.stockBadge === "low" &&
-                  "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200",
-              )}
-            >
-              <span className="sr-only">{t(badgeLabel)}: </span>
-              {product.stockQuantity ?? "—"}
-            </Badge>
+        {isInCart || (!showImage && badgeLabel) ? (
+          <div className="mt-auto flex min-h-5 items-end justify-between gap-1 pt-1">
+            {isInCart ? (
+              <Badge
+                key={quantityLabel}
+                className="animate-in gap-1 rounded-full bg-primary px-1.5 py-0 text-[9px] font-bold text-primary-foreground shadow-sm zoom-in-75 sm:text-[10px]"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                <ShoppingCart className="size-3" aria-hidden />
+                <span aria-hidden>{quantityLabel}</span>
+                <span className="sr-only">
+                  {product.name}: {quantityLabel} {t("In cart")}
+                </span>
+              </Badge>
+            ) : (
+              <span />
+            )}
+            {!showImage && badgeLabel ? (
+              <Badge
+                variant={
+                  product.stockBadge === "low"
+                    ? "outline"
+                    : product.stockBadge === "out"
+                      ? "destructive"
+                      : "secondary"
+                }
+                className={cn(
+                  "max-w-[55%] shrink-0 truncate rounded-full px-1.5 py-0 text-[9px] shadow-none sm:text-[10px]",
+                  product.stockBadge === "in_stock" &&
+                    "bg-emerald-50 text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-200",
+                  product.stockBadge === "low" &&
+                    "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200",
+                )}
+              >
+                <span className="sr-only">{t(badgeLabel)}: </span>
+                {product.stockQuantity ?? "—"}
+              </Badge>
+            ) : null}
           </div>
         ) : null}
       </div>

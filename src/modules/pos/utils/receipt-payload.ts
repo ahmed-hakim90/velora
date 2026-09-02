@@ -6,18 +6,24 @@ import type { OnlineOrderWithItems } from "@/modules/online-orders/services/onli
 
 export function buildReceiptPayloadFromOrder(
   order: OrderWithDetails,
-  branding: ReportBranding
+  branding: ReportBranding,
 ): ReceiptPayload {
   const lines: CartLine[] = order.items.map((item) => ({
     id: item.id,
     productId: item.product_id,
     variantId: item.variant_id,
-    name: item.productName,
+    name: item.variantName
+      ? `${item.productName} · ${item.variantName}`
+      : item.productName,
     quantity: item.quantity,
     unitPrice: item.unit_price,
-    modifiers: [],
+    modifiers: item.modifiers,
     lineTotal: item.line_total,
     imageUrl: null,
+    saleUnit: item.sale_unit ?? undefined,
+    saleInputMode: item.sale_input_mode ?? undefined,
+    tierId: item.tier_id ?? undefined,
+    wholesaleApplied: item.wholesale_applied,
   }));
 
   const payments: PaymentSplit[] =
@@ -31,6 +37,7 @@ export function buildReceiptPayloadFromOrder(
   return {
     orderId: order.id,
     orderNumber: order.order_number,
+    orderStatus: order.status,
     createdAt: order.created_at,
     lines,
     paymentMethod: payments[0]!.method,
@@ -56,7 +63,9 @@ export function buildReceiptPayloadFromOnlineOrder(input: {
     id: item.id,
     productId: item.product_id,
     variantId: item.variant_id,
-    name: item.variant_name ? `${item.product_name} · ${item.variant_name}` : item.product_name,
+    name: item.variant_name
+      ? `${item.product_name} · ${item.variant_name}`
+      : item.product_name,
     quantity: item.quantity,
     unitPrice: item.unit_price,
     modifiers: [],

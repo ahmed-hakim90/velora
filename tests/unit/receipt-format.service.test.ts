@@ -65,6 +65,36 @@ describe("receipt formatting", () => {
     expect(text).toContain("See you soon");
   });
 
+  it("includes item modifiers and measurement units in shared receipt formats", () => {
+    const detailedReceipt: ReceiptPayload = {
+      ...receipt,
+      lines: [
+        {
+          ...receipt.lines[0]!,
+          quantity: 0.25,
+          saleUnit: "kg",
+          modifiers: [{ name: "Extra sauce", price: 5 }],
+        },
+      ],
+    };
+
+    expect(formatReceiptForWhatsApp(detailedReceipt)).toContain(
+      "+ Extra sauce",
+    );
+    expect(formatReceiptForWhatsApp(detailedReceipt)).toContain("0.25 kg");
+    expect(formatReceiptForEscPos(detailedReceipt)).toContain("+ Extra sauce");
+    expect(formatReceiptForEscPos(detailedReceipt)).toContain("0.25 kg");
+  });
+
+  it("marks voided and refunded copies in text receipt formats", () => {
+    expect(
+      formatReceiptForWhatsApp({ ...receipt, orderStatus: "voided" }),
+    ).toContain("*** VOIDED ***");
+    expect(
+      formatReceiptForEscPos({ ...receipt, orderStatus: "refunded" }),
+    ).toContain("*** REFUNDED ***");
+  });
+
   it("normalizes WhatsApp phone numbers for wa.me links", () => {
     expect(normalizeWhatsAppPhone("+20 100 111 2222")).toBe("201001112222");
     expect(normalizeWhatsAppPhone("01001112222")).toBe("201001112222");

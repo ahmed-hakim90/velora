@@ -115,6 +115,13 @@
 
 Existing stable component → semantic variant → composition → new shared primitive/pattern after repository-wide search → page-local component only when genuinely single-use.
 
+### Modal contract
+
+- Product dialogs use `StandardModalContent` for the shared shell, sizing, header, scroll behavior, and footer.
+- Confirmation flows use `ConfirmActionDialog`; they must not create a page-local dialog or force `rtl`/`ltr` on the whole modal.
+- User-facing title, description, and action labels use automatic text direction so Arabic and English remain correct in mixed-language states.
+- Destructive intent changes the semantic color and icon, not the modal presentation or responsive behavior.
+
 Inventory buttons, inputs, fields, status, feedback, skeletons, dialogs, sheets, menus, typography, containers, navigation, headers, filters, lists/tables, pagination, forms, upload, confirmation, empty/error states, and repeated domain units. Prefer composition, slots, semantic props, predictable defaults, and documented variants. Avoid prop sprawl and page-specific escape hatches. Keep business rules, permissions, data access, validation, and side effects outside presentation. Compare equivalents with KEEP / IMPROVE / REPLACE / REMOVE before migration.
 
 <!-- CODEX-PRODUCT-FOUNDATION:START -->

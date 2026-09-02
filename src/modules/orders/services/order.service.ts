@@ -8,6 +8,7 @@ import type { Order, OrderItem, OrderPayment } from "@/lib/types";
 
 export interface OrderItemWithName extends OrderItem {
   productName: string;
+  variantName: string | null;
   sku: string | null;
 }
 
@@ -38,28 +39,42 @@ export async function listOrders(storeId?: string): Promise<Order[]> {
   return orderRepo.listOrders(storeId);
 }
 
-export async function getOrder(orderId: string): Promise<OrderWithDetails | null> {
+export async function getOrder(
+  orderId: string,
+): Promise<OrderWithDetails | null> {
   const order = await orderRepo.getOrder(orderId);
   if (!order) return null;
 
-  const [store, customer, items, payments, products] = await Promise.all([
+  const [store, customer, items, payments] = await Promise.all([
     storeRepo.getStore(order.store_id),
     order.customer_id ? customerRepo.getCustomer(order.customer_id) : null,
     orderRepo.getOrderItems(orderId),
     orderRepo.getOrderPayments(orderId),
-    catalogRepo.listProducts(),
   ]);
 
-  const productById = new Map(products.map((product) => [product.id, product]));
+  const productIds = [...new Set(items.map((item) => item.product_id))];
+  const [productById, variantsByProductId] = await Promise.all([
+    catalogRepo.getProductsByIds(productIds),
+    catalogRepo.listVariantsForProducts(productIds),
+  ]);
+  const variantById = new Map(
+    [...variantsByProductId.values()]
+      .flat()
+      .map((variant) => [variant.id, variant]),
+  );
 
   return {
     ...order,
     items: items.map((item) => {
       const product = productById.get(item.product_id);
+      const variant = item.variant_id
+        ? variantById.get(item.variant_id)
+        : undefined;
       return {
         ...item,
         productName: product?.name ?? "صنف غير معروف",
-        sku: product?.sku ?? null,
+        variantName: variant?.name ?? null,
+        sku: variant?.sku ?? product?.sku ?? null,
       };
     }),
     payments,
@@ -90,7 +105,7 @@ function mapRestock(result: {
 
 export async function voidOrder(
   orderId: string,
-  userId: string
+  userId: string,
 ): Promise<OrderMutationResult | null> {
   const order = await orderRepo.getOrder(orderId);
   if (!order || order.status === "voided") return null;
@@ -105,9 +120,8 @@ export async function voidOrder(
       orderRepo.getOrderPayments(orderId),
       orderRepo.getOrderItems(orderId),
     ]);
-    const { safePostSaleReversalJournal } = await import(
-      "@/modules/accounting/services/gl-posting.service"
-    );
+    const { safePostSaleReversalJournal } =
+      await import("@/modules/accounting/services/gl-posting.service");
     await safePostSaleReversalJournal({
       orderId,
       storeId: order.store_id,
@@ -141,7 +155,7 @@ export async function voidOrder(
 
 export async function refundOrder(
   orderId: string,
-  userId: string
+  userId: string,
 ): Promise<OrderMutationResult | null> {
   const order = await orderRepo.getOrder(orderId);
   if (!order || order.status !== "completed") return null;
@@ -156,9 +170,8 @@ export async function refundOrder(
       orderRepo.getOrderPayments(orderId),
       orderRepo.getOrderItems(orderId),
     ]);
-    const { safePostSaleReversalJournal } = await import(
-      "@/modules/accounting/services/gl-posting.service"
-    );
+    const { safePostSaleReversalJournal } =
+      await import("@/modules/accounting/services/gl-posting.service");
     await safePostSaleReversalJournal({
       orderId,
       storeId: order.store_id,

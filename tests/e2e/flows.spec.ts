@@ -159,19 +159,22 @@ test.describe("S10 — Full cashier day", () => {
     await expect(page.getByRole("heading", { name: "إغلاق جلسة الكاشير" })).toBeVisible({
       timeout: 15_000,
     });
-    await page.getByRole("button", { name: "متابعة للعدّ" }).click();
+    await page.getByRole("button", { name: "متابعة لعدّ النقدية" }).click();
 
     await expect(page.getByText(/المتوقع/).first()).toBeVisible();
     // Count drawer to expected cash (zero variance).
     const expectedText = await page.locator("text=/المتوقع/").first().innerText();
     const amountMatch = expectedText.replace(/,/g, "").match(/(\d+(?:\.\d+)?)/);
     const actualCash = amountMatch?.[1] ?? "0";
-    await page.locator("#actual-cash").fill(actualCash);
+    await page.getByRole("spinbutton", { name: "المبلغ في الدرج" }).fill(actualCash);
 
-    await page.getByRole("button", { name: "إغلاق الجلسة", exact: true }).click();
     await page.getByRole("button", { name: "تأكيد الإغلاق" }).click();
+    await expect(page.getByRole("heading", { name: "تم إغلاق الجلسة" })).toBeVisible({
+      timeout: 30_000,
+    });
+    await page.getByRole("button", { name: "العودة لنقطة البيع" }).click();
 
-    // closeSessionAction reloads the page after toast — assert we are back to no-session CTA.
+    // Returning to POS refreshes server state and shows the no-session CTA.
     await expect(page.getByRole("button", { name: /ابدأ البيع/ }).first()).toBeVisible({
       timeout: 30_000,
     });

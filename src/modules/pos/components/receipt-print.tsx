@@ -14,8 +14,19 @@ interface ReceiptPrintProps {
 export function ReceiptPrint({ receipt }: ReceiptPrintProps) {
   const { t } = useTranslation();
   const subtotal = getReceiptSubtotal(receipt);
-  const { branding, customer, discount, lines, orderNumber, paymentMethod, payments, total } =
-    receipt;
+  const {
+    branding,
+    customer,
+    discount,
+    lines,
+    orderNumber,
+    orderStatus,
+    paymentMethod,
+    payments,
+    total,
+  } = receipt;
+  const exceptionalStatus =
+    orderStatus === "voided" || orderStatus === "refunded" ? orderStatus : null;
   return (
     <div
       id="Velora-receipt"
@@ -28,17 +39,26 @@ export function ReceiptPrint({ receipt }: ReceiptPrintProps) {
           <p className="text-center text-xs">{branding.storeName}</p>
         ) : null}
         {branding.storeAddress ? (
-          <p className="text-center text-xs whitespace-pre-wrap">{branding.storeAddress}</p>
+          <p className="text-center text-xs whitespace-pre-wrap">
+            {branding.storeAddress}
+          </p>
         ) : null}
         {branding.storePhone ? (
           <p className="text-center text-xs">{branding.storePhone}</p>
         ) : null}
         {branding.receiptHeader ? (
-          <p className="mt-2 whitespace-pre-wrap text-center text-xs">{branding.receiptHeader}</p>
+          <p className="mt-2 whitespace-pre-wrap text-center text-xs">
+            {branding.receiptHeader}
+          </p>
         ) : null}
         <p className="mt-2 text-center text-xs">
           {t("Order #")} {orderNumber}
         </p>
+        {exceptionalStatus ? (
+          <p className="my-2 border-2 border-current py-1 text-center text-sm font-bold uppercase">
+            {t(exceptionalStatus)}
+          </p>
+        ) : null}
         {customer ? (
           <p className="text-center text-xs">
             {t("Customer")}: {customer.name}
@@ -49,14 +69,37 @@ export function ReceiptPrint({ receipt }: ReceiptPrintProps) {
           {lines.map((line) => (
             <li key={line.id}>
               <div className="flex justify-between gap-2">
-                <span>
-                  {line.name}
-                  <br />
-                  {line.quantity} {line.saleUnit ?? t("piece")} ×{" "}
-                  {formatCurrency(line.unitPrice, branding.currency)}
-                  {line.saleUnit ? `/${line.saleUnit}` : ""}
+                <span className="min-w-0 flex-1">
+                  <span className="block break-words" dir="auto">
+                    {line.name}
+                  </span>
+                  <span
+                    className="block tabular-nums [unicode-bidi:plaintext]"
+                    dir="auto"
+                  >
+                    {line.quantity} {line.saleUnit ?? t("piece")} ×{" "}
+                    {formatCurrency(line.unitPrice, branding.currency)}
+                    {line.saleUnit ? `/${line.saleUnit}` : ""}
+                  </span>
+                  {line.modifiers.length > 0 ? (
+                    <span
+                      className="block text-[10px] text-muted-foreground"
+                      dir="auto"
+                    >
+                      +{" "}
+                      {line.modifiers
+                        .map((modifier) =>
+                          modifier.price > 0
+                            ? `${modifier.name} (+${formatCurrency(modifier.price, branding.currency)})`
+                            : modifier.name,
+                        )
+                        .join("، ")}
+                    </span>
+                  ) : null}
                 </span>
-                <span>{formatCurrency(line.lineTotal, branding.currency)}</span>
+                <span className="shrink-0 tabular-nums">
+                  {formatCurrency(line.lineTotal, branding.currency)}
+                </span>
               </div>
             </li>
           ))}
@@ -73,13 +116,18 @@ export function ReceiptPrint({ receipt }: ReceiptPrintProps) {
           </div>
         ) : null}
         <div className="flex justify-between font-bold">
-          <span>{t("Total")} ({t(paymentMethod)})</span>
+          <span>
+            {t("Total")} ({t(paymentMethod)})
+          </span>
           <span>{formatCurrency(total, branding.currency)}</span>
         </div>
         {payments.length > 1 ? (
           <div className="mt-2 space-y-1 text-xs">
             {payments.map((payment, index) => (
-              <div key={`${payment.method}-${index}`} className="flex justify-between">
+              <div
+                key={`${payment.method}-${index}`}
+                className="flex justify-between"
+              >
                 <span>{t(payment.method)}</span>
                 <span>{formatCurrency(payment.amount, branding.currency)}</span>
               </div>

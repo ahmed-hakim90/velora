@@ -9,11 +9,13 @@ import {
   CircleUserRound,
   Clock3,
   ClipboardList,
+  History,
   ImageIcon,
   ImageOff,
   Loader2,
   Menu,
   Plus,
+  ReceiptText,
   ScanBarcode,
   Search,
   ShoppingCart,
@@ -114,6 +116,7 @@ import type { CreditCheckoutConfirm } from "@/modules/pos/components/pos-credit-
 import { PosCollectFlowDialog } from "@/modules/pos/components/pos-collect-flow-dialog";
 import { PosSupplierPayDialog } from "@/modules/pos/components/pos-supplier-pay-dialog";
 import { PosReceiptSuccessDialog } from "@/modules/pos/components/pos-receipt-success-dialog";
+import { PosSessionOrdersDialog } from "@/modules/pos/components/pos-session-orders-dialog";
 import { PosHeldCartsBar } from "@/modules/pos/components/pos-held-carts-bar";
 import { QuickOpenSessionButton } from "@/modules/sessions/components/quick-open-session-button";
 import type { SessionReconciliation } from "@/modules/sessions/services/reconciliation.service";
@@ -328,7 +331,7 @@ export function PosScreen({
   const [onlineOrdersOpen, setOnlineOrdersOpen] = useState(false);
   const [collectOpen, setCollectOpen] = useState(false);
   const [supplierPayOpen, setSupplierPayOpen] = useState(false);
-  const [closeSessionOpen, setCloseSessionOpen] = useState(false);
+  const [closeSessionTargetId, setCloseSessionTargetId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchError, setSearchError] = useState<string | null>(null);
   const [showProductImages, setShowProductImages] = useState(false);
@@ -341,6 +344,9 @@ export function PosScreen({
   const [pendingModifierVariant, setPendingModifierVariant] =
     useState<POSVariant | null>(null);
   const [lastReceipt, setLastReceipt] = useState<ReceiptPayload | null>(null);
+  const [draftReceipt, setDraftReceipt] = useState<ReceiptPayload | null>(null);
+  const [sessionOrdersOpen, setSessionOrdersOpen] = useState(false);
+  const [sessionOrdersRefreshKey, setSessionOrdersRefreshKey] = useState(0);
   const [pending, startTransition] = useTransition();
   const { run: runBackground } = useBackgroundMutation();
   const checkoutMutationKey = backgroundMutationKey(
@@ -472,11 +478,17 @@ export function PosScreen({
 
   useEffect(() => {
     let cancelled = false;
+    let inFlight = false;
+    let controller: AbortController | null = null;
 
     async function pollOnlineOrders() {
+      if (cancelled || inFlight || document.visibilityState !== "visible") return;
+      inFlight = true;
+      controller = new AbortController();
       try {
         const ordersRes = await fetch("/api/pos/online-orders", {
           credentials: "same-origin",
+          signal: controller.signal,
         });
         if (!ordersRes.ok) return;
         const ordersJson = (await ordersRes.json()) as {
@@ -496,13 +508,20 @@ export function PosScreen({
         onlineOrdersSeeded.current = true;
       } catch {
         // Keep last known board; next poll retries.
+      } finally {
+        inFlight = false;
+        controller = null;
       }
     }
 
-    const id = window.setInterval(pollOnlineOrders, 15000);
+    void pollOnlineOrders();
+    const id = window.setInterval(pollOnlineOrders, 30_000);
+    document.addEventListener("visibilitychange", pollOnlineOrders);
     return () => {
       cancelled = true;
+      controller?.abort();
       window.clearInterval(id);
+      document.removeEventListener("visibilitychange", pollOnlineOrders);
     };
   }, [t]);
 
@@ -539,11 +558,7 @@ export function PosScreen({
           lastCatalogRefreshAtRef.current = Date.now();
         }
       } catch (error) {
-        if (
-          !cancelled &&
-          !controller.signal.aborted &&
-          isBlockingLoad
-        ) {
+        if (!cancelled && !controller.signal.aborted && isBlockingLoad) {
           setCatalogError(
             t(
               error instanceof Error
@@ -557,28 +572,7 @@ export function PosScreen({
       }
     }
 
-    async function loadOnlineOrders() {
-      try {
-        const ordersRes = await fetch("/api/pos/online-orders", {
-          credentials: "same-origin",
-        });
-        if (!ordersRes.ok) return;
-        const ordersJson = (await ordersRes.json()) as {
-          orders?: OnlineOrderWithItems[];
-        };
-        if (cancelled) return;
-        setLiveOnlineOrders(ordersJson.orders ?? []);
-        seenOnlineOrderIds.current = new Set(
-          (ordersJson.orders ?? []).map((order) => order.id),
-        );
-        onlineOrdersSeeded.current = true;
-      } catch {
-        // The orders poll retries independently; catalog loading must not wait.
-      }
-    }
-
     void loadCatalog();
-    void loadOnlineOrders();
     return () => {
       cancelled = true;
       controller.abort();
@@ -700,6 +694,16 @@ export function PosScreen({
   );
   const loyaltyEnabled = featureFlags.loyalty !== false;
   const cartItemCount = cart.reduce((total, line) => total + line.quantity, 0);
+  const cartQuantitiesByProduct = useMemo(() => {
+    const quantities = new Map<string, number>();
+    for (const line of cart) {
+      quantities.set(
+        line.productId,
+        (quantities.get(line.productId) ?? 0) + line.quantity,
+      );
+    }
+    return quantities;
+  }, [cart]);
   const noPaymentMethods = enabledPaymentMethods.length === 0;
   const checkoutBlockedReason = checkoutSaving
     ? "Saving previous invoice…"
@@ -850,6 +854,7 @@ export function PosScreen({
           ? `line-${product.id}-${resolved?.id ?? "base"}-m${++modifierLineSeq}`
           : undefined,
     });
+    playPosScanSound();
   }
 
   function handleAdd(product: POSProduct) {
@@ -899,7 +904,6 @@ export function PosScreen({
       variant: null,
     };
     setSearchError(null);
-    playPosScanSound();
     const useWeightFlow =
       (enableWeightSales && product.supports_weight_sale) ||
       (enablePriceByAmount && product.supports_amount_sale);
@@ -1019,6 +1023,7 @@ export function PosScreen({
       successMessage: (result) =>
         `${t("Order completed")} ${result.orderNumber}`,
       onSuccess: (result) => {
+        setSessionOrdersRefreshKey((key) => key + 1);
         // Inventory changed during checkout. Refresh stock in the background
         // without blocking the cashier from starting the next sale.
         if (loadCatalogClient) {
@@ -1203,15 +1208,19 @@ export function PosScreen({
     });
   }
 
-  async function handleUsbPrintReceipt() {
-    if (!lastReceipt) {
+  async function handleUsbPrintReceipt(
+    receipt: ReceiptPayload | null = lastReceipt,
+  ) {
+    if (!receipt) {
       throw new Error(t("Could not print receipt"));
     }
-    await printReceiptViaUsb(lastReceipt);
+    await printReceiptViaUsb(receipt);
   }
 
-  function handleBrowserPrintReceipt() {
-    if (!lastReceipt) {
+  function handleBrowserPrintReceipt(
+    receipt: ReceiptPayload | null = lastReceipt,
+  ) {
+    if (!receipt) {
       throw new Error(t("Could not print receipt"));
     }
     if (
@@ -1223,13 +1232,47 @@ export function PosScreen({
     setTimeout(() => triggerReceiptPrint(), 50);
   }
 
-  function handleSendWhatsAppReceipt(phoneOverride?: string) {
-    if (!lastReceipt) throw new Error(t("Could not open WhatsApp"));
-    const url = buildWhatsAppReceiptUrl(lastReceipt, phoneOverride);
+  function sendWhatsAppReceipt(
+    receipt: ReceiptPayload | null,
+    phoneOverride?: string,
+  ) {
+    if (!receipt) throw new Error(t("Could not open WhatsApp"));
+    const url = buildWhatsAppReceiptUrl(receipt, phoneOverride);
     if (!url) {
       throw new Error(t("Customer phone number is not valid for WhatsApp"));
     }
     window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  function handleSendWhatsAppReceipt(phoneOverride?: string) {
+    sendWhatsAppReceipt(lastReceipt, phoneOverride);
+  }
+
+  function openDraftReceipt() {
+    if (cart.length === 0) return;
+    const draftNotice = `${t("Draft receipt")} — ${t("Not saved yet")}`;
+    setDraftReceipt({
+      orderNumber: t("Draft"),
+      createdAt: new Date().toISOString(),
+      paymentMethod,
+      payments: [{ method: paymentMethod, amount: cartPayableTotal }],
+      lines: [...cart],
+      discount:
+        discountAmount +
+        (loyaltyRedemption?.amount ?? 0) +
+        promoCartDiscount +
+        promoItemSavings,
+      total: cartPayableTotal,
+      customer: customer
+        ? { name: customer.name, phone: customer.phone }
+        : null,
+      branding: {
+        ...receiptBranding,
+        receiptHeader: [draftNotice, receiptBranding.receiptHeader]
+          .filter(Boolean)
+          .join("\n"),
+      },
+    });
   }
 
   return (
@@ -1264,6 +1307,16 @@ export function PosScreen({
 
             {hasActiveSession ? (
               <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="size-11 shrink-0 rounded-lg border-indigo-200 bg-indigo-50 px-0 text-indigo-900 hover:bg-indigo-100 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200 dark:hover:bg-indigo-500/20"
+                  onClick={() => setSessionOrdersOpen(true)}
+                  aria-label={t("Session invoices")}
+                  title={t("Session invoices")}
+                >
+                  <History className="size-4 shrink-0" />
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -1344,6 +1397,19 @@ export function PosScreen({
               <div className="min-w-0 flex-1" />
             )}
 
+            {cart.length > 0 ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="size-11 shrink-0 rounded-lg border-cyan-200 bg-cyan-50 px-0 text-cyan-900 hover:bg-cyan-100 dark:border-cyan-500/30 dark:bg-cyan-500/10 dark:text-cyan-200 dark:hover:bg-cyan-500/20"
+                onClick={openDraftReceipt}
+                aria-label={t("Draft receipt")}
+                title={t("Draft receipt")}
+              >
+                <ReceiptText className="size-4 shrink-0" />
+              </Button>
+            ) : null}
+
             <Button
               type="button"
               variant={showProductImages ? "secondary" : "ghost"}
@@ -1387,8 +1453,11 @@ export function PosScreen({
               sessionReconciliation ? (
                 <div title={t("Close session")}>
                   <PosCloseSessionDialog
-                    open={closeSessionOpen}
-                    onOpenChange={setCloseSessionOpen}
+                    key={activeSession.id}
+                    open={closeSessionTargetId === activeSession.id}
+                    onOpenChange={(nextOpen) =>
+                      setCloseSessionTargetId(nextOpen ? activeSession.id : null)
+                    }
                     session={activeSession}
                     reconciliation={sessionReconciliation}
                     sessionExpenses={sessionExpenses}
@@ -1609,6 +1678,9 @@ export function PosScreen({
                       showImage={showProductImages}
                       showVariants={enableVariants}
                       allowNegativeStock={allowNegativeStock}
+                      quantityInCart={
+                        cartQuantitiesByProduct.get(product.id) ?? 0
+                      }
                       onAdd={() => handleAdd(product)}
                     />
                   ))}
@@ -1675,6 +1747,18 @@ export function PosScreen({
               <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-y-contain p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                 {hasActiveSession ? (
                   <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-12 w-full justify-start gap-3 rounded-xl border-indigo-200 bg-indigo-50 px-3 text-indigo-900 hover:bg-indigo-100 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200 dark:hover:bg-indigo-500/20"
+                      onClick={() => {
+                        setMobileActionsOpen(false);
+                        setSessionOrdersOpen(true);
+                      }}
+                    >
+                      <History className="size-4" aria-hidden />
+                      {t("Session invoices")}
+                    </Button>
                     <Button
                       type="button"
                       variant="outline"
@@ -1776,6 +1860,21 @@ export function PosScreen({
                   </>
                 ) : null}
 
+                {cart.length > 0 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-12 w-full justify-start gap-3 rounded-xl border-cyan-200 bg-cyan-50 px-3 text-cyan-900 hover:bg-cyan-100 dark:border-cyan-500/30 dark:bg-cyan-500/10 dark:text-cyan-200 dark:hover:bg-cyan-500/20"
+                    onClick={() => {
+                      setMobileActionsOpen(false);
+                      openDraftReceipt();
+                    }}
+                  >
+                    <ReceiptText className="size-4" aria-hidden />
+                    {t("Draft receipt")}
+                  </Button>
+                ) : null}
+
                 <Button
                   type="button"
                   variant="outline"
@@ -1804,7 +1903,7 @@ export function PosScreen({
                     className="h-12 w-full justify-start gap-3 rounded-xl px-3"
                     onClick={() => {
                       setMobileActionsOpen(false);
-                      setCloseSessionOpen(true);
+                      setCloseSessionTargetId(activeSession.id);
                     }}
                   >
                     <CircleStop className="size-4" aria-hidden />
@@ -2020,6 +2119,7 @@ export function PosScreen({
                 saleInputMode,
                 enteredAmount,
               });
+              playPosScanSound();
               setWeightProduct(null);
             }}
           />
@@ -2090,6 +2190,32 @@ export function PosScreen({
           onUsbPrint={handleUsbPrintReceipt}
           onBrowserPrint={handleBrowserPrintReceipt}
           onWhatsApp={handleSendWhatsAppReceipt}
+        />
+      ) : null}
+      {draftReceipt ? (
+        <PosReceiptSuccessDialog
+          mode="draft"
+          open={Boolean(draftReceipt)}
+          receipt={draftReceipt}
+          onOpenChange={(open) => {
+            if (!open) setDraftReceipt(null);
+          }}
+          onUsbPrint={() => handleUsbPrintReceipt(draftReceipt)}
+          onBrowserPrint={() => handleBrowserPrintReceipt(draftReceipt)}
+          onWhatsApp={(phoneOverride) =>
+            sendWhatsAppReceipt(draftReceipt, phoneOverride)
+          }
+        />
+      ) : null}
+      {hasActiveSession ? (
+        <PosSessionOrdersDialog
+          open={sessionOrdersOpen}
+          onOpenChange={setSessionOrdersOpen}
+          branding={receiptBranding}
+          refreshKey={sessionOrdersRefreshKey}
+          onUsbPrint={handleUsbPrintReceipt}
+          onBrowserPrint={handleBrowserPrintReceipt}
+          onWhatsApp={sendWhatsAppReceipt}
         />
       ) : null}
       <ConfirmActionDialog

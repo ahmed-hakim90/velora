@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { AuthError, requirePermissionOrRole } from "@/lib/auth/guards";
+import { AuthError } from "@/lib/auth/guards";
 import { requirePosAccess } from "@/lib/auth/pos-access";
+import * as permissionRepo from "@/lib/repositories/permission.repository";
 import { listActiveOnlineOrdersWithItems } from "@/modules/online-orders/services/online-order.service";
 
 export const dynamic = "force-dynamic";
@@ -8,8 +9,13 @@ export const dynamic = "force-dynamic";
 /** Active online orders for POS without remounting the page. */
 export async function GET() {
   try {
-    await requirePermissionOrRole("checkout_create", ["owner", "manager", "cashier"]);
     const ctx = await requirePosAccess({ touchSeen: false });
+    if (
+      !["owner", "manager", "cashier"].includes(ctx.user.role) &&
+      !(await permissionRepo.hasPermission("checkout_create"))
+    ) {
+      throw new AuthError("مفيش صلاحية للعملية دي", 403);
+    }
     const orders = await listActiveOnlineOrdersWithItems(ctx.storeId);
     return NextResponse.json({
       storeId: ctx.storeId,

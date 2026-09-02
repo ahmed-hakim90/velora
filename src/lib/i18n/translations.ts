@@ -6,6 +6,50 @@ export const languageOptions: { value: AppLanguage; label: string }[] = [
 ];
 
 export const arTranslations: Record<string, string> = {
+  "Closing progress": "خطوات إغلاق الجلسة",
+  "Count and confirm": "العدّ والتأكيد",
+  "Opened at": "تم الفتح في",
+  "Total sales": "إجمالي المبيعات",
+  "Order count": "عدد الطلبات",
+  "Sales overview": "ملخص المبيعات",
+  "Cash drawer calculation": "حساب درج النقدية",
+  "No session expenses recorded": "لا توجد مصروفات مسجلة في الجلسة",
+  "Continue to cash count": "متابعة لعدّ النقدية",
+  "Enter a valid cash amount of zero or more.":
+    "أدخل مبلغًا صحيحًا يساوي صفرًا أو أكبر.",
+  "The variance will be recorded with this closing.":
+    "سيتم تسجيل هذا الفرق ضمن إغلاق الجلسة.",
+  Shortage: "نقص",
+  Overage: "زيادة",
+  Matched: "مطابق",
+  "Closing session…": "جاري إغلاق الجلسة…",
+  "Could not close the session": "تعذر إغلاق الجلسة",
+  "Session totals changed. Review the updated summary before closing.":
+    "تغيرت إجماليات الجلسة. راجع الملخص المحدث قبل الإغلاق.",
+  "Session closed — vault transfer pending":
+    "تم إغلاق الجلسة — تحويل الخزينة معلّق",
+  "Retry vault transfer": "إعادة محاولة تحويل الخزينة",
+  "Print closing report": "طباعة تقرير الإغلاق",
+  "Back to POS": "العودة لنقطة البيع",
+  "Closing is disabled until the live summary loads.":
+    "الإغلاق متوقف حتى يتم تحميل الملخص الحي.",
+  Retry: "إعادة المحاولة",
+  "Session invoices": "فواتير الجلسة",
+  "Open and print any invoice from the active session":
+    "افتح واطبع أي فاتورة من جلسة البيع الحالية.",
+  "Loading session invoices…": "جاري تحميل فواتير الجلسة…",
+  "Could not load session invoices": "تعذر تحميل فواتير الجلسة",
+  "Could not open invoice": "تعذر فتح الفاتورة",
+  "No invoices in this session yet": "لا توجد فواتير في هذه الجلسة حتى الآن.",
+  "Invoice receipt": "إيصال الفاتورة",
+  "Back to invoices": "العودة للفواتير",
+  "Search by invoice, customer, or phone": "ابحث بالفاتورة أو العميل أو الهاتف",
+  "Search session invoices": "البحث في فواتير الجلسة",
+  "Refresh session invoices": "تحديث فواتير الجلسة",
+  "matching invoices": "فاتورة مطابقة",
+  "invoices in this session": "فاتورة في هذه الجلسة",
+  "No matching invoices": "لا توجد فواتير مطابقة.",
+  "In cart": "في السلة",
   "Simplified income statement": "قائمة دخل مبسطة",
   "Revenue, cost, gross profit, expenses, waste, refunds, and estimated net profit":
     "الإيراد والتكلفة والربح والمصروفات والهالك والمرتجعات وصافي الربح المتوقع.",
@@ -3453,6 +3497,12 @@ const enTranslations = Object.entries(arTranslations).reduce<
   if (!acc[ar]) acc[ar] = en;
   return acc;
 }, {});
+
+// Some UI labels intentionally share an Arabic translation. Keep print/report
+// titles deterministic when translating those labels back to English.
+Object.assign(enTranslations, {
+  "تقرير المخزون": "Inventory Report",
+});
 
 export function translateText(text: string, language: AppLanguage) {
   const leading = text.match(/^\s*/)?.[0] ?? "";

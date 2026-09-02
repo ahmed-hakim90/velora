@@ -9,6 +9,7 @@ import * as sessionService from "@/modules/sessions/services/session.service";
 import * as reconciliation from "@/modules/sessions/services/reconciliation.service";
 import * as settingsService from "@/modules/system/services/settings.service";
 import * as posAccess from "@/lib/auth/pos-access";
+import { getSessionReconciliationVersion } from "@/modules/sessions/types/session-close";
 
 vi.mock("@/lib/auth/guards");
 vi.mock("@/lib/auth/pos-access");
@@ -219,7 +220,104 @@ describe("closeSessionAction authorization", () => {
     });
 
     await expect(
-      closeSessionAction({ sessionId: "s1", actualCash: 0 })
+      closeSessionAction({
+        sessionId: "s1",
+        actualCash: 0,
+        expectedCash: 0,
+        reconciliationVersion: "[]",
+      })
     ).rejects.toThrow("تقدر تقفل جلستك بس");
+  });
+
+  it("rejects a negative cash count before touching session data", async () => {
+    await expect(
+      closeSessionAction({
+        sessionId: "s1",
+        actualCash: -1,
+        expectedCash: 0,
+        reconciliationVersion: "[]",
+      })
+    ).rejects.toThrow("صفر أو أكبر");
+    expect(sessionService.getSessionById).not.toHaveBeenCalled();
+  });
+
+  it("returns the fresh reconciliation instead of closing stale totals", async () => {
+    vi.mocked(guards.requireAuth).mockResolvedValue({
+      id: "cashier-1",
+      org_id: "org-1",
+      auth_user_id: "auth-1",
+      name: "Cashier",
+      email: "cashier@test.com",
+      role: "cashier",
+      is_active: true,
+      store_ids: [],
+    });
+    vi.mocked(posAccess.getPosAccessOrNull).mockResolvedValue({
+      user: {
+        id: "cashier-1",
+        org_id: "org-1",
+        auth_user_id: "auth-1",
+        name: "Cashier",
+        email: "cashier@test.com",
+        role: "cashier",
+        is_active: true,
+        store_ids: [],
+      },
+      storeId: "store1",
+      deviceId: "dev-1",
+      activeCashierId: "cashier-1",
+    });
+    vi.mocked(permissionRepo.hasPermission).mockResolvedValue(false);
+    vi.mocked(guards.requirePermissionOrRole).mockResolvedValue(undefined as never);
+    vi.mocked(sessionService.getSessionById).mockResolvedValue({
+      id: "s1",
+      store_id: "store1",
+      device_id: null,
+      cashier_id: "cashier-1",
+      opened_at: new Date().toISOString(),
+      closed_at: null,
+      opening_cash: 0,
+      expected_cash: null,
+      actual_cash: null,
+      variance: null,
+      status: "open",
+      notes: null,
+      closed_by: null,
+      close_reason: null,
+      force_closed: false,
+    });
+    vi.mocked(reconciliation.loadSessionCashBundle).mockResolvedValue({
+      reconciliation: {
+        openingCash: 0,
+        cashSales: 25,
+        cashRefunds: 0,
+        expenses: 0,
+        supplierPayments: 0,
+        expectedCash: 25,
+        totalSales: 25,
+        orderCount: 1,
+      },
+      expenses: [],
+      supplierPayments: [],
+    });
+
+    const result = await closeSessionAction({
+      sessionId: "s1",
+      actualCash: 20,
+      expectedCash: 20,
+      reconciliationVersion: getSessionReconciliationVersion({
+        openingCash: 0,
+        cashSales: 20,
+        cashRefunds: 0,
+        expenses: 0,
+        supplierPayments: 0,
+        expectedCash: 20,
+        totalSales: 20,
+        orderCount: 1,
+      }),
+    });
+
+    expect(result.status).toBe("reconciliation_changed");
+    expect(sessionService.closeSession).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { refundOrder, voidOrder } from "@/modules/orders/services/order.service";
+import {
+  getOrder,
+  refundOrder,
+  voidOrder,
+} from "@/modules/orders/services/order.service";
 import * as orderRepo from "@/lib/repositories/order.repository";
+import * as catalogRepo from "@/lib/repositories/catalog.repository";
+import * as customerRepo from "@/lib/repositories/customer.repository";
+import * as storeRepo from "@/lib/repositories/store.repository";
 import { assertPeriodOpen } from "@/lib/services/period-lock.service";
 
 vi.mock("@/lib/repositories/order.repository");
@@ -8,7 +15,8 @@ vi.mock("@/lib/repositories/customer.repository");
 vi.mock("@/lib/repositories/catalog.repository");
 vi.mock("@/lib/repositories/store.repository");
 vi.mock("@/lib/services/period-lock.service", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/services/period-lock.service")>();
+  const actual =
+    await importOriginal<typeof import("@/lib/services/period-lock.service")>();
   return {
     ...actual,
     assertPeriodOpen: vi.fn(),
@@ -30,6 +38,71 @@ const completedOrder = {
   created_by: "cashier-1",
   created_at: "2026-01-01T10:00:00Z",
 };
+
+describe("getOrder", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.mocked(orderRepo.getOrder).mockResolvedValue(completedOrder);
+    vi.mocked(storeRepo.getStore).mockResolvedValue({ name: "Main" } as never);
+    vi.mocked(customerRepo.getCustomer).mockResolvedValue(null);
+    vi.mocked(orderRepo.getOrderPayments).mockResolvedValue([]);
+  });
+
+  it("loads only referenced products and preserves the selected variant", async () => {
+    vi.mocked(orderRepo.getOrderItems).mockResolvedValue([
+      {
+        id: "line-1",
+        order_id: "o1",
+        product_id: "product-1",
+        variant_id: "variant-1",
+        quantity: 1,
+        unit_price: 25,
+        modifiers: [],
+        line_total: 25,
+        unit_cost: 10,
+        line_cost: 10,
+        sale_unit: "piece",
+        base_quantity: 1,
+        sale_input_mode: null,
+        tier_id: null,
+        wholesale_applied: false,
+        line_note: null,
+      },
+    ]);
+    vi.mocked(catalogRepo.getProductsByIds).mockResolvedValue(
+      new Map([
+        ["product-1", { id: "product-1", name: "Coffee", sku: "COF" } as never],
+      ]),
+    );
+    vi.mocked(catalogRepo.listVariantsForProducts).mockResolvedValue(
+      new Map([
+        [
+          "product-1",
+          [
+            {
+              id: "variant-1",
+              product_id: "product-1",
+              name: "Large",
+              sku: "COF-L",
+            } as never,
+          ],
+        ],
+      ]),
+    );
+
+    const result = await getOrder("o1");
+
+    expect(catalogRepo.getProductsByIds).toHaveBeenCalledWith(["product-1"]);
+    expect(catalogRepo.listVariantsForProducts).toHaveBeenCalledWith([
+      "product-1",
+    ]);
+    expect(result?.items[0]).toMatchObject({
+      productName: "Coffee",
+      variantName: "Large",
+      sku: "COF-L",
+    });
+  });
+});
 
 describe("refundOrder", () => {
   beforeEach(() => {
@@ -75,10 +148,12 @@ describe("refundOrder", () => {
   it("maps feature-disabled refund errors for operators", async () => {
     vi.mocked(orderRepo.getOrder).mockResolvedValue(completedOrder);
     vi.mocked(orderRepo.refundOrderRpc).mockRejectedValue(
-      new Error("Feature disabled: refunds")
+      new Error("Feature disabled: refunds"),
     );
 
-    await expect(refundOrder("o1", "manager-1")).rejects.toThrow("المرتجعات غير مفعلة");
+    await expect(refundOrder("o1", "manager-1")).rejects.toThrow(
+      "المرتجعات غير مفعلة",
+    );
   });
 });
 

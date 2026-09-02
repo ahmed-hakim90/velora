@@ -15,6 +15,32 @@ import type { CashierSession } from "@/lib/types";
 import { cache } from "react";
 import { roundMoney } from "@/lib/money";
 
+export class SessionVaultDepositError extends Error {
+  readonly sessionId: string;
+
+  constructor(sessionId: string) {
+    super(
+      "تم إقفال الوردية، لكن تحويل الدرج للخزينة فشل. متكررش الإغلاق من الصفر — حاول تاني أو راجع الخزينة."
+    );
+    this.name = "SessionVaultDepositError";
+    this.sessionId = sessionId;
+  }
+}
+
+function validateCashAmount(value: number, label: string): number {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`${label} لازم يكون رقم صحيح وصفر أو أكبر`);
+  }
+  return roundMoney(value);
+}
+
+function validateMoney(value: number, label: string): number {
+  if (!Number.isFinite(value)) {
+    throw new Error(`${label} غير صالح`);
+  }
+  return roundMoney(value);
+}
+
 export async function listSessions(storeId?: string): Promise<CashierSession[]> {
   return sessionRepo.listSessions(storeId);
 }
@@ -107,6 +133,8 @@ export async function closeSession(input: {
   closeReason?: string;
   forceClosed?: boolean;
 }): Promise<CashierSession | null> {
+  const actualCash = validateCashAmount(input.actualCash, "المبلغ الفعلي");
+  const expectedCash = validateMoney(input.expectedCash, "المبلغ المتوقع");
   const existing = await sessionRepo.getSession(input.sessionId);
   if (!existing) return null;
   await assertPeriodOpen(existing.store_id);
@@ -116,8 +144,8 @@ export async function closeSession(input: {
       ? existing
       : await sessionRepo.closeSession({
           sessionId: input.sessionId,
-          expectedCash: input.expectedCash,
-          actualCash: input.actualCash,
+          expectedCash,
+          actualCash,
           notes: input.notes,
           closedBy: input.closedBy ?? input.userId,
           closeReason: input.closeReason,
@@ -134,14 +162,12 @@ export async function closeSession(input: {
       await vaultRepo.depositClosing({
         storeId: session.store_id,
         cashierId: session.cashier_id,
-        amount: input.actualCash,
+        amount: actualCash,
         sessionId: session.id,
       });
     } catch (error) {
       console.error("[sessions] vault deposit after close failed", error);
-      throw new Error(
-        "تم إقفال الوردية، لكن تحويل الدرج للخزينة فشل. متكررش الإغلاق من الصفر — حاول تاني أو راجع الخزينة."
-      );
+      throw new SessionVaultDepositError(session.id);
     }
 
     after(() => {
@@ -178,7 +204,7 @@ export async function closeSession(input: {
           variance: session.variance,
           close_reason: input.closeReason ?? null,
           force_closed: input.forceClosed ?? false,
-          vault_deposit: input.actualCash,
+          vault_deposit: actualCash,
         },
       });
 

@@ -31,7 +31,6 @@ describe("resolvePosAccess pos_access permission", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(session.getActiveStoreId).mockResolvedValue("store-1");
-    vi.mocked(guards.requireStoreAccess).mockResolvedValue(managerUser);
     vi.mocked(permissionRepo.hasPermission).mockResolvedValue(false);
     vi.mocked(session.getRegisteredDeviceContext).mockResolvedValue({
       deviceId: "dev-1",
@@ -75,6 +74,18 @@ describe("resolvePosAccess pos_access permission", () => {
     const ctx = await resolvePosAccess();
     expect(ctx.user.role).toBe("inventory");
     expect(permissionRepo.hasPermission).toHaveBeenCalledWith("pos_access");
+  });
+
+  it("rejects a non-privileged user outside the active store", async () => {
+    vi.mocked(guards.requireAuth).mockResolvedValue({
+      ...inventoryUser,
+      store_ids: ["store-2"],
+    });
+    vi.mocked(permissionRepo.hasPermission).mockResolvedValue(true);
+
+    await expect(resolvePosAccess()).rejects.toMatchObject({
+      code: "access_denied",
+    } satisfies Partial<PosAccessError>);
   });
 
   it("requires PIN switch when manager has no active cashier cookie", async () => {

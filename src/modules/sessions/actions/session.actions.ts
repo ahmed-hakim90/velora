@@ -4,12 +4,16 @@ import { revalidatePath } from "next/cache";
 import { requireAuth, requirePermissionOrRole, requireStoreAccess } from "@/lib/auth/guards";
 import * as permissionRepo from "@/lib/repositories/permission.repository";
 import { requirePosAccess, getPosAccessOrNull, PosAccessError } from "@/lib/auth/pos-access";
-import { calcExpectedCash } from "@/modules/sessions/services/reconciliation.service";
+import {
+  calcExpectedCash,
+  loadSessionCashBundle,
+} from "@/modules/sessions/services/reconciliation.service";
 import {
   closeSession,
   forceCloseSession,
   openSession,
   getSessionById,
+  SessionVaultDepositError,
 } from "@/modules/sessions/services/session.service";
 import {
   batchWithdrawStoreCashierVaults,
@@ -19,6 +23,17 @@ import {
 } from "@/modules/sessions/services/cashier-vault.service";
 import { getSessionSettings } from "@/modules/system/services/settings.service";
 import { roundMoney } from "@/lib/money";
+import {
+  getSessionReconciliationVersion,
+  type CloseSessionResult,
+} from "@/modules/sessions/types/session-close";
+
+function validCashAmount(value: number): number {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error("المبلغ الفعلي لازم يكون رقم صحيح وصفر أو أكبر");
+  }
+  return roundMoney(value);
+}
 
 function mapPosAccessError(error: PosAccessError): string {
   const messages: Record<PosAccessError["code"], string> = {
@@ -131,8 +146,14 @@ export async function getPendingOpeningFloatAction(): Promise<{
 export async function closeSessionAction(input: {
   sessionId: string;
   actualCash: number;
+  expectedCash: number;
+  reconciliationVersion: string;
   notes?: string;
-}) {
+}): Promise<CloseSessionResult> {
+  const actualCash = validCashAmount(input.actualCash);
+  if (!Number.isFinite(input.expectedCash)) {
+    throw new Error("ملخص الجلسة غير صالح. أعد تحميله وحاول مرة أخرى");
+  }
   const user = await requireAuth();
   const existing = await getSessionById(input.sessionId);
   if (!existing) throw new Error("الجلسة غير موجودة");
@@ -150,18 +171,53 @@ export async function closeSessionAction(input: {
 
   await requirePermissionOrRole("session_close", ["owner", "manager", "cashier"]);
 
-  const reconciliation = await calcExpectedCash(input.sessionId);
-  const session = await closeSession({
-    sessionId: input.sessionId,
-    expectedCash: reconciliation.expectedCash,
-    actualCash: input.actualCash,
-    notes: input.notes,
-    userId: user.id,
-  });
+  const bundle = await loadSessionCashBundle(input.sessionId);
+  const reconciliation = bundle.reconciliation;
+  if (
+    roundMoney(input.expectedCash) !== roundMoney(reconciliation.expectedCash) ||
+    input.reconciliationVersion !== getSessionReconciliationVersion(reconciliation)
+  ) {
+    return {
+      status: "reconciliation_changed",
+      reconciliation,
+      expenses: bundle.expenses,
+    };
+  }
+
+  let session;
+  try {
+    session = await closeSession({
+      sessionId: input.sessionId,
+      expectedCash: reconciliation.expectedCash,
+      actualCash,
+      notes: input.notes?.trim() || undefined,
+      userId: user.id,
+    });
+  } catch (error) {
+    if (error instanceof SessionVaultDepositError) {
+      return {
+        status: "vault_pending",
+        sessionId: error.sessionId,
+        expectedCash: roundMoney(reconciliation.expectedCash),
+        actualCash,
+        variance: roundMoney(actualCash - reconciliation.expectedCash),
+        message: error.message,
+      };
+    }
+    throw error;
+  }
+
+  if (!session) throw new Error("تعذر إغلاق الجلسة. حدّث الصفحة وحاول مرة أخرى");
 
   revalidatePath("/sessions");
   revalidatePath("/");
-  return session;
+  return {
+    status: "closed",
+    session,
+    expectedCash: roundMoney(reconciliation.expectedCash),
+    actualCash,
+    variance: roundMoney(actualCash - reconciliation.expectedCash),
+  };
 }
 
 export async function forceCloseSessionAction(input: {
@@ -170,6 +226,7 @@ export async function forceCloseSessionAction(input: {
   closeReason: string;
   notes?: string;
 }) {
+  const actualCash = validCashAmount(input.actualCash);
   const user = await requireAuth();
   await requirePermissionOrRole("session_force_close", ["owner", "manager"]);
   const settings = await getSessionSettings();
@@ -188,7 +245,7 @@ export async function forceCloseSessionAction(input: {
   const session = await forceCloseSession({
     sessionId: input.sessionId,
     expectedCash: reconciliation.expectedCash,
-    actualCash: input.actualCash,
+    actualCash,
     closeReason: input.closeReason.trim(),
     notes: input.notes,
     userId: user.id,

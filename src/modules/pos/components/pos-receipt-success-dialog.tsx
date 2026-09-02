@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, Check, CheckCircle2, ChevronDown, FileText, Loader2, MessageCircle, Printer, ShoppingCart, Usb } from "lucide-react";
+import {
+  AlertCircle,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  FileText,
+  Loader2,
+  MessageCircle,
+  Printer,
+  ShoppingCart,
+  Usb,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -10,7 +21,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { CompactAction, CompactActions } from "@/components/Velora/compact-actions";
+import {
+  CompactAction,
+  CompactActions,
+} from "@/components/Velora/compact-actions";
 import { formatCurrency } from "@/lib/format";
 import {
   ReceiptPrint,
@@ -34,9 +48,13 @@ interface PosReceiptSuccessDialogProps {
   onUsbPrint: () => void | Promise<void>;
   onBrowserPrint?: () => void | Promise<void>;
   onWhatsApp: (phoneOverride?: string) => void | Promise<void>;
+  mode?: "saved" | "draft" | "history";
 }
 
-type ActionState = { status: "idle" | "pending" | "success" | "error"; message?: string };
+type ActionState = {
+  status: "idle" | "pending" | "success" | "error";
+  message?: string;
+};
 const IDLE_ACTION: ActionState = { status: "idle" };
 
 export function PosReceiptSuccessDialog({
@@ -46,6 +64,7 @@ export function PosReceiptSuccessDialog({
   onUsbPrint,
   onBrowserPrint,
   onWhatsApp,
+  mode = "saved",
 }: PosReceiptSuccessDialogProps) {
   const [a4Open, setA4Open] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -55,7 +74,9 @@ export function PosReceiptSuccessDialog({
   const [printState, setPrintState] = useState<ActionState>(IDLE_ACTION);
   const [usbState, setUsbState] = useState<ActionState>(IDLE_ACTION);
   const [whatsAppState, setWhatsAppState] = useState<ActionState>(IDLE_ACTION);
-  const [lastAction, setLastAction] = useState<"print" | "usb" | "whatsapp" | null>(null);
+  const [lastAction, setLastAction] = useState<
+    "print" | "usb" | "whatsapp" | null
+  >(null);
   const { t, language } = useTranslation();
 
   useEffect(() => {
@@ -75,6 +96,8 @@ export function PosReceiptSuccessDialog({
 
   const currency = receipt.branding.currency;
   const receiptPhone = receipt.customer?.phone;
+  const isDraft = mode === "draft";
+  const isHistory = mode === "history";
 
   async function handleBrowserPrint() {
     setLastAction("print");
@@ -85,7 +108,10 @@ export function PosReceiptSuccessDialog({
         setPrintState({ status: "success", message: t("Print dialog opened") });
         return;
       }
-      if (typeof document !== "undefined" && !document.getElementById("Velora-receipt")) {
+      if (
+        typeof document !== "undefined" &&
+        !document.getElementById("Velora-receipt")
+      ) {
         const message = t("Could not print receipt — receipt is not ready");
         setPrintState({ status: "error", message });
         toast.error(message);
@@ -95,7 +121,9 @@ export function PosReceiptSuccessDialog({
       window.setTimeout(() => triggerReceiptPrint(), 100);
       setPrintState({ status: "success", message: t("Print dialog opened") });
     } catch (error) {
-      const message = t(error instanceof Error ? error.message : "Could not print receipt");
+      const message = t(
+        error instanceof Error ? error.message : "Could not print receipt",
+      );
       setPrintState({ status: "error", message });
       toast.error(message);
     }
@@ -106,9 +134,14 @@ export function PosReceiptSuccessDialog({
     setUsbState({ status: "pending" });
     try {
       await onUsbPrint();
-      setUsbState({ status: "success", message: t("Receipt sent to USB printer") });
+      setUsbState({
+        status: "success",
+        message: t("Receipt sent to USB printer"),
+      });
     } catch (error) {
-      const message = t(error instanceof Error ? error.message : "Could not print receipt");
+      const message = t(
+        error instanceof Error ? error.message : "Could not print receipt",
+      );
       setUsbState({ status: "error", message });
       toast.error(message);
     }
@@ -130,7 +163,9 @@ export function PosReceiptSuccessDialog({
       await onWhatsApp(receiptPhone ? undefined : phone);
       setWhatsAppState({ status: "success", message: t("WhatsApp opened") });
     } catch (error) {
-      const message = t(error instanceof Error ? error.message : "Could not open WhatsApp");
+      const message = t(
+        error instanceof Error ? error.message : "Could not open WhatsApp",
+      );
       setWhatsAppState({ status: "error", message });
       toast.error(message);
     }
@@ -150,17 +185,60 @@ export function PosReceiptSuccessDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="flex max-h-[min(96dvh,100%)] max-w-md flex-col overflow-hidden rounded-2xl p-0 max-sm:max-w-[calc(100%-0.5rem)] sm:max-w-md">
+        <DialogContent
+          className="flex max-h-[min(96dvh,100%)] max-w-md flex-col overflow-hidden rounded-2xl p-0 max-sm:max-w-[calc(100%-0.5rem)] sm:max-w-md"
+          initialFocus={false}
+        >
           <DialogHeader className="shrink-0 border-b border-border/70 px-3 py-2.5 text-start sm:px-4 sm:py-3">
             <div className="flex items-center gap-2.5">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 sm:size-11 sm:rounded-xl">
-                <CheckCircle2 className="size-5 sm:size-6" />
+              <div
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-lg sm:size-11 sm:rounded-xl",
+                  isDraft
+                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                    : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+                )}
+              >
+                {isDraft ? (
+                  <FileText className="size-5 sm:size-6" />
+                ) : (
+                  <CheckCircle2 className="size-5 sm:size-6" />
+                )}
               </div>
               <div className="min-w-0">
-                <DialogTitle className="text-base">{t("Order saved")}</DialogTitle>
-                <DialogDescription className="truncate text-sm">
-                  {t("Order")} {receipt.orderNumber} · {formatCurrency(receipt.total, currency)}
-                  {receipt.customer?.name ? ` · ${receipt.customer.name}` : ""}
+                <DialogTitle className="text-base">
+                  {t(
+                    isDraft
+                      ? "Draft receipt"
+                      : isHistory
+                        ? "Invoice receipt"
+                        : "Order saved",
+                  )}
+                </DialogTitle>
+                <DialogDescription className="flex flex-wrap items-center gap-x-1 text-sm leading-snug">
+                  <span>
+                    {isDraft
+                      ? t("Not saved yet")
+                      : `${t("Order")} ${receipt.orderNumber}`}
+                  </span>
+                  <span aria-hidden>·</span>
+                  <span
+                    className="inline-block [unicode-bidi:isolate]"
+                    dir="auto"
+                  >
+                    {formatCurrency(receipt.total, currency)}
+                  </span>
+                  {receipt.customer?.name ? (
+                    <>
+                      <span aria-hidden> · </span>
+                      <span
+                        className="inline-block [unicode-bidi:isolate]"
+                        dir="auto"
+                      >
+                        {receipt.customer.name}
+                      </span>
+                    </>
+                  ) : null}
                 </DialogDescription>
               </div>
             </div>
@@ -169,7 +247,7 @@ export function PosReceiptSuccessDialog({
           <div
             className={cn(
               "min-h-0 max-h-[min(22dvh,180px)] flex-1 overflow-y-auto overscroll-y-contain px-3 py-2 sm:max-h-[min(26dvh,210px)] sm:px-4 sm:py-2.5",
-              compactForKeyboard && "max-sm:hidden"
+              compactForKeyboard && "max-sm:hidden",
             )}
           >
             <ReceiptBrandingPreview receipt={receipt} compact />
@@ -178,7 +256,10 @@ export function PosReceiptSuccessDialog({
           <div className="shrink-0 space-y-2.5 border-t border-border/70 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3">
             {!receiptPhone ? (
               <div className="grid grid-cols-1 items-center gap-1.5 rounded-lg border border-border/70 bg-muted/35 p-2 min-[360px]:grid-cols-[6.5rem_minmax(0,1fr)] min-[360px]:gap-2">
-                <label htmlFor="receipt-whatsapp-phone" className="text-xs font-medium leading-tight">
+                <label
+                  htmlFor="receipt-whatsapp-phone"
+                  className="text-xs font-medium leading-tight"
+                >
                   {t("Customer WhatsApp number")}
                 </label>
                 <Input
@@ -208,13 +289,19 @@ export function PosReceiptSuccessDialog({
                     }
                   }}
                   aria-invalid={Boolean(phoneError)}
-                  aria-describedby={phoneError ? "receipt-whatsapp-phone-error" : undefined}
+                  aria-describedby={
+                    phoneError ? "receipt-whatsapp-phone-error" : undefined
+                  }
                   placeholder="0100 123 4567"
                   className="h-11 min-w-0 rounded-lg text-start text-sm"
                   disabled={whatsAppState.status === "pending"}
                 />
                 {phoneError ? (
-                  <p id="receipt-whatsapp-phone-error" className="text-xs text-destructive min-[360px]:col-span-2" role="alert">
+                  <p
+                    id="receipt-whatsapp-phone-error"
+                    className="text-xs text-destructive min-[360px]:col-span-2"
+                    role="alert"
+                  >
                     {phoneError}
                   </p>
                 ) : null}
@@ -222,27 +309,66 @@ export function PosReceiptSuccessDialog({
             ) : null}
 
             <div className="grid grid-cols-3 gap-1.5">
-              <Button className="h-11 rounded-lg px-1.5 text-xs" onClick={() => void handleBrowserPrint()} disabled={printState.status === "pending"}>
-                {printState.status === "pending" ? <Loader2 className="size-4 animate-spin" /> : printState.status === "success" ? <Check className="size-4" /> : <Printer className="size-4" />}
+              <Button
+                className="h-11 rounded-lg px-1.5 text-xs"
+                onClick={() => void handleBrowserPrint()}
+                disabled={printState.status === "pending"}
+              >
+                {printState.status === "pending" ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : printState.status === "success" ? (
+                  <Check className="size-4" />
+                ) : (
+                  <Printer className="size-4" />
+                )}
                 {t("Print")}
               </Button>
-              <Button variant="outline" className="h-11 rounded-lg px-1.5 text-xs" onClick={() => void handleWhatsApp()} disabled={whatsAppState.status === "pending"}>
-                {whatsAppState.status === "pending" ? <Loader2 className="size-4 animate-spin" /> : whatsAppState.status === "success" ? <Check className="size-4" /> : <MessageCircle className="size-4" />}
+              <Button
+                variant="outline"
+                className="h-11 rounded-lg px-1.5 text-xs"
+                onClick={() => void handleWhatsApp()}
+                disabled={whatsAppState.status === "pending"}
+              >
+                {whatsAppState.status === "pending" ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : whatsAppState.status === "success" ? (
+                  <Check className="size-4" />
+                ) : (
+                  <MessageCircle className="size-4" />
+                )}
                 {t("WhatsApp")}
               </Button>
-              <Button variant="secondary" className="h-11 rounded-lg px-1.5 text-xs" onClick={() => onOpenChange(false)}>
+              <Button
+                variant="secondary"
+                className="h-11 rounded-lg px-1.5 text-xs"
+                onClick={() => onOpenChange(false)}
+              >
                 <ShoppingCart className="size-4" />
-                {t("New sale")}
+                {t(
+                  isDraft
+                    ? "Continue"
+                    : isHistory
+                      ? "Back to invoices"
+                      : "New sale",
+                )}
               </Button>
             </div>
 
             {actionMessage ? (
               <p
-                className={actionTone === "error" ? "flex items-center gap-1.5 text-xs text-destructive" : "flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-300"}
+                className={
+                  actionTone === "error"
+                    ? "flex items-center gap-1.5 text-xs text-destructive"
+                    : "flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-300"
+                }
                 role={actionTone === "error" ? "alert" : "status"}
                 aria-live="polite"
               >
-                {actionTone === "error" ? <AlertCircle className="size-3.5 shrink-0" /> : <Check className="size-3.5 shrink-0" />}
+                {actionTone === "error" ? (
+                  <AlertCircle className="size-3.5 shrink-0" />
+                ) : (
+                  <Check className="size-3.5 shrink-0" />
+                )}
                 <span className="min-w-0 truncate">{actionMessage}</span>
               </p>
             ) : null}
@@ -256,7 +382,9 @@ export function PosReceiptSuccessDialog({
               onClick={() => setMoreOpen((current) => !current)}
             >
               {t("More print options")}
-              <ChevronDown className={`size-4 transition-transform ${moreOpen ? "rotate-180" : ""}`} />
+              <ChevronDown
+                className={`size-4 transition-transform ${moreOpen ? "rotate-180" : ""}`}
+              />
             </Button>
             {moreOpen ? (
               <CompactActions className="w-full justify-center">
@@ -270,12 +398,22 @@ export function PosReceiptSuccessDialog({
                   />
                 ) : null}
                 <CompactAction
-                  label={usbState.status === "pending" ? t("Printing…") : t("USB print")}
-                  icon={usbState.status === "pending" ? Loader2 : usbState.status === "success" ? Check : Usb}
+                  label={
+                    usbState.status === "pending"
+                      ? t("Printing…")
+                      : t("USB print")
+                  }
+                  icon={
+                    usbState.status === "pending"
+                      ? Loader2
+                      : usbState.status === "success"
+                        ? Check
+                        : Usb
+                  }
                   alwaysLabeled
                   className={cn(
                     "flex-1 sm:h-11 sm:min-h-11",
-                    usbState.status === "pending" && "[&_svg]:animate-spin"
+                    usbState.status === "pending" && "[&_svg]:animate-spin",
                   )}
                   disabled={usbState.status === "pending"}
                   onClick={() => void handleUsbPrint()}
@@ -288,7 +426,11 @@ export function PosReceiptSuccessDialog({
       <DocumentPrintPreviewModal
         open={a4Open}
         onOpenChange={setA4Open}
-        href={receipt.orderId ? `/print/orders/${receipt.orderId}?embed=1&lang=${language}` : null}
+        href={
+          receipt.orderId
+            ? `/print/orders/${receipt.orderId}?embed=1&lang=${language}`
+            : null
+        }
         title={t("Cashier invoice")}
       />
       <ReceiptPrint receipt={receipt} />
