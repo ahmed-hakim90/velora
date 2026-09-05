@@ -256,6 +256,16 @@
   }
 }
 
+/* Prevent touch browsers from zooming the viewport when compact fields focus. */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  textarea,
+  select,
+  [contenteditable]:not([contenteditable="false"]) {
+    font-size: 16px !important;
+  }
+}
+
 /*
  * Use the live visual viewport everywhere on mobile. `dvh` follows browser URL
  * chrome as it expands/collapses, while `svh` is the safe fallback on older

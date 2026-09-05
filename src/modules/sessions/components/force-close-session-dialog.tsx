@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useAppRouter as useRouter } from "@/hooks/use-app-router";
 import { Ban } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -29,19 +30,30 @@ export function ForceCloseSessionDialog({
   const [closeReason, setCloseReason] = useState("");
   const [notes, setNotes] = useState("");
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
 
   function handleForceClose() {
     startTransition(async () => {
       try {
-        await forceCloseSessionAction({
+        const result = await forceCloseSessionAction({
           sessionId: summary.session.id,
           actualCash: parseFloat(actualCash) || 0,
           closeReason,
           notes: notes || undefined,
         });
+        if (result.status === "error") {
+          toast.error(result.message);
+          return;
+        }
+        if (result.status === "vault_pending") {
+          toast.warning(result.message);
+          setOpen(false);
+          router.refresh();
+          return;
+        }
         toast.success("تم إغلاق الجلسة إجباريًا");
         setOpen(false);
-        window.location.reload();
+        router.refresh();
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : "تعذر الإغلاق الإجباري للجلسة"

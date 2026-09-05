@@ -106,6 +106,10 @@ export async function openSession(input: {
     })
     .select()
     .single();
+  if (error?.code === "23505") {
+    const raced = await getActiveSession(input.storeId, input.cashierId);
+    if (raced) return { session: raced, created: false };
+  }
   if (error || !data) throwDbError(error, "openSession");
   return { session: mapSession(data), created: true };
 }

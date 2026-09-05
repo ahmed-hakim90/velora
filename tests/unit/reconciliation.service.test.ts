@@ -1,8 +1,13 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { calcExpectedCash, calcVariance } from "@/modules/sessions/services/reconciliation.service";
 import * as repositoryClient from "@/lib/repositories/client";
+import * as sessionRepo from "@/lib/repositories/session.repository";
 
 vi.mock("@/lib/repositories/client");
+vi.mock("@/lib/repositories/session.repository");
+vi.mock("@/lib/repositories/order.repository");
+vi.mock("@/lib/repositories/expense.repository");
+vi.mock("@/lib/repositories/supplier-payment.repository");
 
 describe("calcVariance", () => {
   it("returns positive variance when actual exceeds expected", () => {
@@ -52,5 +57,27 @@ describe("calcExpectedCash", () => {
     expect(result.expectedCash).toBe(105);
     expect(result.totalSales).toBe(50);
     expect(result.orderCount).toBe(1);
+  });
+
+  it("falls back safely while the optimized RPC is missing from the schema cache", async () => {
+    vi.mocked(repositoryClient.callRpc).mockResolvedValue({
+      data: null,
+      error: {
+        message:
+          "Could not find the function public.pos_session_cash_bundle(p_session_id) in the schema cache",
+      },
+    });
+    vi.mocked(sessionRepo.getSession).mockResolvedValue(null);
+
+    await expect(calcExpectedCash("missing-session")).resolves.toEqual({
+      openingCash: 0,
+      cashSales: 0,
+      cashRefunds: 0,
+      expenses: 0,
+      supplierPayments: 0,
+      expectedCash: 0,
+      totalSales: 0,
+      orderCount: 0,
+    });
   });
 });

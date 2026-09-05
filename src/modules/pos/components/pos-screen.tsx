@@ -285,7 +285,7 @@ export function PosScreen({
   expenseCategories = [],
   canAddSessionExpense = false,
   featureFlags = {},
-  canManagerOverride: _canManagerOverride = false,
+  canManagerOverride = false,
   requireManagerOverrideForExpiredSale = true,
   scaleEnabled = false,
   scaleSettings = null,
@@ -331,7 +331,9 @@ export function PosScreen({
   const [onlineOrdersOpen, setOnlineOrdersOpen] = useState(false);
   const [collectOpen, setCollectOpen] = useState(false);
   const [supplierPayOpen, setSupplierPayOpen] = useState(false);
-  const [closeSessionTargetId, setCloseSessionTargetId] = useState<string | null>(null);
+  const [closeSessionTargetId, setCloseSessionTargetId] = useState<
+    string | null
+  >(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchError, setSearchError] = useState<string | null>(null);
   const [showProductImages, setShowProductImages] = useState(false);
@@ -482,7 +484,8 @@ export function PosScreen({
     let controller: AbortController | null = null;
 
     async function pollOnlineOrders() {
-      if (cancelled || inFlight || document.visibilityState !== "visible") return;
+      if (cancelled || inFlight || document.visibilityState !== "visible")
+        return;
       inFlight = true;
       controller = new AbortController();
       try {
@@ -618,10 +621,14 @@ export function PosScreen({
 
   const barcodeEnabled = featureFlags.barcode_scanner !== false;
   const receiptEnabled = featureFlags.receipt_printing !== false;
+  const cashierMustCloseExpiredSession =
+    readinessState === "session_expired" && !canManagerOverride;
+  const managerCanContinueExpiredSession =
+    readinessState === "session_expired" && canManagerOverride;
   const checkoutBlocked =
     readinessState !== "ready" &&
     readinessState !== "session_warning" &&
-    readinessState !== "session_expired";
+    !managerCanContinueExpiredSession;
   const cashDrawerEnabled = featureFlags.cash_drawer === true;
   const discountsEnabled = featureFlags.customer_discounts === true;
   const promotionsEnabled = featureFlags.promotions === true;
@@ -710,9 +717,11 @@ export function PosScreen({
     : pending
       ? "Completing sale…"
       : readinessState === "session_expired"
-        ? requireManagerOverrideForExpiredSale
-          ? "Session expired — manager PIN required"
-          : "Session expired — close the session"
+        ? cashierMustCloseExpiredSession
+          ? "Session expired — close the session"
+          : requireManagerOverrideForExpiredSale
+            ? "Session expired — manager PIN required"
+            : null
         : readinessState === "no_session"
           ? "Open a cashier session first"
           : checkoutBlocked
@@ -725,6 +734,10 @@ export function PosScreen({
 
   function cartCheckout(method?: PaymentMethod) {
     if (!method) return;
+    if (cashierMustCloseExpiredSession) {
+      if (activeSession) setCloseSessionTargetId(activeSession.id);
+      return;
+    }
     setPaymentMethod(method);
     if (method === "credit") {
       setCreditOpen(true);
@@ -954,9 +967,7 @@ export function PosScreen({
       discountAmount,
       managerDiscountOverrideAmount,
     );
-    const sessionExpired =
-      readinessState === "session_expired" &&
-      requireManagerOverrideForExpiredSale;
+    const sessionExpired = managerCanContinueExpiredSession;
     const state = usePosStore.getState();
     const receiptCart = [...state.cart];
     const receiptCustomer = state.customer
@@ -1107,6 +1118,11 @@ export function PosScreen({
   }
 
   function handleComplete(payments: PaymentSplit[], accountCollection = 0) {
+    if (cashierMustCloseExpiredSession) {
+      if (activeSession) setCloseSessionTargetId(activeSession.id);
+      toast.error(t("Session expired — close the session"));
+      return;
+    }
     if (payments.some((payment) => payment.method === "credit") && !customer) {
       playPosErrorSound();
       toast.error(t("Select a customer for credit sale"));
@@ -1118,6 +1134,7 @@ export function PosScreen({
     );
     const needsExpiredSessionOverride =
       readinessState === "session_expired" &&
+      canManagerOverride &&
       requireManagerOverrideForExpiredSale;
     if (needsDiscountOverride || needsExpiredSessionOverride) {
       const both = needsDiscountOverride && needsExpiredSessionOverride;
@@ -1447,7 +1464,9 @@ export function PosScreen({
                 </span>
               ) : null}
               {hasActiveSession ? <PosHeldCartsBar /> : null}
-              {readinessState === "ready" &&
+              {(readinessState === "ready" ||
+                readinessState === "session_warning" ||
+                readinessState === "session_expired") &&
               hasActiveSession &&
               activeSession &&
               sessionReconciliation ? (
@@ -1456,7 +1475,9 @@ export function PosScreen({
                     key={activeSession.id}
                     open={closeSessionTargetId === activeSession.id}
                     onOpenChange={(nextOpen) =>
-                      setCloseSessionTargetId(nextOpen ? activeSession.id : null)
+                      setCloseSessionTargetId(
+                        nextOpen ? activeSession.id : null,
+                      )
                     }
                     session={activeSession}
                     reconciliation={sessionReconciliation}
@@ -1722,6 +1743,15 @@ export function PosScreen({
                     label="Start selling"
                     pendingOpeningFloat={pendingOpeningFloat}
                   />
+                ) : readinessState === "session_expired" && activeSession ? (
+                  <Button
+                    type="button"
+                    className="h-11 w-full rounded-xl"
+                    onClick={() => setCloseSessionTargetId(activeSession.id)}
+                  >
+                    <CircleStop className="size-4" aria-hidden />
+                    {t("Close session")}
+                  </Button>
                 ) : null}
               </div>
             ) : null}
@@ -1893,7 +1923,9 @@ export function PosScreen({
                   {showProductImages ? t("Without images") : t("With images")}
                 </Button>
 
-                {readinessState === "ready" &&
+                {(readinessState === "ready" ||
+                  readinessState === "session_warning" ||
+                  readinessState === "session_expired") &&
                 hasActiveSession &&
                 activeSession &&
                 sessionReconciliation ? (
@@ -2002,6 +2034,19 @@ export function PosScreen({
                         label={t("Start selling now")}
                         pendingOpeningFloat={pendingOpeningFloat}
                       />
+                    ) : readinessState === "session_expired" &&
+                      activeSession ? (
+                      <Button
+                        type="button"
+                        className="h-11 w-full rounded-xl"
+                        onClick={() => {
+                          setCartOpen(false);
+                          setCloseSessionTargetId(activeSession.id);
+                        }}
+                      >
+                        <CircleStop className="size-4" aria-hidden />
+                        {t("Close session")}
+                      </Button>
                     ) : null}
                   </div>
                 ) : null}

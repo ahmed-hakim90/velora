@@ -10,6 +10,7 @@ import * as reconciliation from "@/modules/sessions/services/reconciliation.serv
 import * as settingsService from "@/modules/system/services/settings.service";
 import * as posAccess from "@/lib/auth/pos-access";
 import { getSessionReconciliationVersion } from "@/modules/sessions/types/session-close";
+import type { AppUser } from "@/lib/types";
 
 vi.mock("@/lib/auth/guards");
 vi.mock("@/lib/auth/pos-access");
@@ -23,7 +24,7 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 describe("forceCloseSessionAction", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    vi.mocked(guards.requireAuth).mockResolvedValue({
+    const manager: AppUser = {
       id: "manager-1",
       org_id: "org-1",
       auth_user_id: "auth-1",
@@ -32,8 +33,12 @@ describe("forceCloseSessionAction", () => {
       role: "manager",
       is_active: true,
       store_ids: [],
-    });
-    vi.mocked(guards.requirePermissionOrRole).mockResolvedValue(undefined as never);
+    };
+    vi.mocked(guards.requireAuth).mockResolvedValue(manager);
+    vi.mocked(guards.requirePermission).mockResolvedValue(manager);
+    vi.mocked(guards.requirePermissionOrRole).mockResolvedValue(
+      undefined as never,
+    );
     vi.mocked(settingsService.getSessionSettings).mockResolvedValue({
       max_open_hours: 24,
       warn_after_hours: 20,
@@ -78,8 +83,8 @@ describe("forceCloseSessionAction", () => {
         sessionId: "s1",
         actualCash: 140,
         closeReason: "   ",
-      })
-    ).rejects.toThrow("سبب الإغلاق مطلوب");
+      }),
+    ).resolves.toEqual({ status: "error", message: "سبب الإغلاق مطلوب" });
   });
 
   it("rejects when manager force close is disabled", async () => {
@@ -97,8 +102,11 @@ describe("forceCloseSessionAction", () => {
         sessionId: "s1",
         actualCash: 140,
         closeReason: "Cashier left",
-      })
-    ).rejects.toThrow("الإغلاق الإجباري معطّل من الإعدادات");
+      }),
+    ).resolves.toEqual({
+      status: "error",
+      message: "الإغلاق الإجباري معطّل من الإعدادات",
+    });
   });
 
   it("force closes an open session with audit metadata path", async () => {
@@ -143,7 +151,7 @@ describe("forceCloseSessionAction", () => {
       closeReason: "Cashier left",
     });
 
-    expect(result?.force_closed).toBe(true);
+    expect(result).toEqual({ status: "closed" });
     expect(sessionService.forceCloseSession).toHaveBeenCalledWith({
       sessionId: "s1",
       expectedCash: 140,
@@ -152,10 +160,40 @@ describe("forceCloseSessionAction", () => {
       notes: undefined,
       userId: "manager-1",
     });
-    expect(guards.requirePermissionOrRole).toHaveBeenCalledWith("session_force_close", [
-      "owner",
-      "manager",
-    ]);
+    expect(guards.requirePermission).toHaveBeenCalledWith(
+      "session_force_close",
+    );
+  });
+
+  it("returns a recoverable result when the session closes but the vault deposit fails", async () => {
+    vi.mocked(sessionService.getSessionById).mockResolvedValue({
+      id: "s1",
+      store_id: "store1",
+      device_id: null,
+      cashier_id: "cashier-1",
+      opened_at: new Date().toISOString(),
+      closed_at: null,
+      opening_cash: 100,
+      expected_cash: null,
+      actual_cash: null,
+      variance: null,
+      status: "open",
+      notes: null,
+      closed_by: null,
+      close_reason: null,
+      force_closed: false,
+    });
+    vi.mocked(sessionService.forceCloseSession).mockRejectedValue(
+      new sessionService.SessionVaultDepositError("s1"),
+    );
+
+    await expect(
+      forceCloseSessionAction({
+        sessionId: "s1",
+        actualCash: 138,
+        closeReason: "Cashier left",
+      }),
+    ).resolves.toMatchObject({ status: "vault_pending" });
   });
 });
 
@@ -225,7 +263,7 @@ describe("closeSessionAction authorization", () => {
         actualCash: 0,
         expectedCash: 0,
         reconciliationVersion: "[]",
-      })
+      }),
     ).rejects.toThrow("تقدر تقفل جلستك بس");
   });
 
@@ -236,7 +274,7 @@ describe("closeSessionAction authorization", () => {
         actualCash: -1,
         expectedCash: 0,
         reconciliationVersion: "[]",
-      })
+      }),
     ).rejects.toThrow("صفر أو أكبر");
     expect(sessionService.getSessionById).not.toHaveBeenCalled();
   });
@@ -268,7 +306,9 @@ describe("closeSessionAction authorization", () => {
       activeCashierId: "cashier-1",
     });
     vi.mocked(permissionRepo.hasPermission).mockResolvedValue(false);
-    vi.mocked(guards.requirePermissionOrRole).mockResolvedValue(undefined as never);
+    vi.mocked(guards.requirePermissionOrRole).mockResolvedValue(
+      undefined as never,
+    );
     vi.mocked(sessionService.getSessionById).mockResolvedValue({
       id: "s1",
       store_id: "store1",

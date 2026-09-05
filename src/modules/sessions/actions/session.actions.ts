@@ -1,9 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAuth, requirePermissionOrRole, requireStoreAccess } from "@/lib/auth/guards";
+import {
+  requireAuth,
+  requirePermission,
+  requirePermissionOrRole,
+  requireStoreAccess,
+} from "@/lib/auth/guards";
 import * as permissionRepo from "@/lib/repositories/permission.repository";
-import { requirePosAccess, getPosAccessOrNull, PosAccessError } from "@/lib/auth/pos-access";
+import {
+  requirePosAccess,
+  getPosAccessOrNull,
+  PosAccessError,
+} from "@/lib/auth/pos-access";
 import {
   calcExpectedCash,
   loadSessionCashBundle,
@@ -67,7 +76,10 @@ export async function resolveOpeningCashForOpen(input: {
     return pending;
   }
 
-  if (input.requestedOpeningCash == null || Number.isNaN(input.requestedOpeningCash)) {
+  if (
+    input.requestedOpeningCash == null ||
+    Number.isNaN(input.requestedOpeningCash)
+  ) {
     return pending;
   }
 
@@ -77,14 +89,18 @@ export async function resolveOpeningCashForOpen(input: {
   }
   if (requested > vault.balance + 1e-9) {
     throw new Error(
-      `رصيد الخزينة (${vault.balance}) غير كافٍ لرصيد بداية الوردية المطلوب`
+      `رصيد الخزينة (${vault.balance}) غير كافٍ لرصيد بداية الوردية المطلوب`,
     );
   }
   return requested;
 }
 
 export async function openSessionAction(openingCash?: number | null) {
-  await requirePermissionOrRole("session_open", ["owner", "manager", "cashier"]);
+  await requirePermissionOrRole("session_open", [
+    "owner",
+    "manager",
+    "cashier",
+  ]);
   let ctx;
   try {
     ctx = await requirePosAccess();
@@ -126,7 +142,11 @@ export async function getPendingOpeningFloatAction(): Promise<{
   pendingOpeningFloat: number;
   vaultBalance: number;
 }> {
-  await requirePermissionOrRole("session_open", ["owner", "manager", "cashier"]);
+  await requirePermissionOrRole("session_open", [
+    "owner",
+    "manager",
+    "cashier",
+  ]);
   let ctx;
   try {
     ctx = await requirePosAccess();
@@ -161,7 +181,9 @@ export async function closeSessionAction(input: {
   const posCtx = await getPosAccessOrNull();
   const activeCashierId = posCtx?.activeCashierId ?? user.id;
 
-  const canForceClose = await permissionRepo.hasPermission("session_force_close");
+  const canForceClose = await permissionRepo.hasPermission(
+    "session_force_close",
+  );
   const canClose =
     canForceClose ||
     (existing.cashier_id === activeCashierId &&
@@ -169,13 +191,19 @@ export async function closeSessionAction(input: {
 
   if (!canClose) throw new Error("تقدر تقفل جلستك بس");
 
-  await requirePermissionOrRole("session_close", ["owner", "manager", "cashier"]);
+  await requirePermissionOrRole("session_close", [
+    "owner",
+    "manager",
+    "cashier",
+  ]);
 
   const bundle = await loadSessionCashBundle(input.sessionId);
   const reconciliation = bundle.reconciliation;
   if (
-    roundMoney(input.expectedCash) !== roundMoney(reconciliation.expectedCash) ||
-    input.reconciliationVersion !== getSessionReconciliationVersion(reconciliation)
+    roundMoney(input.expectedCash) !==
+      roundMoney(reconciliation.expectedCash) ||
+    input.reconciliationVersion !==
+      getSessionReconciliationVersion(reconciliation)
   ) {
     return {
       status: "reconciliation_changed",
@@ -207,7 +235,8 @@ export async function closeSessionAction(input: {
     throw error;
   }
 
-  if (!session) throw new Error("تعذر إغلاق الجلسة. حدّث الصفحة وحاول مرة أخرى");
+  if (!session)
+    throw new Error("تعذر إغلاق الجلسة. حدّث الصفحة وحاول مرة أخرى");
 
   revalidatePath("/sessions");
   revalidatePath("/");
@@ -225,35 +254,64 @@ export async function forceCloseSessionAction(input: {
   actualCash: number;
   closeReason: string;
   notes?: string;
-}) {
-  const actualCash = validCashAmount(input.actualCash);
-  const user = await requireAuth();
-  await requirePermissionOrRole("session_force_close", ["owner", "manager"]);
-  const settings = await getSessionSettings();
-  if (!settings.allow_manager_force_close) {
-    throw new Error("الإغلاق الإجباري معطّل من الإعدادات");
+}): Promise<
+  | { status: "closed" }
+  | { status: "vault_pending"; message: string }
+  | { status: "error"; message: string }
+> {
+  try {
+    const actualCash = validCashAmount(input.actualCash);
+    const user = await requirePermission("session_force_close");
+    const settings = await getSessionSettings();
+    if (!settings.allow_manager_force_close) {
+      return {
+        status: "error",
+        message: "الإغلاق الإجباري معطّل من الإعدادات",
+      };
+    }
+    if (!input.closeReason.trim()) {
+      return { status: "error", message: "سبب الإغلاق مطلوب" };
+    }
+
+    const existing = await getSessionById(input.sessionId);
+    if (!existing) return { status: "error", message: "الجلسة غير موجودة" };
+    if (existing.status !== "open") {
+      return { status: "error", message: "الجلسة مقفولة بالفعل" };
+    }
+
+    const reconciliation = await calcExpectedCash(input.sessionId);
+    const session = await forceCloseSession({
+      sessionId: input.sessionId,
+      expectedCash: reconciliation.expectedCash,
+      actualCash,
+      closeReason: input.closeReason.trim(),
+      notes: input.notes?.trim() || undefined,
+      userId: user.id,
+    });
+
+    if (!session) {
+      return {
+        status: "error",
+        message: "تعذر إغلاق الجلسة. حدّث الصفحة وحاول مرة أخرى",
+      };
+    }
+
+    revalidatePath("/sessions");
+    revalidatePath("/");
+    return { status: "closed" };
+  } catch (error) {
+    if (error instanceof SessionVaultDepositError) {
+      revalidatePath("/sessions");
+      revalidatePath("/");
+      return { status: "vault_pending", message: error.message };
+    }
+    console.error("[sessions] force close failed", error);
+    return {
+      status: "error",
+      message:
+        error instanceof Error ? error.message : "تعذر الإغلاق الإجباري للجلسة",
+    };
   }
-  if (!input.closeReason.trim()) {
-    throw new Error("سبب الإغلاق مطلوب");
-  }
-
-  const existing = await getSessionById(input.sessionId);
-  if (!existing) throw new Error("الجلسة غير موجودة");
-  if (existing.status !== "open") throw new Error("Session is already closed");
-
-  const reconciliation = await calcExpectedCash(input.sessionId);
-  const session = await forceCloseSession({
-    sessionId: input.sessionId,
-    expectedCash: reconciliation.expectedCash,
-    actualCash,
-    closeReason: input.closeReason.trim(),
-    notes: input.notes,
-    userId: user.id,
-  });
-
-  revalidatePath("/sessions");
-  revalidatePath("/");
-  return session;
 }
 
 export async function withdrawCashierVaultAction(input: {
@@ -263,22 +321,21 @@ export async function withdrawCashierVaultAction(input: {
   nextOpeningFloat: number;
   notes?: string;
   destinationTreasuryId?: string | null;
-}) {
-  await requirePermissionOrRole(["owner", "manager"]);
-  await requireStoreAccess(input.storeId);
-
-  const vault = await withdrawFromCashierVault({
-    storeId: input.storeId,
-    cashierId: input.cashierId,
-    withdrawAmount: input.withdrawAmount,
-    nextOpeningFloat: input.nextOpeningFloat,
-    notes: input.notes,
-    destinationTreasuryId: input.destinationTreasuryId,
-  });
-
-  revalidatePath("/sessions");
-  revalidatePath("/treasury");
-  return vault;
+}): Promise<{ status: "success" } | { status: "error"; message: string }> {
+  try {
+    await requirePermissionOrRole(["owner", "manager"]);
+    await requireStoreAccess(input.storeId);
+    await withdrawFromCashierVault(input);
+    revalidatePath("/sessions");
+    revalidatePath("/treasury");
+    return { status: "success" };
+  } catch (error) {
+    console.error("[sessions] cashier vault withdraw failed", error);
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "تعذر التوريد للخزينة",
+    };
+  }
 }
 
 export async function batchWithdrawCashierVaultsAction(input: {
@@ -286,23 +343,33 @@ export async function batchWithdrawCashierVaultsAction(input: {
   notes?: string;
   items?: Array<{ cashierId: string; withdrawAmount: number }>;
   destinationTreasuryId?: string | null;
-}) {
-  await requirePermissionOrRole(["owner", "manager"]);
-  await requireStoreAccess(input.storeId);
-
-  const result = await batchWithdrawStoreCashierVaults({
-    storeId: input.storeId,
-    notes: input.notes,
-    items: input.items,
-    destinationTreasuryId: input.destinationTreasuryId,
-  });
-
-  revalidatePath("/sessions");
-  revalidatePath("/treasury");
-  return result;
+}): Promise<
+  | {
+      status: "success";
+      result: Awaited<ReturnType<typeof batchWithdrawStoreCashierVaults>>;
+    }
+  | { status: "error"; message: string }
+> {
+  try {
+    await requirePermissionOrRole(["owner", "manager"]);
+    await requireStoreAccess(input.storeId);
+    const result = await batchWithdrawStoreCashierVaults(input);
+    revalidatePath("/sessions");
+    revalidatePath("/treasury");
+    return { status: "success", result };
+  } catch (error) {
+    console.error("[sessions] cashier vault batch withdraw failed", error);
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "تعذر التوريد للخزينة",
+    };
+  }
 }
 
-export async function getCashierPendingFloatPreviewAction(storeId: string, cashierId: string) {
+export async function getCashierPendingFloatPreviewAction(
+  storeId: string,
+  cashierId: string,
+) {
   await requireAuth();
   await requireStoreAccess(storeId);
   return getPendingOpeningFloat(storeId, cashierId);

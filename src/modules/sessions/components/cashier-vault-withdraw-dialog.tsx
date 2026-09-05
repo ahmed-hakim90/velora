@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { AlertCircle } from "lucide-react";
+import { useAppRouter as useRouter } from "@/hooks/use-app-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -32,34 +34,52 @@ export function CashierVaultWithdrawDialog({
 }: CashierVaultWithdrawDialogProps) {
   const [open, setOpen] = useState(false);
   const [withdraw, setWithdraw] = useState("");
-  const [nextFloat, setNextFloat] = useState(String(row.pendingOpeningFloat || ""));
+  const [nextFloat, setNextFloat] = useState(
+    String(row.pendingOpeningFloat || ""),
+  );
   const [notes, setNotes] = useState("");
   const [destinationId, setDestinationId] = useState("");
   const [destinations, setDestinations] = useState<TreasurySummary[]>([]);
+  const [destinationLoading, setDestinationLoading] = useState(false);
+  const [destinationError, setDestinationError] = useState("");
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
 
   const withdrawAmount = parseFloat(withdraw) || 0;
   const nextOpeningFloat = parseFloat(nextFloat) || 0;
   const remainder = useMemo(
     () => row.balance - withdrawAmount - nextOpeningFloat,
-    [row.balance, withdrawAmount, nextOpeningFloat]
+    [row.balance, withdrawAmount, nextOpeningFloat],
   );
 
   useEffect(() => {
     if (!open) return;
+    setDestinationLoading(true);
+    setDestinationError("");
     void listTreasuryOptionsAction()
       .then((rows) => {
         const allowed = rows.filter(
-          (t) => t.kind === "hq" || t.store_id === storeId
+          (t) => t.kind === "hq" || t.store_id === storeId,
         );
         setDestinations(allowed);
-        const storeTreasury = allowed.find((t) => t.kind === "store" && t.store_id === storeId);
+        if (allowed.length === 0) {
+          setDestinationId("");
+          setDestinationError("لا توجد خزينة متاحة لاستلام التوريد.");
+          return;
+        }
+        const storeTreasury = allowed.find(
+          (t) => t.kind === "store" && t.store_id === storeId,
+        );
         setDestinationId(storeTreasury?.id ?? allowed[0]?.id ?? "");
       })
       .catch(() => {
         setDestinations([]);
         setDestinationId("");
-      });
+        setDestinationError(
+          "تعذر تحميل الخزائن. اقفل النافذة وحاول مرة تانية.",
+        );
+      })
+      .finally(() => setDestinationLoading(false));
   }, [open, storeId]);
 
   function handleSubmit() {
@@ -73,7 +93,7 @@ export function CashierVaultWithdrawDialog({
     }
     startTransition(async () => {
       try {
-        await withdrawCashierVaultAction({
+        const result = await withdrawCashierVaultAction({
           storeId,
           cashierId: row.cashierId,
           withdrawAmount,
@@ -81,13 +101,19 @@ export function CashierVaultWithdrawDialog({
           notes: notes.trim() || undefined,
           destinationTreasuryId: destinationId || null,
         });
+        if (result.status === "error") {
+          toast.error(result.message);
+          return;
+        }
         toast.success("تم توريد أمانة الكاشير للخزينة");
         setOpen(false);
         setWithdraw("");
         setNotes("");
-        window.location.reload();
+        router.refresh();
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "تعذر التوريد للخزينة");
+        toast.error(
+          error instanceof Error ? error.message : "تعذر التوريد للخزينة",
+        );
       }
     });
   }
@@ -99,6 +125,8 @@ export function CashierVaultWithdrawDialog({
         size="sm"
         variant="outline"
         className="rounded-xl"
+        disabled={row.balance <= 1e-9}
+        title={row.balance <= 1e-9 ? "لا يوجد رصيد متاح للتوريد" : undefined}
         onClick={() => {
           setWithdraw("");
           setNextFloat(String(row.pendingOpeningFloat || "0"));
@@ -106,26 +134,45 @@ export function CashierVaultWithdrawDialog({
           setOpen(true);
         }}
       >
-        توريد
+        {row.balance <= 1e-9 ? "لا يوجد رصيد" : "توريد"}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <StandardModalContent
           size="sm"
           title="توريد من أمانة الكاشير"
           description={`${row.cashierName} · الرصيد الحالي ${formatCurrency(row.balance)}`}
+          busy={pending}
           footer={
-            <Button
-              type="button"
-              className="rounded-xl"
-              disabled={pending || remainder < -1e-9}
-              onClick={handleSubmit}
-            >
-              {pending ? "جاري التوريد…" : "تأكيد التوريد"}
-            </Button>
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-xl"
+                disabled={pending}
+                onClick={() => setOpen(false)}
+              >
+                إلغاء
+              </Button>
+              <Button
+                type="button"
+                className="rounded-xl"
+                disabled={
+                  pending ||
+                  destinationLoading ||
+                  Boolean(destinationError) ||
+                  remainder < -1e-9
+                }
+                onClick={handleSubmit}
+              >
+                {pending ? "جاري التوريد…" : "تأكيد التوريد"}
+              </Button>
+            </>
           }
         >
           <div className="space-y-2">
-            <Label htmlFor={`vault-withdraw-${row.cashierId}`}>مبلغ التوريد</Label>
+            <Label htmlFor={`vault-withdraw-${row.cashierId}`}>
+              مبلغ التوريد
+            </Label>
             <Input
               id={`vault-withdraw-${row.cashierId}`}
               type="number"
@@ -157,9 +204,26 @@ export function CashierVaultWithdrawDialog({
           </div>
           <div className="space-y-2">
             <Label>إلى خزينة</Label>
-            <Select value={destinationId} onValueChange={(v) => setDestinationId(v ?? "")}>
-              <SelectTrigger className="rounded-xl">
-                <SelectValue placeholder="اختار الخزينة" />
+            <Select
+              value={destinationId}
+              onValueChange={(v) => setDestinationId(v ?? "")}
+              disabled={
+                pending || destinationLoading || Boolean(destinationError)
+              }
+            >
+              <SelectTrigger
+                className="rounded-xl"
+                aria-label="الخزينة المستلمة"
+              >
+                <SelectValue>
+                  {() =>
+                    destinationLoading
+                      ? "جاري تحميل الخزائن…"
+                      : (destinations.find(
+                          (treasury) => treasury.id === destinationId,
+                        )?.label ?? "اختار الخزينة")
+                  }
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {destinations.map((t) => (
@@ -169,6 +233,15 @@ export function CashierVaultWithdrawDialog({
                 ))}
               </SelectContent>
             </Select>
+            {destinationError ? (
+              <p
+                className="flex items-center gap-1.5 text-xs text-destructive"
+                role="alert"
+              >
+                <AlertCircle className="size-3.5 shrink-0" />
+                {destinationError}
+              </p>
+            ) : null}
           </div>
           <div className="space-y-2">
             <Label htmlFor={`vault-notes-${row.cashierId}`}>ملاحظات</Label>
@@ -186,6 +259,11 @@ export function CashierVaultWithdrawDialog({
               {formatCurrency(remainder)}
             </span>
           </p>
+          {remainder < -1e-9 ? (
+            <p className="text-xs text-destructive" role="alert">
+              مبلغ التوريد ورصيد بداية الوردية أكبر من الرصيد المتاح.
+            </p>
+          ) : null}
         </StandardModalContent>
       </Dialog>
     </>
