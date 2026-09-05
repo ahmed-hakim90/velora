@@ -2,10 +2,8 @@ import { requireAuth } from "@/lib/auth/guards";
 import {
   getActiveCashierId,
   getActiveStoreId,
-  getRegisteredDeviceContext,
   setActiveCashierId,
 } from "@/lib/auth/session";
-import * as deviceRepo from "@/lib/repositories/device.repository";
 import * as permissionRepo from "@/lib/repositories/permission.repository";
 import { getActiveSession } from "@/modules/sessions/services/session.service";
 import type { AppUser } from "@/lib/types";
@@ -14,8 +12,6 @@ export class PosAccessError extends Error {
     message: string,
     public code:
       | "login_required"
-      | "no_device"
-      | "device_inactive"
       | "store_mismatch"
       | "store_required"
       | "access_denied"
@@ -30,7 +26,7 @@ export class PosAccessError extends Error {
 export interface PosAccessContext {
   user: AppUser;
   storeId: string;
-  deviceId: string;
+  deviceId: string | null;
   activeCashierId: string;
 }
 
@@ -77,75 +73,12 @@ export async function resolvePosAccess(
     throw new PosAccessError("Store access denied", "access_denied");
   }
 
-  let deviceCtx = await getRegisteredDeviceContext();
-  let device = deviceCtx
-    ? await deviceRepo.getDevice(deviceCtx.deviceId)
-    : null;
-  const needsImplicitBind =
-    !deviceCtx ||
-    deviceCtx.storeId !== storeId ||
-    !device?.is_active ||
-    device?.store_id !== storeId;
-
-  if (needsImplicitBind && persistCookies) {
-    const { ensureImplicitPosDeviceBinding } =
-      await import("@/lib/auth/implicit-pos-device");
-    const bound = await ensureImplicitPosDeviceBinding(user, { storeId });
-    if (bound.ok) {
-      deviceCtx = { deviceId: bound.deviceId, storeId: bound.storeId };
-      device = await deviceRepo.getDevice(bound.deviceId);
-    }
-  }
-
-  if (!deviceCtx) {
-    throw new PosAccessError("Register this device to continue", "no_device");
-  }
-
-  if (deviceCtx.storeId !== storeId) {
-    throw new PosAccessError(
-      "Device belongs to another store",
-      "store_mismatch",
-    );
-  }
-
-  if (!device || !device.is_active) {
-    throw new PosAccessError(
-      "Device is inactive or missing",
-      "device_inactive",
-    );
-  }
-
-  if (device.store_id !== storeId) {
-    throw new PosAccessError(
-      "Device belongs to another store",
-      "store_mismatch",
-    );
-  }
-
-  if (user.role === "cashier") {
-    const allowed = await deviceRepo.cashierCanUseDevice(
-      user.id,
-      storeId,
-      device.id,
-    );
-    if (!allowed) {
-      throw new PosAccessError(
-        "You are not allowed on this device",
-        "access_denied",
-      );
-    }
-  }
-
-  if (options.touchSeen !== false) {
-    await deviceRepo.touchDeviceSeen(device.id);
-  }
-
-  let activeCashierId = await getActiveCashierId(storeId, device.id, user);
+  let activeCashierId = await getActiveCashierId(storeId, null, user);
   if (!activeCashierId) {
     // Cashier already logged in via PIN/email — unlock as self without a second PIN.
     if (user.role === "cashier") {
       if (persistCookies) {
-        await setActiveCashierId(user.id, { storeId, deviceId: device.id });
+        await setActiveCashierId(user.id, { storeId });
       }
       activeCashierId = user.id;
     } else {
@@ -155,26 +88,16 @@ export async function resolvePosAccess(
   }
 
   if (user.role === "cashier" && activeCashierId !== user.id) {
-    const targetAllowed = await deviceRepo.cashierCanUseDevice(
-      activeCashierId,
-      storeId,
-      device.id,
-    );
-    if (!targetAllowed) {
-      if (options.clearInvalidCashier && persistCookies) {
-        await setActiveCashierId(null);
-      }
-      throw new PosAccessError(
-        "Switched cashier not allowed on this device",
-        "access_denied",
-      );
+    if (options.clearInvalidCashier && persistCookies) {
+      await setActiveCashierId(null);
     }
+    throw new PosAccessError("You can only use your own cashier account", "access_denied");
   }
 
   return {
     user,
     storeId,
-    deviceId: device.id,
+    deviceId: null,
     activeCashierId,
   };
 }

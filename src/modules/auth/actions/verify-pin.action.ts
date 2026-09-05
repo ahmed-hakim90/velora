@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import {
-  getRegisteredDeviceContext,
   setActiveCashierId,
   getCurrentUser,
   getActiveStoreId,
@@ -49,16 +48,10 @@ export async function verifyPinAction(pin: string): Promise<VerifyPinResult> {
     return { success: false, error: "مفيش فرع نشط مختار." };
   }
 
-  const deviceCtx = await getRegisteredDeviceContext();
-  if (!deviceCtx || deviceCtx.storeId !== storeId) {
-    return { success: false, error: "جهّز نقطة البيع على الفرع ده قبل إدخال PIN." };
-  }
-
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("verify_cashier_pin", {
     p_store_id: storeId,
     p_pin: pin,
-    p_device_id: deviceCtx.deviceId,
   });
 
   if (error || !data) {
@@ -71,7 +64,7 @@ export async function verifyPinAction(pin: string): Promise<VerifyPinResult> {
         action: "cashier.pin_failed",
         entityType: "user",
         entityId: user.id,
-        metadata: { deviceId: deviceCtx.deviceId },
+        metadata: {},
       });
     } catch {
       // ignore audit errors
@@ -82,7 +75,6 @@ export async function verifyPinAction(pin: string): Promise<VerifyPinResult> {
   const cashierId = data as string;
   await setActiveCashierId(cashierId, {
     storeId,
-    deviceId: deviceCtx.deviceId,
   });
 
   const orgId = await getOrgId();
@@ -93,7 +85,7 @@ export async function verifyPinAction(pin: string): Promise<VerifyPinResult> {
     action: "cashier.pin_verified",
     entityType: "user",
     entityId: cashierId,
-    metadata: { verifiedBy: user.id, deviceId: deviceCtx.deviceId },
+    metadata: { verifiedBy: user.id },
   });
 
   revalidatePath("/pos");

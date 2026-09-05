@@ -70,15 +70,6 @@ export async function loginAction(
     await setActiveStoreCookie(defaultStoreId);
   }
 
-  if (appUser.role !== "inventory") {
-    try {
-      const { ensureImplicitPosDeviceBinding } = await import("@/lib/auth/implicit-pos-device");
-      await ensureImplicitPosDeviceBinding(appUser, { storeId: defaultStoreId });
-    } catch {
-      // POS binder is best-effort at login; /pos will retry.
-    }
-  }
-
   const orgId = await getOrgId();
   await writeAuditLog({
     orgId,

@@ -3,7 +3,6 @@ import { requirePageStoreId } from "@/lib/auth/page-guard";
 import {
   getActiveCashierId,
   getCurrentUser,
-  getRegisteredDeviceContext,
 } from "@/lib/auth/session";
 import * as storeRepo from "@/lib/repositories/store.repository";
 import * as userRepo from "@/lib/repositories/user.repository";
@@ -55,10 +54,9 @@ export async function SessionsPage({ filterStoreId = "all", filterFrom = "", fil
   const canForceClose = await permissionRepo.hasPermission("session_force_close");
   const user = await getCurrentUser();
   const canManageVault = user?.role === "owner" || user?.role === "manager";
-  const deviceCtx = await getRegisteredDeviceContext();
   const cashierId =
-    user && deviceCtx?.storeId === storeId
-      ? await getActiveCashierId(storeId, deviceCtx.deviceId, user)
+    user
+      ? await getActiveCashierId(storeId, null, user)
       : null;
 
   const vaultStoreId =

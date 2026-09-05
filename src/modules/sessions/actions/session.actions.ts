@@ -47,8 +47,6 @@ function validCashAmount(value: number): number {
 function mapPosAccessError(error: PosAccessError): string {
   const messages: Record<PosAccessError["code"], string> = {
     login_required: "افتح رابط الفرع واكتب PIN الكاشير أولاً",
-    no_device: "افتح رابط الفرع زي /nutalla/pos ثم أعد المحاولة",
-    device_inactive: "افتح رابط الفرع من جديد لتجهيز نقطة البيع",
     store_mismatch: "افتح رابط الفرع الصحيح قبل فتح الجلسة",
     store_required: "اختر الفرع أولاً قبل فتح الجلسة",
     access_denied: "ليس لديك صلاحية على هذا الفرع",
@@ -124,7 +122,7 @@ export async function openSessionAction(openingCash?: number | null) {
   const session = await openSession({
     storeId: ctx.storeId,
     cashierId: ctx.activeCashierId,
-    deviceId: ctx.deviceId,
+    deviceId: null,
     openingCash: resolvedOpeningCash,
   });
 

@@ -13,7 +13,7 @@ export async function openCashDrawerAction(input: { reason?: string; pin?: strin
 
   const approver = await assertManagerOverridePin({
     storeId: ctx.storeId,
-    deviceId: ctx.deviceId,
+    deviceId: null,
     pin: input.pin,
   });
 
@@ -23,8 +23,8 @@ export async function openCashDrawerAction(input: { reason?: string; pin?: strin
     storeId: ctx.storeId,
     userId: approver.managerId,
     action: "pos.manager_override.cash_drawer_open",
-    entityType: "device",
-    entityId: ctx.deviceId ?? ctx.storeId,
+    entityType: "store",
+    entityId: ctx.storeId,
     metadata: {
       activeCashierId: ctx.activeCashierId,
       reason: input.reason?.trim() || null,

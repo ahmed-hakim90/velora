@@ -2,10 +2,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import {
   getActiveStoreId,
-  getRegisteredDeviceContext,
   setActiveCashierId,
   setActiveStoreCookie,
-  setRegisteredDeviceCookie,
 } from "@/lib/auth/session";
 import { writeAuditLog } from "@/lib/services/audit.service";
 import { assertOnlinePublicRateLimit } from "@/modules/online-menu/lib/online-public-rate-limit";
@@ -14,8 +12,6 @@ import {
   resolveStoreByPosSlug,
   type PosStoreBySlug,
 } from "@/lib/tenancy/pos-store-slug";
-
-const DEFAULT_DEVICE_NAME = "كاشير رئيسي";
 
 export type PosPinLoginStoreOption = {
   id: string;
@@ -28,7 +24,6 @@ export type PosPinLoginContext =
       ok: true;
       orgId: string;
       storeId: string;
-      deviceId: string;
       storeSlug: string;
       storeName: string;
       posPath: string;
@@ -36,7 +31,7 @@ export type PosPinLoginContext =
     }
   | {
       ok: false;
-      reason: "org_required" | "store_required" | "device_failed" | "slug_invalid";
+      reason: "org_required" | "store_required" | "slug_invalid";
       message: string;
       stores?: PosPinLoginStoreOption[];
       orgId?: string;
@@ -58,47 +53,9 @@ function mapRpcError(message: string): string {
   return "تعذر تسجيل الدخول بـ PIN";
 }
 
-/** Silent per-store register row — required by session FK, never shown in UI. */
-async function ensureActiveDeviceForStore(
-  admin: ReturnType<typeof createAdminClient>,
-  storeId: string
-): Promise<string> {
-  const { data: existing } = await admin
-    .from("devices")
-    .select("id, name")
-    .eq("store_id", storeId)
-    .eq("is_active", true)
-    .order("name")
-    .limit(20);
-
-  const preferred =
-    existing?.find((row) => row.name === DEFAULT_DEVICE_NAME) ?? existing?.[0] ?? null;
-  if (preferred) return preferred.id;
-
-  const { hashSecret } = await import("@/lib/repositories/device.repository");
-  const crypto = await import("node:crypto");
-  const deviceKey = crypto.randomBytes(24).toString("base64url");
-  const hash = await hashSecret(deviceKey);
-  const { data: created, error } = await admin
-    .from("devices")
-    .insert({
-      store_id: storeId,
-      name: DEFAULT_DEVICE_NAME,
-      device_key_hash: hash,
-      is_active: true,
-    })
-    .select("id")
-    .single();
-  if (error || !created) {
-    throw new Error("تعذر تجهيز نقطة البيع لهذا الفرع");
-  }
-  return created.id;
-}
-
 async function bindStoreRegister(store: PosStoreBySlug): Promise<{
   orgId: string;
   storeId: string;
-  deviceId: string;
   storeSlug: string;
   storeName: string;
   posPath: string;
@@ -112,14 +69,11 @@ async function bindStoreRegister(store: PosStoreBySlug): Promise<{
   if (!org) throw new Error("الشركة غير موجودة");
   if (org.status === "suspended") throw new Error("تم تعليق الشركة. تواصل مع الدعم.");
 
-  const deviceId = await ensureActiveDeviceForStore(admin, store.id);
   await setActiveStoreCookie(store.id);
-  await setRegisteredDeviceCookie({ deviceId, storeId: store.id });
 
   return {
     orgId: store.orgId,
     storeId: store.id,
-    deviceId,
     storeSlug: store.slug,
     storeName: store.name,
     posPath: buildPosPathForSlug(store.slug),
@@ -146,7 +100,7 @@ export async function bindPosStoreFromSlug(storeSlug: string): Promise<PosPinLog
   } catch (error) {
     return {
       ok: false,
-      reason: "device_failed",
+      reason: "store_required",
       message:
         error instanceof Error ? error.message : "تعذر تجهيز نقطة البيع لهذا الفرع",
     };
@@ -164,8 +118,7 @@ export async function preparePosPinLoginContext(input?: {
 
   // Legacy host/device bootstrap — prefer slug URLs going forward.
   const admin = createAdminClient();
-  const deviceCtx = await getRegisteredDeviceContext();
-  const activeStoreId = input?.storeId ?? (await getActiveStoreId()) ?? deviceCtx?.storeId;
+  const activeStoreId = input?.storeId ?? (await getActiveStoreId());
   if (!activeStoreId) {
     return {
       ok: false,
@@ -239,7 +192,6 @@ export async function loginCashierWithPin(input: {
   const { data, error } = await admin.rpc("login_cashier_by_pin", {
     p_org_id: prepared.orgId,
     p_store_id: prepared.storeId,
-    p_device_id: prepared.deviceId,
     p_pin: pin,
   });
 
@@ -283,13 +235,8 @@ export async function loginCashierWithPin(input: {
   }
 
   await setActiveStoreCookie(prepared.storeId);
-  await setRegisteredDeviceCookie({
-    deviceId: prepared.deviceId,
-    storeId: prepared.storeId,
-  });
   await setActiveCashierId(row.user_id, {
     storeId: prepared.storeId,
-    deviceId: prepared.deviceId,
   });
 
   try {

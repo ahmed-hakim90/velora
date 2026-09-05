@@ -13,7 +13,6 @@ import {
   Activity,
   Building2,
   Gauge,
-  MonitorSmartphone,
   ScrollText,
   UserPlus,
   Users,
@@ -127,12 +126,6 @@ export function PlatformOrgAnalyticsGlance({
             label: "المستخدمين",
             description: "أدوار ودخول كحساب",
             icon: Users,
-          },
-          {
-            href: "/platform/devices",
-            label: "أجهزة المنصة",
-            description: "أجهزة عبر كل الشركات",
-            icon: MonitorSmartphone,
           },
           {
             href: "/platform/audit",

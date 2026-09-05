@@ -55,7 +55,6 @@ const PATH_LABELS: Record<string, string> = {
   "/accounting/accounts": "دليل الحسابات",
   "/treasury": "الخزائن",
   "/purchases": "المشتريات",
-  "/devices": "الأجهزة",
   "/inventory/movements": "سجل حركة المخزون",
 };
 

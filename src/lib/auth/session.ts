@@ -129,9 +129,10 @@ export async function setDeviceUnlocked(
 
 export async function getActiveCashierId(
   storeId: string,
-  deviceId: string,
+  _deviceId: string | null,
   _user: AppUser
 ): Promise<string | null> {
+  void _deviceId;
   void _user;
   const cookieStore = await cookies();
   const payload = readSignedCookieValue<{
@@ -142,8 +143,7 @@ export async function getActiveCashierId(
 
   if (
     payload?.cashierId &&
-    payload.storeId === storeId &&
-    payload.deviceId === deviceId
+    payload.storeId === storeId
   ) {
     return payload.cashierId;
   }
@@ -160,14 +160,14 @@ export async function getVerifiedActiveCashierId(storeId: string): Promise<strin
 
 export async function setActiveCashierId(
   cashierId: string | null,
-  input?: { storeId: string; deviceId: string }
+  input?: { storeId: string; deviceId?: string | null }
 ) {
   const cookieStore = await cookies();
   if (cashierId && input) {
     cookieStore.set(
       CASHIER_COOKIE,
       createSignedCookieValue(
-        { cashierId, storeId: input.storeId, deviceId: input.deviceId },
+        { cashierId, storeId: input.storeId },
         CASHIER_COOKIE_MAX_AGE
       ),
       {

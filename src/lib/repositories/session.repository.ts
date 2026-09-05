@@ -85,7 +85,7 @@ export async function getSession(id: string): Promise<CashierSession | null> {
 export async function openSession(input: {
   storeId: string;
   cashierId: string;
-  deviceId: string;
+  deviceId?: string | null;
   openingCash: number;
 }): Promise<{ session: CashierSession; created: boolean }> {
   const existing = await getActiveSession(input.storeId, input.cashierId);

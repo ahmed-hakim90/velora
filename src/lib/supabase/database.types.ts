@@ -108,7 +108,7 @@ export type Database = {
           close_reason: string | null
           closed_at: string | null
           closed_by: string | null
-          device_id: string
+          device_id: string | null
           expected_cash: number | null
           force_closed: boolean
           id: string
@@ -125,7 +125,7 @@ export type Database = {
           close_reason?: string | null
           closed_at?: string | null
           closed_by?: string | null
-          device_id: string
+          device_id?: string | null
           expected_cash?: number | null
           force_closed?: boolean
           id?: string
@@ -142,7 +142,7 @@ export type Database = {
           close_reason?: string | null
           closed_at?: string | null
           closed_by?: string | null
-          device_id?: string
+          device_id?: string | null
           expected_cash?: number | null
           force_closed?: boolean
           id?: string
@@ -2514,7 +2514,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
-          device_id: string
+          device_id: string | null
           id: string
           name: string
           org_id: string
@@ -2525,7 +2525,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
-          device_id: string
+          device_id?: string | null
           id?: string
           name: string
           org_id: string
@@ -2536,7 +2536,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
-          device_id?: string
+          device_id?: string | null
           id?: string
           name?: string
           org_id?: string
@@ -4312,7 +4312,6 @@ export type Database = {
       }
       login_cashier_by_pin: {
         Args: {
-          p_device_id: string
           p_org_id: string
           p_pin: string
           p_store_id: string
@@ -4771,7 +4770,7 @@ export type Database = {
         Returns: string
       }
       verify_cashier_pin: {
-        Args: { p_device_id: string; p_pin: string; p_store_id: string }
+        Args: { p_pin: string; p_store_id: string }
         Returns: string
       }
       void_order: {

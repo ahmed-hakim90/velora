@@ -32,7 +32,7 @@ describe("command palette destinations", () => {
     expect(items).toContain("/inventory/containers");
     expect(items).toContain("/inventory/customs-certificates");
     expect(items).toContain("/account");
-    expect(items).toContain("/devices");
+    expect(items).not.toContain("/devices");
     expect(items).toContain("/settings?tab=branches");
     expect(items).toContain("/settings?tab=print");
   });

@@ -8,9 +8,9 @@ async function orgStoreIds(): Promise<string[]> {
   return (await listStores()).map((store) => store.id);
 }
 
-export async function listHeldCartsForDevice(input: {
+export async function listHeldCartsForCashier(input: {
   storeId: string;
-  deviceId: string;
+  cashierId: string;
 }): Promise<PosHeldCartRow[]> {
   const storeIds = await orgStoreIds();
   if (!storeIds.includes(input.storeId)) return [];
@@ -20,9 +20,9 @@ export async function listHeldCartsForDevice(input: {
     .from("pos_held_carts")
     .select("*")
     .eq("store_id", input.storeId)
-    .eq("device_id", input.deviceId)
+    .eq("created_by", input.cashierId)
     .order("created_at", { ascending: false });
-  if (error) throwDbError(error, "listHeldCartsForDevice");
+  if (error) throwDbError(error, "listHeldCartsForCashier");
   return (data ?? []) as PosHeldCartRow[];
 }
 
@@ -44,7 +44,6 @@ export async function getHeldCart(id: string): Promise<PosHeldCartRow | null> {
 export async function insertHeldCart(input: {
   orgId: string;
   storeId: string;
-  deviceId: string;
   createdBy: string;
   name: string;
   payload: Record<string, unknown>;
@@ -55,7 +54,7 @@ export async function insertHeldCart(input: {
     .insert({
       org_id: input.orgId,
       store_id: input.storeId,
-      device_id: input.deviceId,
+      device_id: null,
       created_by: input.createdBy,
       name: input.name,
       payload: asJson(input.payload),
@@ -78,11 +77,11 @@ export async function deleteHeldCart(id: string): Promise<boolean> {
   return Boolean(data);
 }
 
-/** One round-trip delete scoped to store+device (no prior get + listStores). */
-export async function deleteHeldCartForDevice(input: {
+/** One round-trip delete scoped to store + cashier. */
+export async function deleteHeldCartForCashier(input: {
   id: string;
   storeId: string;
-  deviceId: string;
+  cashierId: string;
 }): Promise<boolean> {
   const db = await getDb();
   const { data, error } = await db
@@ -90,10 +89,10 @@ export async function deleteHeldCartForDevice(input: {
     .delete()
     .eq("id", input.id)
     .eq("store_id", input.storeId)
-    .eq("device_id", input.deviceId)
+    .eq("created_by", input.cashierId)
     .select("id")
     .maybeSingle();
-  if (error) throwDbError(error, "deleteHeldCartForDevice");
+  if (error) throwDbError(error, "deleteHeldCartForCashier");
   return Boolean(data);
 }
 

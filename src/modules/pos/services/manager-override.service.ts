@@ -5,7 +5,7 @@ export { requiresManagerDiscountOverride } from "@/modules/pos/lib/requires-mana
 
 export async function assertManagerOverridePin(input: {
   storeId: string;
-  deviceId: string;
+  deviceId?: string | null;
   pin: string | undefined;
 }): Promise<{ managerId: string; managerName: string }> {
   const pin = input.pin?.trim() ?? "";
@@ -16,7 +16,7 @@ export async function assertManagerOverridePin(input: {
   const { data, error } = await callRpc<string>("verify_manager_override_pin", {
     p_store_id: input.storeId,
     p_pin: pin,
-    p_device_id: input.deviceId,
+    p_device_id: input.deviceId ?? null,
   });
 
   if (error || !data) {

@@ -104,7 +104,6 @@ import {
 import { formatCurrency } from "@/lib/format";
 import { requiresManagerDiscountOverride } from "@/modules/pos/lib/requires-manager-discount-override";
 import { WeightAmountModal } from "@/modules/pos/components/weight-amount-modal";
-import { PosDeviceGate } from "@/modules/pos/components/pos-device-gate";
 import { PosStoreGate } from "@/modules/pos/components/pos-store-gate";
 import { PosCashierPinGate } from "@/modules/pos/components/pos-cashier-pin-gate";
 import { PosPinLoginGate } from "@/modules/pos/components/pos-pin-login-gate";
@@ -1163,10 +1162,6 @@ export function PosScreen({
       return <PosAccessDenied state="login_required" />;
     }
     return <PosPinLoginGate storeSlug={storeSlug} storeName={storeLabel} />;
-  }
-
-  if (readinessState === "no_device" || readinessState === "device_inactive") {
-    return <PosDeviceGate />;
   }
 
   if (readinessState === "cashier_required") {

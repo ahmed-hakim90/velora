@@ -17,22 +17,19 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { getLoyaltyRule } from "@/modules/loyalty/services/loyalty.service";
 import { listActivePromotionRulesForEval } from "@/lib/repositories/promotion.repository";
 import { getReportBranding } from "@/modules/reports/services/report-branding.service";
-import { listHeldCartsForPosDevice } from "@/modules/pos/services/held-cart.service";
+import { listHeldCartsForCashier } from "@/modules/pos/services/held-cart.service";
 import { listCostCenters } from "@/modules/accounting/services/cost-center.service";
 import { listExpenseCategories } from "@/modules/accounting/services/expense-category.service";
 import { loadSessionCashBundle } from "@/modules/sessions/services/reconciliation.service";
 import * as storeRepo from "@/lib/repositories/store.repository";
 import * as userRepo from "@/lib/repositories/user.repository";
 import * as permissionRepo from "@/lib/repositories/permission.repository";
-import * as deviceRepo from "@/lib/repositories/device.repository";
 import { enabledPaymentMethodsFromFlags } from "@/lib/enabled-payment-methods";
 import { supportsProductModifiers } from "@/lib/business-activity-flags";
 
 /** Gate screens that must not pay for catalog / online-orders / session extras. */
 const GATE_ONLY_STATES = new Set<PosReadinessState>([
   "login_required",
-  "no_device",
-  "device_inactive",
   "store_mismatch",
   "store_required",
   "access_denied",
@@ -130,7 +127,6 @@ export async function getPosPageData() {
     expenseCategories,
     receiptBranding,
     allStores,
-    device,
     initialHeldCarts,
   ] = await Promise.all([
     readiness.cashierId
@@ -170,12 +166,9 @@ export async function getPosPageData() {
       "receiptBranding"
     ),
     settled(storeRepo.listStores(), [], "stores"),
-    readiness.deviceId
-      ? settled(deviceRepo.getDevice(readiness.deviceId), null, "device")
-      : Promise.resolve(null),
-    readiness.deviceId
+    readiness.cashierId
       ? settled(
-          listHeldCartsForPosDevice({ storeId, deviceId: readiness.deviceId }),
+          listHeldCartsForCashier({ storeId, cashierId: readiness.cashierId }),
           [],
           "heldCarts"
         )
@@ -259,8 +252,8 @@ export async function getPosPageData() {
     canManagerOverride: user?.role === "owner" || user?.role === "manager",
     requireManagerOverrideForExpiredSale:
       sessionSettings.require_manager_override_for_expired_sale !== false,
-    scaleEnabled: Boolean(device?.scale_enabled),
-    scaleSettings: device?.scale_settings ?? null,
+    scaleEnabled: false,
+    scaleSettings: null,
     canCollectPayment: Boolean(canCollectPaymentPerm),
     canPaySupplier: Boolean(canPaySupplierPerm),
     managerDiscountOverrideAmount: sessionSettings.manager_discount_override_amount,

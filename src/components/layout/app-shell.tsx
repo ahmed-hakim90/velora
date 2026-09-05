@@ -6,7 +6,6 @@ import { AppShellHeader } from "@/components/layout/app-shell-header";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { CommandPalette } from "@/components/layout/command-palette";
 import type { PosReadinessState } from "@/lib/auth/pos-readiness";
-import { ImplicitPosDeviceBinder } from "@/components/Velora/implicit-pos-device-binder";
 import { RouteTransitionMain } from "@/components/layout/route-transition";
 
 interface AppShellProps {
@@ -38,7 +37,6 @@ export function AppShell({
 }: AppShellProps) {
   return (
     <div className="flex min-h-dvh bg-[var(--mds-color-bg-canvas)]">
-      {posReadinessState ? <ImplicitPosDeviceBinder state={posReadinessState} /> : null}
       <div className="hidden shrink-0 lg:block">
         <AppSidebar
           className="sticky top-0 h-dvh"

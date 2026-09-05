@@ -2,7 +2,6 @@ import { cache } from "react";
 import {
   getActiveStoreId,
   getCurrentUser,
-  getRegisteredDeviceContext,
 } from "@/lib/auth/session";
 import { PosAccessError, resolvePosAccess } from "@/lib/auth/pos-access";
 import { getActiveSession } from "@/modules/sessions/services/session.service";
@@ -25,10 +24,6 @@ function mapPosAccessError(code: PosAccessError["code"]): PosReadinessState {
   switch (code) {
     case "login_required":
       return "login_required";
-    case "no_device":
-      return "no_device";
-    case "device_inactive":
-      return "device_inactive";
     case "store_mismatch":
       return "store_mismatch";
     case "store_required":
@@ -63,15 +58,12 @@ export const getPosReadiness = cache(async (): Promise<PosReadiness> => {
   } catch (e) {
     if (e instanceof PosAccessError) {
       if (e.code === "cashier_required") {
-        const [storeId, deviceCtx] = await Promise.all([
-          getActiveStoreId(),
-          getRegisteredDeviceContext(),
-        ]);
+        const storeId = await getActiveStoreId();
         return {
           state: "cashier_required",
           storeId,
           cashierId: null,
-          deviceId: deviceCtx?.deviceId ?? null,
+          deviceId: null,
           sessionId: null,
         };
       }

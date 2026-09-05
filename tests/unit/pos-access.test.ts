@@ -2,12 +2,10 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { resolvePosAccess, PosAccessError } from "@/lib/auth/pos-access";
 import * as guards from "@/lib/auth/guards";
 import * as session from "@/lib/auth/session";
-import * as deviceRepo from "@/lib/repositories/device.repository";
 import * as permissionRepo from "@/lib/repositories/permission.repository";
 
 vi.mock("@/lib/auth/guards");
 vi.mock("@/lib/auth/session");
-vi.mock("@/lib/repositories/device.repository");
 vi.mock("@/lib/repositories/permission.repository");
 
 const managerUser = {
@@ -32,21 +30,6 @@ describe("resolvePosAccess pos_access permission", () => {
     vi.resetAllMocks();
     vi.mocked(session.getActiveStoreId).mockResolvedValue("store-1");
     vi.mocked(permissionRepo.hasPermission).mockResolvedValue(false);
-    vi.mocked(session.getRegisteredDeviceContext).mockResolvedValue({
-      deviceId: "dev-1",
-      storeId: "store-1",
-    });
-    vi.mocked(deviceRepo.getDevice).mockResolvedValue({
-      id: "dev-1",
-      store_id: "store-1",
-      name: "Register 1",
-      is_active: true,
-      device_key_hash: "x",
-      last_seen_at: null,
-      scale_enabled: false,
-      scale_settings: {},
-    });
-    vi.mocked(deviceRepo.touchDeviceSeen).mockResolvedValue(undefined);
     vi.mocked(session.getActiveCashierId).mockResolvedValue("mgr-1");
   });
 
@@ -63,7 +46,7 @@ describe("resolvePosAccess pos_access permission", () => {
 
     const ctx = await resolvePosAccess();
     expect(ctx.storeId).toBe("store-1");
-    expect(ctx.deviceId).toBe("dev-1");
+    expect(ctx.deviceId).toBeNull();
     expect(permissionRepo.hasPermission).not.toHaveBeenCalled();
   });
 
@@ -105,14 +88,12 @@ describe("resolvePosAccess pos_access permission", () => {
     };
     vi.mocked(guards.requireAuth).mockResolvedValue(cashierUser);
     vi.mocked(session.getActiveCashierId).mockResolvedValue(null);
-    vi.mocked(deviceRepo.cashierCanUseDevice).mockResolvedValue(true);
     vi.mocked(session.setActiveCashierId).mockResolvedValue(undefined);
 
     const ctx = await resolvePosAccess({ persistCookies: true });
     expect(ctx.activeCashierId).toBe("cashier-1");
     expect(session.setActiveCashierId).toHaveBeenCalledWith("cashier-1", {
       storeId: "store-1",
-      deviceId: "dev-1",
     });
   });
 });

@@ -4,9 +4,9 @@ import { requirePosAccess } from "@/lib/auth/pos-access";
 import type { SalesMode } from "@/lib/constants";
 import type { CartLine, Customer } from "@/lib/types";
 import {
-  createHeldCartForPosDevice,
-  deleteHeldCartForPosDevice,
-  listHeldCartsForPosDevice,
+  createHeldCartForCashier,
+  deleteHeldCartForCashier,
+  listHeldCartsForCashier,
 } from "@/modules/pos/services/held-cart.service";
 import type { HeldCart } from "@/stores/pos-store";
 
@@ -26,9 +26,9 @@ export async function listHeldCartsAction(): Promise<HeldCartListResult> {
   try {
     // requirePosAccess already checks pos_access — avoid a second auth round-trip.
     const ctx = await requirePosAccess({ touchSeen: false });
-    const heldCarts = await listHeldCartsForPosDevice({
+    const heldCarts = await listHeldCartsForCashier({
       storeId: ctx.storeId,
-      deviceId: ctx.deviceId,
+      cashierId: ctx.activeCashierId,
     });
     return { success: true, heldCarts };
   } catch (error) {
@@ -49,9 +49,8 @@ export async function holdCartAction(input: {
 }): Promise<HeldCartActionResult> {
   try {
     const ctx = await requirePosAccess({ touchSeen: false });
-    const heldCart = await createHeldCartForPosDevice({
+    const heldCart = await createHeldCartForCashier({
       storeId: ctx.storeId,
-      deviceId: ctx.deviceId,
       createdBy: ctx.user.id,
       name: input.name?.trim() || input.customer?.name || "فاتورة معلّقة",
       cart: input.cart,
@@ -72,10 +71,10 @@ export async function holdCartAction(input: {
 export async function discardHeldCartAction(id: string): Promise<HeldCartDeleteResult> {
   try {
     const ctx = await requirePosAccess({ touchSeen: false });
-    const deleted = await deleteHeldCartForPosDevice({
+    const deleted = await deleteHeldCartForCashier({
       id,
       storeId: ctx.storeId,
-      deviceId: ctx.deviceId,
+      cashierId: ctx.activeCashierId,
     });
     if (!deleted) {
       return { success: false, error: "الفاتورة المعلّقة غير موجودة" };
@@ -109,9 +108,8 @@ export async function resumeHeldCartAction(input: {
 
     let parked: HeldCart | null = null;
     if (input.parkCurrent && input.parkCurrent.cart.length > 0) {
-      parked = await createHeldCartForPosDevice({
+      parked = await createHeldCartForCashier({
         storeId: ctx.storeId,
-        deviceId: ctx.deviceId,
         createdBy: ctx.user.id,
         name:
           input.parkCurrent.name?.trim() ||
@@ -125,10 +123,10 @@ export async function resumeHeldCartAction(input: {
       });
     }
 
-    const deleted = await deleteHeldCartForPosDevice({
+    const deleted = await deleteHeldCartForCashier({
       id: input.resumeId,
       storeId: ctx.storeId,
-      deviceId: ctx.deviceId,
+      cashierId: ctx.activeCashierId,
     });
     if (!deleted) {
       return { success: false, error: "الفاتورة المعلّقة غير موجودة" };

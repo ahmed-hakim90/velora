@@ -1,12 +1,10 @@
 import { AuthError } from "@/lib/auth/auth-error";
 import { getValidatedActiveStoreId } from "@/lib/auth/guards";
 import { getOrganization } from "@/lib/repositories/organization.repository";
-import * as storeRepo from "@/lib/repositories/store.repository";
 import type { ModuleHubId } from "@/modules/module-hubs/lib/module-hub-catalog";
 import type { HubAnalyticsPayload } from "@/modules/module-hubs/lib/hub-analytics-types";
 import {
   buildAccountingHubAnalytics,
-  buildAdminHubAnalytics,
   buildCatalogHubAnalytics,
   buildCustomersHubAnalytics,
   buildOperationsHubAnalytics,
@@ -226,28 +224,7 @@ async function loadAccountingAnalytics(): Promise<HubAnalyticsPayload | null> {
 }
 
 async function loadAdminAnalytics(): Promise<HubAnalyticsPayload | null> {
-  try {
-    const { listDevices } = await import("@/modules/system/services/users.service");
-    const { buildDevicesGlance } = await import(
-      "@/modules/devices/lib/devices-glance"
-    );
-    const [devices, stores] = await Promise.all([
-      listDevices(),
-      storeRepo.listStores(),
-    ]);
-    const storeNames = Object.fromEntries(stores.map((s) => [s.id, s.name]));
-    const glance = buildDevicesGlance({ devices, storeNames });
-    return buildAdminHubAnalytics({
-      totalDevices: glance.total,
-      activeDevices: glance.active,
-      seenRecently: glance.seenRecently,
-      staleOrNever: glance.staleOrNever,
-      byStoreChart: glance.byStoreChart,
-    });
-  } catch (error) {
-    if (error instanceof AuthError) return null;
-    throw error;
-  }
+  return null;
 }
 
 /** Fail-soft analytics for module hubs — never blocks the link board. */

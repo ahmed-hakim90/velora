@@ -214,7 +214,7 @@ export const MODULE_HUBS = {
     id: "admin",
     href: "/admin",
     title: "الإدارة",
-    description: "صحة الأجهزة والإعدادات — مؤشرات ثم شاشات الإدارة.",
+    description: "المستخدمون والإعدادات وسجل النشاط.",
     breadcrumb: "الإدارة",
     ctaLabel: "فتح",
     links: [
@@ -223,12 +223,6 @@ export const MODULE_HUBS = {
         label: "المستخدمون",
         description: "صلاحيات وأدوار الفريق",
         icon: "Shield",
-      },
-      {
-        href: "/devices",
-        label: "الأجهزة",
-        description: "أجهزة الكاشير والربط",
-        icon: "MonitorSmartphone",
       },
       {
         href: "/settings",

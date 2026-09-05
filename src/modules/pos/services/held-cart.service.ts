@@ -69,19 +69,18 @@ export function mapHeldCartRowToHeldCart(
   };
 }
 
-export async function listHeldCartsForPosDevice(input: {
+export async function listHeldCartsForCashier(input: {
   storeId: string;
-  deviceId: string;
+  cashierId: string;
 }): Promise<HeldCart[]> {
-  const rows = await heldCartRepo.listHeldCartsForDevice(input);
+  const rows = await heldCartRepo.listHeldCartsForCashier(input);
   return rows
     .map(mapHeldCartRowToHeldCart)
     .filter((cart): cart is HeldCart => cart !== null);
 }
 
-export async function createHeldCartForPosDevice(input: {
+export async function createHeldCartForCashier(input: {
   storeId: string;
-  deviceId: string;
   createdBy: string;
   name: string;
   cart: CartLine[];
@@ -98,7 +97,6 @@ export async function createHeldCartForPosDevice(input: {
   const row = await heldCartRepo.insertHeldCart({
     orgId,
     storeId: input.storeId,
-    deviceId: input.deviceId,
     createdBy: input.createdBy,
     name,
     payload: {
@@ -114,10 +112,10 @@ export async function createHeldCartForPosDevice(input: {
   return mapped;
 }
 
-export async function deleteHeldCartForPosDevice(input: {
+export async function deleteHeldCartForCashier(input: {
   id: string;
   storeId: string;
-  deviceId: string;
+  cashierId: string;
 }): Promise<boolean> {
-  return heldCartRepo.deleteHeldCartForDevice(input);
+  return heldCartRepo.deleteHeldCartForCashier(input);
 }

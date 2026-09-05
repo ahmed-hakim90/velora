@@ -75,7 +75,6 @@ const NAV_KEYWORDS: Record<string, string[]> = {
   "/labels": ["باركود", "ملصق"],
   "/admin": ["إدارة", "لوحة إدارة"],
   "/users": ["مستخدمين", "صلاحيات"],
-  "/devices": ["أجهزة", "كاشير", "pairing", "جهاز"],
   "/settings": ["إعدادات"],
   "/audit": ["مراجعة", "سجل"],
 };

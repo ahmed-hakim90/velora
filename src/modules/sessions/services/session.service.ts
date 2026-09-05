@@ -59,7 +59,7 @@ export const getActiveSession = cache(
 export async function openSession(input: {
   storeId: string;
   cashierId: string;
-  deviceId: string;
+  deviceId?: string | null;
   openingCash: number;
 }): Promise<CashierSession> {
   await assertPeriodOpen(input.storeId);

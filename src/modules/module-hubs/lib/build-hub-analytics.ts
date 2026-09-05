@@ -134,12 +134,6 @@ const ACCOUNTING_LINKS: HubAnalysisLink[] = [
 
 const ADMIN_LINKS: HubAnalysisLink[] = [
   {
-    href: "/devices",
-    label: "الأجهزة",
-    description: "ربط وحالة الكاشير",
-    icon: "MonitorSmartphone",
-  },
-  {
     href: "/settings",
     label: "الإعدادات",
     description: "فروع وخصائص",
