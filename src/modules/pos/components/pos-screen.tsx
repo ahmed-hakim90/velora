@@ -1470,31 +1470,15 @@ export function PosScreen({
               hasActiveSession &&
               activeSession &&
               sessionReconciliation ? (
-                <div title={t("Close session")}>
-                  <PosCloseSessionDialog
-                    key={activeSession.id}
-                    open={closeSessionTargetId === activeSession.id}
-                    onOpenChange={(nextOpen) =>
-                      setCloseSessionTargetId(
-                        nextOpen ? activeSession.id : null,
-                      )
-                    }
-                    session={activeSession}
-                    reconciliation={sessionReconciliation}
-                    sessionExpenses={sessionExpenses}
-                    cashierName={cashierName ?? t("Cashier")}
-                    costCenterMap={costCenterMap}
-                    categoryMap={expenseCategoryMap}
-                    triggerSize="icon"
-                    triggerClassName="size-11 rounded-lg"
-                    triggerChildren={
-                      <>
-                        <CircleStop className="size-4" aria-hidden />
-                        <span className="sr-only">{t("Close session")}</span>
-                      </>
-                    }
-                  />
-                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 shrink-0 gap-2 rounded-lg px-3"
+                  onClick={() => setCloseSessionTargetId(activeSession.id)}
+                >
+                  <CircleStop className="size-4" aria-hidden />
+                  {t("Close session")}
+                </Button>
               ) : null}
               <div
                 className="[&_button]:size-11 [&_button]:rounded-lg [&_button]:px-0 [&_span]:sr-only"
@@ -2212,6 +2196,23 @@ export function PosScreen({
               ) : null}
             </span>
           </Button>
+          {(readinessState === "ready" ||
+            readinessState === "session_warning" ||
+            readinessState === "session_expired") &&
+          hasActiveSession &&
+          activeSession &&
+          sessionReconciliation ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-12 shrink-0 gap-1.5 rounded-xl px-3"
+              onClick={() => setCloseSessionTargetId(activeSession.id)}
+              aria-label={t("Close session")}
+            >
+              <CircleStop className="size-5" aria-hidden />
+              <span className="hidden min-[390px]:inline">{t("Close session")}</span>
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="outline"
@@ -2261,6 +2262,27 @@ export function PosScreen({
           onUsbPrint={handleUsbPrintReceipt}
           onBrowserPrint={handleBrowserPrintReceipt}
           onWhatsApp={sendWhatsAppReceipt}
+        />
+      ) : null}
+      {(readinessState === "ready" ||
+        readinessState === "session_warning" ||
+        readinessState === "session_expired") &&
+      hasActiveSession &&
+      activeSession &&
+      sessionReconciliation ? (
+        <PosCloseSessionDialog
+          key={activeSession.id}
+          open={closeSessionTargetId === activeSession.id}
+          onOpenChange={(nextOpen) =>
+            setCloseSessionTargetId(nextOpen ? activeSession.id : null)
+          }
+          session={activeSession}
+          reconciliation={sessionReconciliation}
+          sessionExpenses={sessionExpenses}
+          cashierName={cashierName ?? t("Cashier")}
+          costCenterMap={costCenterMap}
+          categoryMap={expenseCategoryMap}
+          showTrigger={false}
         />
       ) : null}
       <ConfirmActionDialog

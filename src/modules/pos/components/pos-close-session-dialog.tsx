@@ -23,6 +23,7 @@ interface PosCloseSessionDialogProps {
   triggerClassName?: string;
   triggerSize?: "default" | "sm" | "lg" | "icon";
   triggerVariant?: "default" | "outline" | "destructive" | "secondary" | "ghost" | "link";
+  showTrigger?: boolean;
 }
 
 type SessionCashResponse = {
@@ -45,6 +46,7 @@ export function PosCloseSessionDialog({
   triggerClassName = "rounded-full",
   triggerSize = "sm",
   triggerVariant = "outline",
+  showTrigger = true,
 }: PosCloseSessionDialogProps) {
   const { t } = useTranslation();
   const [internalOpen, setInternalOpen] = useState(false);
@@ -104,15 +106,17 @@ export function PosCloseSessionDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <Button
-        type="button"
-        size={triggerSize}
-        variant={triggerVariant}
-        className={triggerClassName}
-        onClick={() => setOpen(true)}
-      >
-        {triggerChildren ?? t("Close session")}
-      </Button>
+      {showTrigger ? (
+        <Button
+          type="button"
+          size={triggerSize}
+          variant={triggerVariant}
+          className={triggerClassName}
+          onClick={() => setOpen(true)}
+        >
+          {triggerChildren ?? t("Close session")}
+        </Button>
+      ) : null}
       <DialogContent className="flex max-h-[min(96dvh,100%)] max-w-[min(720px,calc(100%-0.5rem))] flex-col gap-0 overflow-hidden rounded-2xl p-0">
         <DialogHeader className="shrink-0 border-b border-border/60 px-3 py-2.5 pe-10 sm:px-4 sm:pe-10">
           <DialogTitle className="text-base">{t("Close cashier session")}</DialogTitle>
