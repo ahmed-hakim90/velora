@@ -86,4 +86,30 @@ describe("buildSessionsGlance", () => {
     expect(glance.variance30d).toBe(7);
     expect(glance.varianceChart).toEqual([{ label: "أحمد", variance: 7 }]);
   });
+
+  it("treats a legacy negative expected drawer as a shortage", () => {
+    const now = new Date().toISOString();
+    const glance = buildSessionsGlance({
+      openSummaries: [],
+      closedSessions: [
+        {
+          ...baseSession,
+          id: "legacy-negative",
+          cashier_id: "u1",
+          status: "closed",
+          opened_at: now,
+          closed_at: now,
+          expected_cash: -14998.88,
+          actual_cash: 0,
+          variance: 14998.88,
+        },
+      ] as CashierSession[],
+      userMap: { u1: "أحمد" },
+    });
+
+    expect(glance.variance30d).toBe(-14998.88);
+    expect(glance.varianceChart).toEqual([
+      { label: "أحمد", variance: -14998.88 },
+    ]);
+  });
 });

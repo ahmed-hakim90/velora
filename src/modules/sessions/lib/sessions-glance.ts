@@ -2,6 +2,15 @@ import type { CashierSession } from "@/lib/types";
 import type { OpenSessionSummary } from "@/modules/sessions/services/open-session-summary.service";
 import type { SessionsGlanceChartRow } from "@/modules/sessions/components/sessions-analytics-glance";
 
+export function getOperationalSessionVariance(
+  session: Pick<CashierSession, "expected_cash" | "actual_cash" | "variance">,
+): number {
+  const storedVariance = session.variance ?? 0;
+  return (session.expected_cash ?? 0) < 0 && (session.actual_cash ?? 0) >= 0
+    ? -Math.abs(storedVariance)
+    : storedVariance;
+}
+
 /** Pure glance aggregates from already-loaded session rows — no extra DB. */
 export function buildSessionsGlance(input: {
   openSummaries: OpenSessionSummary[];
@@ -26,7 +35,10 @@ export function buildSessionsGlance(input: {
   const byCashier = new Map<string, number>();
   let variance30d = 0;
   for (const s of closedInRange) {
-    const v = s.variance ?? 0;
+    // Legacy reconciliation could persist a negative expected drawer balance.
+    // A non-negative actual drawer against that row is a shortage operationally,
+    // not an overage created by subtracting a negative number.
+    const v = getOperationalSessionVariance(s);
     variance30d += v;
     byCashier.set(s.cashier_id, (byCashier.get(s.cashier_id) ?? 0) + v);
   }

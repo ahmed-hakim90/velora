@@ -17,6 +17,7 @@ import {
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { CashierSession } from "@/lib/types";
+import { getOperationalSessionVariance } from "@/modules/sessions/lib/sessions-glance";
 
 export interface ClosedSessionRow {
   session: CashierSession;
@@ -93,15 +94,14 @@ export function ClosedSessionsTable({
                 <span
                   className={cn(
                     "font-medium tabular-nums",
-                    session.variance != null &&
-                      session.variance !== 0 &&
-                      (session.variance > 0
+                    getOperationalSessionVariance(session) !== 0 &&
+                      (getOperationalSessionVariance(session) > 0
                         ? "text-amber-700 dark:text-amber-300"
                         : "text-destructive")
                   )}
                 >
                   {session.variance != null
-                    ? `${session.variance > 0 ? "+" : ""}${formatCurrency(session.variance)}`
+                    ? `${getOperationalSessionVariance(session) > 0 ? "+" : ""}${formatCurrency(getOperationalSessionVariance(session))}`
                     : "—"}
                 </span>
               ),
@@ -183,15 +183,14 @@ export function ClosedSessionsTable({
                     <TableCell
                       className={cn(
                         "font-medium tabular-nums",
-                        session.variance != null &&
-                          session.variance !== 0 &&
-                          (session.variance > 0
+                        getOperationalSessionVariance(session) !== 0 &&
+                          (getOperationalSessionVariance(session) > 0
                             ? "text-amber-700 dark:text-amber-300"
                             : "text-destructive")
                       )}
                     >
                       {session.variance != null
-                        ? `${session.variance > 0 ? "+" : ""}${formatCurrency(session.variance)}`
+                        ? `${getOperationalSessionVariance(session) > 0 ? "+" : ""}${formatCurrency(getOperationalSessionVariance(session))}`
                         : "—"}
                     </TableCell>
                     <TableCell>
