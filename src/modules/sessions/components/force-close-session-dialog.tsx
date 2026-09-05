@@ -108,6 +108,7 @@ export function ForceCloseSessionDialog({
                 {new Date(summary.openedAt).toLocaleString("ar-EG", {
                   dateStyle: "medium",
                   timeStyle: "short",
+                  timeZone: "Africa/Cairo",
                 })}{" "}
                 · {summary.durationLabel}
               </p>

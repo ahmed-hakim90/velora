@@ -1,6 +1,6 @@
 import { getSessionClosingData } from "@/modules/reports/actions/session-report.actions";
 import { PrintableDocument } from "@/modules/reports/components/printable-document";
-import { formatCurrency, formatDateTime } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 import { LocalizedText } from "@/components/Velora/localized-text";
 
 export default async function PrintSessionClosingPage({
@@ -36,7 +36,11 @@ export default async function PrintSessionClosingPage({
         receiptFooter: null,
       }}
       title="Session Closing Report"
-      subtitle={`${data.cashierName} · ${formatDateTime(data.session.opened_at)}`}
+      subtitle={`${data.cashierName} · ${new Intl.DateTimeFormat("ar-EG", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: data.org.timezone || "Africa/Cairo",
+      }).format(new Date(data.session.opened_at))}`}
       generatedBy={data.generatedBy}
       generatedAt={data.generatedAt}
     >

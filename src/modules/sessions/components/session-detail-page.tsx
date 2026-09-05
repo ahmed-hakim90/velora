@@ -13,6 +13,7 @@ function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString("ar-EG", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: "Africa/Cairo",
   });
 }
 

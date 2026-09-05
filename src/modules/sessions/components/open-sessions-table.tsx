@@ -24,6 +24,7 @@ function formatOpened(iso: string) {
   return new Date(iso).toLocaleString("ar-EG", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: "Africa/Cairo",
   });
 }
 
@@ -31,6 +32,7 @@ function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("ar-EG", {
     hour: "numeric",
     minute: "2-digit",
+    timeZone: "Africa/Cairo",
   });
 }
 

@@ -158,7 +158,7 @@ export function CloseSessionStepper({
           <div className="space-y-1">
             <h3 className={cn("font-heading font-semibold", embedded ? "text-base" : "text-lg")}>{t("Session summary")}</h3>
             <p className={cn("text-muted-foreground", embedded ? "text-xs" : "text-sm")}>{t("Cashier")}: {cashierName}</p>
-            <p className={cn("text-muted-foreground", embedded ? "text-xs" : "text-sm")}>{t("Opened at")} {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(session.opened_at))}</p>
+            <p className={cn("text-muted-foreground", embedded ? "text-xs" : "text-sm")}>{t("Opened at")} {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Cairo" }).format(new Date(session.opened_at))}</p>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             <dl className={cn("rounded-xl border border-border/60 bg-muted/20 text-sm", embedded ? "space-y-1.5 p-2.5" : "space-y-2 p-3")}>
