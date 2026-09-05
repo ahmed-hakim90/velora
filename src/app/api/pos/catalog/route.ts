@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { AuthError } from "@/lib/auth/guards";
-import { requirePosAccess } from "@/lib/auth/pos-access";
+import { PosAccessError, requirePosAccess } from "@/lib/auth/pos-access";
 import * as permissionRepo from "@/lib/repositories/permission.repository";
 import { getCatalogForPOS } from "@/modules/pos/services/catalog.service";
 
@@ -24,7 +24,14 @@ export async function GET() {
       fetchedAt: new Date().toISOString(),
     });
   } catch (error) {
-    const status = error instanceof AuthError ? (error.status ?? 403) : 500;
+    const status =
+      error instanceof AuthError
+        ? (error.status ?? 403)
+        : error instanceof PosAccessError
+          ? error.code === "login_required"
+            ? 401
+            : 403
+          : 500;
     const message =
       error instanceof Error ? error.message : "فشل تحميل قائمة المنتجات";
     return NextResponse.json({ error: message }, { status });

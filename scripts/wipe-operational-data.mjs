@@ -1,5 +1,5 @@
 /**
- * Wipe operational/transactional data while keeping users and products.
+ * Wipe operational/transactional data while keeping master data.
  *
  * Usage:
  *   CONFIRM_WIPE=yes npm run db:wipe-operational
@@ -51,36 +51,55 @@ const TABLES_TO_WIPE = [
   "order_item_deductions",
   "order_payments",
   "order_items",
-  "orders",
+  "loyalty_ledger",
   "online_order_items",
   "online_orders",
+  "orders",
+  "journal_lines",
+  "journal_entries",
+  "cash_treasury_ledger",
+  "cashier_vault_ledger",
   "inventory_batch_movements",
   "inventory_batches",
   "inventory_movements",
-  "stock_levels",
   "stock_count_lines",
   "stock_counts",
-  "cashier_sessions",
+  "stock_levels",
+  "pos_held_carts",
   "customer_ledger",
   "customer_payments",
-  "customers",
   "expenses",
+  "customs_certificate_costs",
+  "customs_certificates",
+  "purchase_container_lines",
+  "purchase_containers",
   "purchase_invoice_lines",
   "purchase_invoices",
   "supplier_payments",
   "transfer_order_lines",
   "transfer_orders",
   "waste_records",
+  "product_serial_numbers",
+  "cashier_sessions",
+  "monthly_closes",
+  "document_number_counters",
   "audit_logs",
   "pin_attempts",
   "device_pairing_codes",
   "device_pairing_attempts",
   "import_jobs",
-  "loyalty_ledger",
-  "product_serial_numbers",
 ];
 
-const KEEP_COUNTS = ["users", "products", "categories"];
+const KEEP_COUNTS = [
+  "users",
+  "stores",
+  "products",
+  "categories",
+  "customers",
+  "suppliers",
+  "warehouses",
+  "gl_accounts",
+];
 
 async function countTable(admin, table) {
   const { count, error } = await admin.from(table).select("*", { count: "exact", head: true });
@@ -93,6 +112,21 @@ async function wipeTable(admin, table) {
   if (error) {
     const fallback = await admin.from(table).delete().gte("created_at", "1970-01-01T00:00:00Z");
     if (fallback.error) throw new Error(`${table}: ${error.message}`);
+  }
+}
+
+async function resetMasterBalances(admin) {
+  const updates = [
+    ["customers", { account_balance: 0, total_spent: 0, visit_count: 0 }],
+    ["suppliers", { opening_balance: 0 }],
+    ["cash_treasuries", { balance: 0 }],
+    ["cashier_vaults", { balance: 0, pending_opening_float: 0 }],
+  ];
+  for (const [table, values] of updates) {
+    process.stdout.write(`Resetting ${table} balances...`);
+    const { error } = await admin.from(table).update(values).not("id", "is", null);
+    if (error) throw new Error(`${table}: ${error.message}`);
+    console.log(" done");
   }
 }
 
@@ -111,12 +145,13 @@ async function main() {
     await wipeTable(admin, table);
     console.log(" done");
   }
+  await resetMasterBalances(admin);
 
   console.log("\nAfter:");
   for (const table of [...KEEP_COUNTS, "cashier_sessions", "orders", "online_orders", "customers"]) {
     console.log(`  ${table}: ${await countTable(admin, table)}`);
   }
-  console.log("\nDone. Users and products were kept.");
+  console.log("\nDone. Master data was kept and its operational balances were reset.");
 }
 
 main().catch((error) => {
