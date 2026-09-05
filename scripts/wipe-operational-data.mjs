@@ -108,11 +108,23 @@ async function countTable(admin, table) {
 }
 
 async function wipeTable(admin, table) {
-  const { error } = await admin.from(table).delete().not("id", "is", null);
-  if (error) {
-    const fallback = await admin.from(table).delete().gte("created_at", "1970-01-01T00:00:00Z");
-    if (fallback.error) throw new Error(`${table}: ${error.message}`);
+  const filters = [
+    ["id", "not", null],
+    ["org_id", "not", null],
+    ["store_id", "not", null],
+    ["created_at", "gte", "1970-01-01T00:00:00Z"],
+  ];
+  let lastError = null;
+  for (const [column, operator, value] of filters) {
+    const query = admin.from(table).delete();
+    const { error } =
+      operator === "not"
+        ? await query.not(column, "is", value)
+        : await query.gte(column, value);
+    if (!error) return;
+    lastError = error;
   }
+  throw new Error(`${table}: ${lastError?.message ?? "delete failed"}`);
 }
 
 async function resetMasterBalances(admin) {
