@@ -1,10 +1,13 @@
 "use client";
 
 import { useAppRouter as useRouter } from "@/hooks/use-app-router";
-import { Lock } from "lucide-react";
+import Link from "next/link";
+import { LayoutDashboard, Lock } from "lucide-react";
 import { PinPad } from "@/modules/auth/components/pin-pad";
 import { PosLogoutButton } from "@/modules/pos/components/pos-logout-button";
 import { useTranslation } from "@/lib/i18n/use-translation";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface PosCashierPinGateProps {
   currentUserName?: string | null;
@@ -22,7 +25,19 @@ export function PosCashierPinGate({ currentUserName, onSuccess }: PosCashierPinG
           <Lock className="size-5 shrink-0 text-primary" />
           <span className="truncate text-sm font-medium">{t("Cashier locked")}</span>
         </div>
-        <PosLogoutButton />
+        <div className="flex shrink-0 items-center gap-2">
+          <Link
+            href="/"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "h-11 min-w-11 gap-2 rounded-full px-3",
+            )}
+          >
+            <LayoutDashboard className="size-4" aria-hidden />
+            <span className="max-[430px]:sr-only">{t("Administration")}</span>
+          </Link>
+          <PosLogoutButton />
+        </div>
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto overscroll-y-contain px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4 sm:py-5">
