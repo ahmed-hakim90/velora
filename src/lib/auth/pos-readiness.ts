@@ -16,7 +16,6 @@ export interface PosReadiness {
   state: PosReadinessState;
   storeId: string | null;
   cashierId: string | null;
-  deviceId: string | null;
   sessionId: string | null;
 }
 
@@ -47,7 +46,6 @@ export const getPosReadiness = cache(async (): Promise<PosReadiness> => {
       state: "login_required",
       storeId: null,
       cashierId: null,
-      deviceId: null,
       sessionId: null,
     };
   }
@@ -63,7 +61,6 @@ export const getPosReadiness = cache(async (): Promise<PosReadiness> => {
           state: "cashier_required",
           storeId,
           cashierId: null,
-          deviceId: null,
           sessionId: null,
         };
       }
@@ -71,7 +68,6 @@ export const getPosReadiness = cache(async (): Promise<PosReadiness> => {
         state: mapPosAccessError(e.code),
         storeId: null,
         cashierId: null,
-        deviceId: null,
         sessionId: null,
       };
     }
@@ -84,7 +80,6 @@ export const getPosReadiness = cache(async (): Promise<PosReadiness> => {
       state: "no_session",
       storeId: ctx.storeId,
       cashierId: ctx.activeCashierId,
-      deviceId: ctx.deviceId,
       sessionId: null,
     };
   }
@@ -97,7 +92,6 @@ export const getPosReadiness = cache(async (): Promise<PosReadiness> => {
       state: "session_expired",
       storeId: ctx.storeId,
       cashierId: ctx.activeCashierId,
-      deviceId: ctx.deviceId,
       sessionId: session.id,
     };
   }
@@ -107,7 +101,6 @@ export const getPosReadiness = cache(async (): Promise<PosReadiness> => {
       state: "session_warning",
       storeId: ctx.storeId,
       cashierId: ctx.activeCashierId,
-      deviceId: ctx.deviceId,
       sessionId: session.id,
     };
   }
@@ -116,7 +109,6 @@ export const getPosReadiness = cache(async (): Promise<PosReadiness> => {
     state: "ready",
     storeId: ctx.storeId,
     cashierId: ctx.activeCashierId,
-    deviceId: ctx.deviceId,
     sessionId: session.id,
   };
 });

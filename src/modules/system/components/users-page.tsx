@@ -47,9 +47,6 @@ import {
   updateUserAction,
 } from "@/modules/system/actions/system.actions";
 import { useTranslation } from "@/lib/i18n/use-translation";
-/** Device ACL UI retired — cashiers use store slug + PIN only. */
-const SHOW_DEVICE_ACL_UI = false;
-
 function roleLabel(role: UserRole): string {
   return ROLE_LABELS[role];
 }
@@ -59,16 +56,12 @@ type UserEditState = {
   email: string;
   role: AppUser["role"];
   storeIds: string[];
-  deviceIds: string[];
-  restrictDevices: boolean;
   isActive: boolean;
 };
 
 interface UsersPageProps {
   users: AppUser[];
   stores: Store[];
-  devices: { id: string; store_id: string; name: string }[];
-  userDeviceIds: Record<string, string[]>;
   actorRole?: UserRole;
   permissionsData: {
     permissions: Permission[];
@@ -81,8 +74,6 @@ interface UsersPageProps {
 export function UsersPage({
   users,
   stores,
-  devices,
-  userDeviceIds,
   actorRole = "owner",
   permissionsData,
   embedded,
@@ -99,8 +90,6 @@ export function UsersPage({
     email: "",
     role: "cashier" as AppUser["role"],
     storeIds: [stores[0]?.id ?? ""].filter(Boolean),
-    deviceIds: [] as string[],
-    restrictDevices: false,
     pin: "",
     password: "",
   });
@@ -113,8 +102,6 @@ export function UsersPage({
           email: u.email,
           role: u.role,
           storeIds: u.store_ids,
-          deviceIds: userDeviceIds[u.id] ?? [],
-          restrictDevices: (userDeviceIds[u.id]?.length ?? 0) > 0,
           isActive: u.is_active,
         },
       ]),
@@ -165,8 +152,6 @@ export function UsersPage({
           email: user.email,
           role: user.role,
           storeIds: user.store_ids,
-          deviceIds: userDeviceIds[user.id] ?? [],
-          restrictDevices: (userDeviceIds[user.id]?.length ?? 0) > 0,
           isActive: user.is_active,
         } satisfies UserEditState),
     }));
@@ -204,21 +189,17 @@ export function UsersPage({
     }
 
     startTransition(async () => {
-      const result = await updateUserAction(id, {
-        ...current,
-        deviceIds: SHOW_DEVICE_ACL_UI
-          ? current.restrictDevices
-            ? current.deviceIds
-            : []
-          : [],
-      });
+      const result = await updateUserAction(id, current);
       if (!result.success) {
         toast.error(result.error ?? t("Could not update user"));
         return;
       }
 
       if (pinEntered) {
-        const pinResult = await resetUserPinAction(id, pinValue);
+        const pinFormData = new FormData();
+        pinFormData.set("userId", id);
+        pinFormData.set("pin", pinValue);
+        const pinResult = await resetUserPinAction(pinFormData);
         if (!pinResult.success) {
           toast.error(
             pinResult.error ?? t("Details were saved, but PIN reset failed"),
@@ -229,7 +210,10 @@ export function UsersPage({
       }
 
       if (passwordEntered) {
-        const passwordResult = await resetUserPasswordAction(id, passwordValue);
+        const passwordFormData = new FormData();
+        passwordFormData.set("userId", id);
+        passwordFormData.set("password", passwordValue);
+        const passwordResult = await resetUserPasswordAction(passwordFormData);
         if (!passwordResult.success) {
           toast.error(
             passwordResult.error ??
@@ -260,14 +244,7 @@ export function UsersPage({
     }
 
     startTransition(async () => {
-      const result = await createUserAction({
-        ...form,
-        deviceIds: SHOW_DEVICE_ACL_UI
-          ? form.restrictDevices
-            ? form.deviceIds
-            : undefined
-          : undefined,
-      });
+      const result = await createUserAction(form);
       if (result.success) {
         toast.success(t("User created"));
         setForm({
@@ -275,8 +252,6 @@ export function UsersPage({
           email: "",
           role: "cashier",
           storeIds: [stores[0]?.id ?? ""].filter(Boolean),
-          deviceIds: [],
-          restrictDevices: false,
           pin: "",
           password: "",
         });
@@ -439,7 +414,7 @@ export function UsersPage({
                   {form.role !== "cashier" ? (
                     <p className="text-xs text-muted-foreground">
                       {t(
-                        "Used to approve discounts, open the cash drawer, and sell after session expiry. It does not switch the device cashier.",
+                        "Used to approve discounts, open the cash drawer, and sell after session expiry. It does not switch the active cashier.",
                       )}
                     </p>
                   ) : null}
@@ -468,60 +443,6 @@ export function UsersPage({
                   ))}
                 </div>
               </div>
-              {SHOW_DEVICE_ACL_UI && form.role === "cashier" && (
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-medium">
-                    <Checkbox
-                      checked={form.restrictDevices}
-                      onCheckedChange={(v) =>
-                        setForm({
-                          ...form,
-                          restrictDevices: v === true,
-                          deviceIds: v === true ? form.deviceIds : [],
-                        })
-                      }
-                    />
-                    {t("Restrict user to specific cashier devices")}
-                  </label>
-                  {form.restrictDevices ? (
-                    <div className="grid gap-2 rounded-xl border border-border/60 p-3">
-                      {devices
-                        .filter((d) => form.storeIds.includes(d.store_id))
-                        .map((device) => (
-                          <label
-                            key={device.id}
-                            className="flex items-center gap-2 text-sm"
-                          >
-                            <Checkbox
-                              checked={form.deviceIds.includes(device.id)}
-                              onCheckedChange={(v) => {
-                                const next =
-                                  v === true
-                                    ? [
-                                        ...new Set([
-                                          ...form.deviceIds,
-                                          device.id,
-                                        ]),
-                                      ]
-                                    : form.deviceIds.filter(
-                                        (id) => id !== device.id,
-                                      );
-                                setForm({ ...form, deviceIds: next });
-                              }}
-                            />
-                            {device.name}
-                          </label>
-                        ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      {t(
-                        "Leave empty to allow all devices in permitted stores.",
-                      )}
-                    </p>
-                  )}
-                </div>
-              )}
               <Button
                 onClick={create}
                 disabled={pending || !canCreate}
@@ -641,57 +562,6 @@ export function UsersPage({
                     ))}
                   </div>
                 </div>
-
-                {SHOW_DEVICE_ACL_UI && editing.role === "cashier" ? (
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-sm font-medium">
-                      <Checkbox
-                        checked={editing.restrictDevices}
-                        onCheckedChange={(v) =>
-                          patchEdit(editingUser.id, {
-                            restrictDevices: v === true,
-                            deviceIds: v === true ? editing.deviceIds : [],
-                          })
-                        }
-                      />
-                      {t("Restrict to specific devices")}
-                    </label>
-                    {editing.restrictDevices ? (
-                      <div className="grid gap-2 rounded-xl border border-border/60 p-3">
-                        {devices
-                          .filter((d) => editing.storeIds.includes(d.store_id))
-                          .map((device) => (
-                            <label
-                              key={device.id}
-                              className="flex items-center gap-2 text-sm"
-                            >
-                              <Checkbox
-                                checked={editing.deviceIds.includes(device.id)}
-                                onCheckedChange={(v) => {
-                                  const next =
-                                    v === true
-                                      ? [
-                                          ...new Set([
-                                            ...editing.deviceIds,
-                                            device.id,
-                                          ]),
-                                        ]
-                                      : editing.deviceIds.filter(
-                                          (id) => id !== device.id,
-                                        );
-                                  patchEdit(editingUser.id, {
-                                    deviceIds: next,
-                                  });
-                                }}
-                              />
-                              {device.name}
-                            </label>
-                          ))}
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-
                 {userRoleSupportsPin(editing.role) ? (
                   <div className="space-y-2 rounded-xl border border-border/60 p-3">
                     <Label htmlFor="edit-pin">{t("New PIN (optional)")}</Label>
@@ -715,7 +585,7 @@ export function UsersPage({
                             "The new PIN will be applied when you save changes.",
                           )
                         : t(
-                            "This PIN approves discounts, drawer opening, and sales after expiry. It is not the device cashier PIN.",
+                            "This PIN approves discounts, drawer opening, and sales after expiry. It does not switch the active cashier.",
                           )}
                     </p>
                   </div>

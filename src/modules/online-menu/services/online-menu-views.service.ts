@@ -35,7 +35,7 @@ export async function recordOnlineMenuView(input: {
     const { error } = await admin.rpc("record_online_menu_view", {
       p_slug: slug || "",
       p_source: source,
-      p_org_id: orgId,
+      p_org_id: orgId ?? undefined,
     });
     if (error) {
       console.warn("[online-menu-views] record skipped:", error.message);

@@ -21,7 +21,6 @@ export interface CheckoutInput {
   storeId: string;
   sessionId: string | null;
   cashierId: string;
-  deviceId?: string;
   cart: CartLine[];
   customer: Customer | null;
   paymentMethod: PaymentMethod;
@@ -54,7 +53,7 @@ export async function completeCheckout(input: CheckoutInput): Promise<CheckoutRe
     throw new Error("جلسة كاشير نشطة مطلوبة");
   }
 
-  // Catalog/stock/variant/device checks live in complete_checkout RPC — avoid
+  // Catalog/stock/variant checks live in complete_checkout RPC — avoid
   // duplicate pre-RPC round-trips that dominate cashier save latency.
   let session = input.session && input.session.id === input.sessionId ? input.session : null;
   if (!input.sessionGateChecked || !session) {
@@ -172,7 +171,6 @@ export async function completeCheckout(input: CheckoutInput): Promise<CheckoutRe
     storeId: input.storeId,
     sessionId: input.sessionId,
     cashierId: input.cashierId,
-    deviceId: input.deviceId ?? null,
     customerId: input.customer?.id ?? null,
     paymentMethod: payments[0]?.method ?? input.paymentMethod,
     salesMode: input.salesMode ?? "retail",

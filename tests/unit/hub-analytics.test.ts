@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   buildAccountingHubAnalytics,
-  buildAdminHubAnalytics,
   buildCatalogHubAnalytics,
   buildCustomersHubAnalytics,
   buildOperationsHubAnalytics,
@@ -107,14 +106,4 @@ describe("hub analytics builders", () => {
     expect(analytics.chart?.rows.find((r) => r.label === "أوتو")?.value).toBe(10);
   });
 
-  it("builds admin devices by store chart", () => {
-    const analytics = buildAdminHubAnalytics({
-      totalDevices: 5,
-      activeDevices: 4,
-      seenRecently: 3,
-      staleOrNever: 1,
-      byStoreChart: [{ label: "فرع أ", count: 3 }],
-    });
-    expect(analytics.chart?.rows[0]?.value).toBe(3);
-  });
 });

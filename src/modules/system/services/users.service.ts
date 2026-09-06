@@ -1,6 +1,5 @@
 import { slugifyBranchName } from "@/lib/slugify";
 import * as userRepo from "@/lib/repositories/user.repository";
-import * as deviceRepo from "@/lib/repositories/device.repository";
 import * as storeRepo from "@/lib/repositories/store.repository";
 import * as warehouseRepo from "@/lib/repositories/warehouse.repository";
 import { writeAuditLog } from "@/lib/services/audit.service";
@@ -26,7 +25,6 @@ export async function createUser(input: {
   email: string;
   role: UserRole;
   storeIds: string[];
-  deviceIds?: string[];
   pin?: string;
   password: string;
   userId: string;
@@ -54,7 +52,6 @@ export async function createUser(input: {
   const orgId = await getOrgId();
   const authUserId = authData.user.id;
   const storeIds = input.storeIds.filter(Boolean);
-  const deviceIds = input.deviceIds?.filter(Boolean) ?? [];
   let appUserId: string | null = null;
 
   try {
@@ -85,9 +82,6 @@ export async function createUser(input: {
 
     if (input.pin && userRoleSupportsPin(input.role)) {
       await userRepo.setPin(user.id, input.pin);
-    }
-    if (deviceIds.length) {
-      await deviceRepo.setUserDeviceAccess(user.id, deviceIds);
     }
 
     await writeAuditLog({
@@ -168,9 +162,7 @@ export async function resetUserPassword(
 
 export async function updateUser(
   id: string,
-  input: Partial<Pick<AppUser, "name" | "email" | "role" | "is_active" | "store_ids">> & {
-    deviceIds?: string[];
-  },
+  input: Partial<Pick<AppUser, "name" | "email" | "role" | "is_active" | "store_ids">>,
   userId: string
 ): Promise<AppUser | null> {
   const existing = await userRepo.getUser(id);
@@ -195,9 +187,6 @@ export async function updateUser(
     is_active: input.is_active,
     storeIds: input.store_ids,
   });
-  if (input.deviceIds !== undefined) {
-    await deviceRepo.setUserDeviceAccess(id, input.deviceIds);
-  }
   if (updated) {
     const orgId = await getOrgId();
     await writeAuditLog({
@@ -254,7 +243,6 @@ const USER_DELETE_BLOCKING_REFS: { table: string; column: string; label: string 
   { table: "cashier_vault_ledger", column: "created_by", label: "خزنة كاشير" },
   { table: "import_jobs", column: "created_by", label: "استيراد بيانات" },
   { table: "pos_held_carts", column: "created_by", label: "سلاّت معلّقة" },
-  { table: "device_pairing_codes", column: "created_by", label: "أكواد ربط أجهزة" },
 ];
 
 export class UserDeleteBlockedError extends Error {
@@ -416,7 +404,7 @@ async function findStoreDeleteBlockers(storeId: string): Promise<string[]> {
 
 /**
  * Hard-delete a store when it has no operational/financial history.
- * Cascades scaffolding (default warehouse, devices, access). Audit store_id is nulled for FK.
+ * Cascades scaffolding (default warehouse and access). Audit store_id is nulled for FK.
  * If history exists → throws StoreDeleteBlockedError (caller should deactivate instead).
  */
 export async function deleteStorePermanently(id: string, actorUserId: string): Promise<void> {
@@ -471,76 +459,6 @@ export async function deleteStorePermanently(id: string, actorUserId: string): P
 
 export async function listStores() {
   return storeRepo.listStores();
-}
-
-export async function listDevices() {
-  return deviceRepo.listDevices();
-}
-
-export async function createDevice(
-  input: { storeId: string; name: string },
-  userId: string
-) {
-  const orgIdForLimit = await getOrgId();
-  const { assertPlatformCapacity } = await import(
-    "@/modules/platform/services/platform-plan.service"
-  );
-  await assertPlatformCapacity(orgIdForLimit, "devices");
-
-  const { device } = await deviceRepo.createDevice(input);
-  const orgId = await getOrgId();
-  await writeAuditLog({
-    orgId,
-    storeId: input.storeId,
-    userId,
-    action: "device.created",
-    entityType: "device",
-    entityId: device.id,
-  });
-  return device;
-}
-
-export async function updateDevice(
-  id: string,
-  input: {
-    storeId?: string;
-    name?: string;
-    isActive?: boolean;
-    scaleEnabled?: boolean;
-    scaleSettings?: Record<string, unknown>;
-  },
-  userId: string
-) {
-  const device = await deviceRepo.updateDevice({ id, ...input });
-  if (!device) {
-    throw new Error("Device not found or update not allowed");
-  }
-  const orgId = await getOrgId();
-  await writeAuditLog({
-    orgId,
-    storeId: device.store_id,
-    userId,
-    action: "device.updated",
-    entityType: "device",
-    entityId: device.id,
-  });
-  return device;
-}
-
-export async function deleteDevice(id: string, userId: string) {
-  const device = await deviceRepo.deleteDevice(id);
-  if (device) {
-    const orgId = await getOrgId();
-    await writeAuditLog({
-      orgId,
-      storeId: device.store_id,
-      userId,
-      action: "device.deleted",
-      entityType: "device",
-      entityId: device.id,
-    });
-  }
-  return device;
 }
 
 export async function createStore(

@@ -58,7 +58,6 @@ describe("executive analytics pure helpers", () => {
       {
         id: "s1",
         store_id: "st1",
-        device_id: null,
         cashier_id: "c1",
         opened_at: "2026-08-02T08:00:00.000Z",
         closed_at: "2026-08-02T16:00:00.000Z",

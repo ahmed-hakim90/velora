@@ -7,7 +7,6 @@ function row(overrides: Partial<PosHeldCartRow> = {}): PosHeldCartRow {
     id: "hold-1",
     org_id: "org-1",
     store_id: "store-1",
-    device_id: "device-1",
     created_by: "user-1",
     name: "Mona",
     payload: {
@@ -35,7 +34,7 @@ function row(overrides: Partial<PosHeldCartRow> = {}): PosHeldCartRow {
 }
 
 describe("held cart mapping", () => {
-  it("maps a valid store+device hold payload", () => {
+  it("maps a valid held-cart payload", () => {
     const held = mapHeldCartRowToHeldCart(row());
     expect(held).toMatchObject({
       id: "hold-1",

@@ -33,7 +33,8 @@ export async function lockPosCashierAction(): Promise<{ success: boolean; error?
   }
 }
 
-export async function verifyPinAction(pin: string): Promise<VerifyPinResult> {
+export async function verifyPinAction(formData: FormData): Promise<VerifyPinResult> {
+  const pin = String(formData.get("pin") ?? "").trim();
   const user = await getCurrentUser();
   if (!user) {
     return { success: false, error: "لازم تسجّل الدخول أولاً." };

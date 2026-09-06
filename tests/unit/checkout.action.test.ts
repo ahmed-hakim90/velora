@@ -60,14 +60,12 @@ describe("checkoutAction payment validation", () => {
         store_ids: ["store-1"],
       },
       storeId: "store-1",
-      deviceId: "device-1",
       activeCashierId: "cashier-1",
     });
     vi.mocked(posAccess.getActiveSessionForPos).mockResolvedValue({
       id: "session-1",
       store_id: "store-1",
       cashier_id: "cashier-1",
-      device_id: "device-1",
       status: "open",
       opening_cash: 0,
       opened_at: new Date().toISOString(),

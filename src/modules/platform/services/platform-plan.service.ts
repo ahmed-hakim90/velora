@@ -11,7 +11,6 @@ export type PlatformPlan = {
   plan: PlatformPlanId;
   max_stores: number | null;
   max_users: number | null;
-  max_devices: number | null;
   /** White-label custom domain for the organization. Free plan defaults off. */
   allow_custom_domain: boolean;
   notes: string;
@@ -21,7 +20,6 @@ export const DEFAULT_PLATFORM_PLAN: PlatformPlan = {
   plan: "starter",
   max_stores: 3,
   max_users: 20,
-  max_devices: 10,
   allow_custom_domain: true,
   notes: "",
 };
@@ -34,28 +32,24 @@ export const PLATFORM_PLAN_PRESETS: Record<
     plan: "free",
     max_stores: 1,
     max_users: 5,
-    max_devices: 2,
     allow_custom_domain: false,
   },
   starter: {
     plan: "starter",
     max_stores: 3,
     max_users: 20,
-    max_devices: 10,
     allow_custom_domain: true,
   },
   growth: {
     plan: "growth",
     max_stores: 10,
     max_users: 100,
-    max_devices: 40,
     allow_custom_domain: true,
   },
   enterprise: {
     plan: "enterprise",
     max_stores: null,
     max_users: null,
-    max_devices: null,
     allow_custom_domain: true,
   },
 };
@@ -97,7 +91,6 @@ export function normalizePlatformPlan(value: unknown): PlatformPlan {
     plan: "custom",
     max_stores: normalizeLimit(raw.max_stores),
     max_users: normalizeLimit(raw.max_users),
-    max_devices: normalizeLimit(raw.max_devices),
     allow_custom_domain:
       typeof raw.allow_custom_domain === "boolean" ? raw.allow_custom_domain : true,
     notes: typeof raw.notes === "string" ? raw.notes : "",
@@ -146,12 +139,11 @@ export async function setPlatformPlan(
 export type PlatformUsage = {
   stores: number;
   users: number;
-  devices: number;
 };
 
 export async function getPlatformUsage(orgId: string): Promise<PlatformUsage> {
   const admin = createAdminClient();
-  const [{ count: stores }, { count: users }, storesRes] = await Promise.all([
+  const [{ count: stores }, { count: users }] = await Promise.all([
     admin
       .from("stores")
       .select("id", { count: "exact", head: true })
@@ -161,24 +153,11 @@ export async function getPlatformUsage(orgId: string): Promise<PlatformUsage> {
       .select("id", { count: "exact", head: true })
       .eq("org_id", orgId)
       .eq("is_active", true),
-    admin.from("stores").select("id").eq("org_id", orgId),
   ]);
-
-  const storeIds = (storesRes.data ?? []).map((s) => s.id);
-  let devices = 0;
-  if (storeIds.length) {
-    const { count } = await admin
-      .from("devices")
-      .select("id", { count: "exact", head: true })
-      .in("store_id", storeIds)
-      .eq("is_active", true);
-    devices = count ?? 0;
-  }
 
   return {
     stores: stores ?? 0,
     users: users ?? 0,
-    devices,
   };
 }
 
@@ -201,7 +180,6 @@ export type PlatformOrgUsageRow = {
   pressure: {
     stores: PlatformUsagePressure;
     users: PlatformUsagePressure;
-    devices: PlatformUsagePressure;
     worst: PlatformUsagePressure;
   };
 };
@@ -226,7 +204,7 @@ function worstPressure(
 
 /**
  * Cross-tenant plan consumption for the platform usage console.
- * Capacity counts match assertPlatformCapacity (active users/devices).
+ * Capacity counts match assertPlatformCapacity (active users).
  */
 export async function listPlatformUsageMatrix(): Promise<PlatformOrgUsageRow[]> {
   const {
@@ -269,37 +247,15 @@ export async function listPlatformUsageMatrix(): Promise<PlatformOrgUsageRow[]> 
     storesByOrg.set(store.org_id, list);
   }
 
-  const allStoreIds = (storesRes.data ?? []).map((s) => s.id);
-  const devicesByStore = new Map<string, number>();
-  if (allStoreIds.length > 0) {
-    const { data: devices, error: devicesError } = await admin
-      .from("devices")
-      .select("store_id")
-      .in("store_id", allStoreIds)
-      .eq("is_active", true);
-    if (devicesError) throw new Error(devicesError.message);
-    for (const device of devices ?? []) {
-      devicesByStore.set(
-        device.store_id,
-        (devicesByStore.get(device.store_id) ?? 0) + 1
-      );
-    }
-  }
-
   return summaries.map((org) => {
     const storeIds = storesByOrg.get(org.id) ?? [];
     const usage: PlatformUsage = {
       stores: storeIds.length,
       users: usersByOrg.get(org.id) ?? 0,
-      devices: storeIds.reduce(
-        (sum, storeId) => sum + (devicesByStore.get(storeId) ?? 0),
-        0
-      ),
     };
     const plan = planByOrg.get(org.id) ?? DEFAULT_PLATFORM_PLAN;
     const storesPressure = usagePressure(usage.stores, plan.max_stores);
     const usersPressure = usagePressure(usage.users, plan.max_users);
-    const devicesPressure = usagePressure(usage.devices, plan.max_devices);
 
     return {
       org_id: org.id,
@@ -318,8 +274,7 @@ export async function listPlatformUsageMatrix(): Promise<PlatformOrgUsageRow[]> 
       pressure: {
         stores: storesPressure,
         users: usersPressure,
-        devices: devicesPressure,
-        worst: worstPressure(storesPressure, usersPressure, devicesPressure),
+        worst: worstPressure(storesPressure, usersPressure),
       },
     };
   });
@@ -327,24 +282,19 @@ export async function listPlatformUsageMatrix(): Promise<PlatformOrgUsageRow[]> 
 
 export async function assertPlatformCapacity(
   orgId: string,
-  kind: "stores" | "users" | "devices"
+  kind: "stores" | "users"
 ): Promise<void> {
   const [plan, usage] = await Promise.all([
     getPlatformPlan(orgId),
     getPlatformUsage(orgId),
   ]);
 
-  const limit =
-    kind === "stores"
-      ? plan.max_stores
-      : kind === "users"
-        ? plan.max_users
-        : plan.max_devices;
+  const limit = kind === "stores" ? plan.max_stores : plan.max_users;
   if (limit == null) return;
 
   const current = usage[kind];
   if (current >= limit) {
-    const labels = { stores: "الفروع", users: "المستخدمين", devices: "سجلات التشغيل" } as const;
+    const labels = { stores: "الفروع", users: "المستخدمين" } as const;
     throw new Error(
       `وصلت الشركة للحد الأقصى من ${labels[kind]} حسب باقة المنصة (${current}/${limit}). تواصل مع مشرف المنصة.`
     );

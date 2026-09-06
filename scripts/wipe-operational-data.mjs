@@ -85,8 +85,6 @@ const TABLES_TO_WIPE = [
   "document_number_counters",
   "audit_logs",
   "pin_attempts",
-  "device_pairing_codes",
-  "device_pairing_attempts",
   "import_jobs",
 ];
 

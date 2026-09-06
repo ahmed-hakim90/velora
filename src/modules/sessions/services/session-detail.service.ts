@@ -2,7 +2,6 @@ import * as customerRepo from "@/lib/repositories/customer.repository";
 import * as orderRepo from "@/lib/repositories/order.repository";
 import * as storeRepo from "@/lib/repositories/store.repository";
 import * as userRepo from "@/lib/repositories/user.repository";
-import * as deviceRepo from "@/lib/repositories/device.repository";
 import type { CashierSession, Order } from "@/lib/types";
 import { getSessionById } from "@/modules/sessions/services/session.service";
 
@@ -15,7 +14,6 @@ export interface SessionDetail {
   session: CashierSession;
   storeName: string;
   cashierName: string;
-  deviceName: string | null;
   closedByName: string | null;
   invoices: SessionInvoiceRow[];
   orderCount: number;
@@ -38,10 +36,9 @@ export async function getSessionDetail(
   const store = await storeRepo.getStore(session.store_id);
   if (!store) return null;
 
-  const [orders, users, devices] = await Promise.all([
+  const [orders, users] = await Promise.all([
     orderRepo.listOrdersBySessionIds([sessionId]),
     userRepo.listUsers(),
-    deviceRepo.listDevices(),
   ]);
 
   const customerIds = orders
@@ -50,7 +47,6 @@ export async function getSessionDetail(
   const customers = await customerRepo.getCustomersByIds(customerIds);
   const customerMap = new Map(customers.map((c) => [c.id, c.name]));
   const userMap = new Map(users.map((u) => [u.id, u.name]));
-  const deviceMap = new Map(devices.map((d) => [d.id, d.name]));
 
   const invoices: SessionInvoiceRow[] = orders.map((order) => ({
     ...order,
@@ -66,9 +62,6 @@ export async function getSessionDetail(
     session,
     storeName: store.name,
     cashierName: userMap.get(session.cashier_id) ?? "الكاشير",
-    deviceName: session.device_id
-      ? (deviceMap.get(session.device_id) ?? null)
-      : null,
     closedByName: session.closed_by
       ? (userMap.get(session.closed_by) ?? null)
       : null,

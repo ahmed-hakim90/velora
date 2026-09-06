@@ -100,8 +100,6 @@ export const onboardingPayloadSchema = z.object({
     createDefaultExpenseCategories: z.boolean(),
     createDefaultProductCategories: z.boolean(),
     createDefaultInventoryUnits: z.boolean(),
-    createFirstPosDevice: z.boolean(),
-    firstPosDeviceName: z.string().optional(),
   }),
 });
 

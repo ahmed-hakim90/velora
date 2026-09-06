@@ -12,7 +12,6 @@ import {
   type OrganizationSuspendReason,
 } from "@/modules/platform/services/platform-org.service";
 import {
-  exportPlatformDevicesReport,
   exportPlatformOrganizationsReport,
   exportPlatformUsageReport,
   exportPlatformUsersReport,
@@ -36,7 +35,6 @@ import {
 } from "@/modules/platform/services/platform-users.service";
 import {
   forceClosePlatformSession,
-  setPlatformDeviceActive,
 } from "@/modules/platform/services/platform-ops.service";
 import {
   updatePlatformOrgFeatureFlags,
@@ -72,7 +70,6 @@ export type PlatformActionResult<T = void> =
 function revalidatePlatformOrg(orgId?: string) {
   revalidatePath("/platform");
   revalidatePath("/platform/users");
-  revalidatePath("/platform/devices");
   revalidatePath("/platform/sessions");
   revalidatePath("/platform/ops");
   revalidatePath("/platform/usage");
@@ -387,23 +384,6 @@ export async function setPlatformAdminActiveAction(input: {
   }
 }
 
-export async function setPlatformDeviceActiveAction(input: {
-  deviceId: string;
-  isActive: boolean;
-}): Promise<PlatformActionResult> {
-  try {
-    const admin = await requirePlatformAdmin();
-    await setPlatformDeviceActive(admin, input.deviceId, input.isActive);
-    revalidatePlatformOrg();
-    return { ok: true, data: undefined };
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "فشل تحديث الجهاز",
-    };
-  }
-}
-
 export async function forceClosePlatformSessionAction(input: {
   sessionId: string;
   closeReason: string;
@@ -473,21 +453,6 @@ export async function exportPlatformUsersExcelAction(): Promise<
     return {
       ok: false,
       error: error instanceof Error ? error.message : "فشل تصدير المستخدمين",
-    };
-  }
-}
-
-export async function exportPlatformDevicesExcelAction(): Promise<
-  PlatformActionResult<{ base64: string; fileName: string }>
-> {
-  try {
-    await requirePlatformAdmin();
-    const report = await exportPlatformDevicesReport();
-    return { ok: true, data: report };
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "فشل تصدير الأجهزة",
     };
   }
 }

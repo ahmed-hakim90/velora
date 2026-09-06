@@ -19,7 +19,6 @@ const checkoutInput = {
   storeId: "store-1",
   sessionId: "session-1",
   cashierId: "cashier-1",
-  deviceId: "device-1",
   customerId: null,
   paymentMethod: "cash" as const,
   salesMode: "wholesale" as const,

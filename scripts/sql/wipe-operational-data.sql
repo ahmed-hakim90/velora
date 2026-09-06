@@ -29,8 +29,6 @@ TRUNCATE TABLE
   waste_records,
   audit_logs,
   pin_attempts,
-  device_pairing_codes,
-  device_pairing_attempts,
   import_jobs,
   loyalty_ledger,
   product_serial_numbers

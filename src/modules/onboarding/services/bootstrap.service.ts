@@ -235,8 +235,6 @@ export async function initializeOrganization(
       expense_categories: input.initialSetup.createDefaultExpenseCategories,
       product_categories: input.initialSetup.createDefaultProductCategories,
       inventory_units: input.initialSetup.createDefaultInventoryUnits,
-      first_pos_device: input.initialSetup.createFirstPosDevice,
-      first_pos_device_name: input.initialSetup.firstPosDeviceName?.trim() || "POS-1",
     },
     p_owner_email: ownerEmail,
   });

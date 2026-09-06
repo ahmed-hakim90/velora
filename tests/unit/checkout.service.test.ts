@@ -50,7 +50,6 @@ describe("completeCheckout session expiry", () => {
     vi.mocked(sessionRepo.getSession).mockResolvedValue({
       id: "s1",
       store_id: "store1",
-      device_id: null,
       cashier_id: "c1",
       opened_at: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
       closed_at: null,
@@ -83,7 +82,6 @@ describe("completeCheckout session expiry", () => {
     vi.mocked(sessionRepo.getSession).mockResolvedValue({
       id: "s1",
       store_id: "store1",
-      device_id: null,
       cashier_id: "c1",
       opened_at: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
       closed_at: null,
@@ -141,7 +139,6 @@ describe("completeCheckout session expiry", () => {
     vi.mocked(sessionRepo.getSession).mockResolvedValue({
       id: "s1",
       store_id: "store1",
-      device_id: null,
       cashier_id: "c1",
       opened_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
       closed_at: null,
@@ -198,68 +195,10 @@ describe("completeCheckout session expiry", () => {
     );
   });
 
-  it("passes device id to checkout RPC when provided", async () => {
-    vi.mocked(sessionRepo.getSession).mockResolvedValue({
-      id: "s1",
-      store_id: "store1",
-      device_id: "device-a",
-      cashier_id: "c1",
-      opened_at: new Date().toISOString(),
-      closed_at: null,
-      opening_cash: 0,
-      expected_cash: null,
-      actual_cash: null,
-      variance: null,
-      status: "open",
-      notes: null,
-      closed_by: null,
-      close_reason: null,
-      force_closed: false,
-    });
-    vi.mocked(orderRepo.completeCheckoutRpc).mockResolvedValue({
-      order_id: "o1",
-      order_number: "SF-001",
-      subtotal: 10,
-      tax: 0,
-      total: 10,
-    });
-    vi.mocked(orderRepo.getOrder).mockResolvedValue({
-      id: "o1",
-      store_id: "store1",
-      session_id: "s1",
-      order_number: "SF-001",
-      customer_id: null,
-      status: "completed",
-      subtotal: 10,
-      discount: 0,
-      tax: 0,
-      total: 10,
-      payment_status: "paid",
-      created_by: "c1",
-      created_at: new Date().toISOString(),
-    });
-    vi.mocked(settingsService.isFeatureEnabled).mockResolvedValue(false);
-
-    await completeCheckout({
-      storeId: "store1",
-      sessionId: "s1",
-      cashierId: "c1",
-      deviceId: "device-a",
-      cart: [cartLine],
-      customer: null,
-      paymentMethod: "cash",
-    });
-
-    expect(orderRepo.completeCheckoutRpc).toHaveBeenCalledWith(
-      expect.objectContaining({ deviceId: "device-a" })
-    );
-  });
-
   it("uses split checkout RPC when multiple payments are provided", async () => {
     vi.mocked(sessionRepo.getSession).mockResolvedValue({
       id: "s1",
       store_id: "store1",
-      device_id: null,
       cashier_id: "c1",
       opened_at: new Date().toISOString(),
       closed_at: null,
@@ -326,7 +265,6 @@ describe("completeCheckout session expiry", () => {
     vi.mocked(sessionRepo.getSession).mockResolvedValue({
       id: "s1",
       store_id: "store1",
-      device_id: null,
       cashier_id: "c1",
       opened_at: new Date().toISOString(),
       closed_at: null,
@@ -401,7 +339,6 @@ describe("completeCheckout session expiry", () => {
     vi.mocked(sessionRepo.getSession).mockResolvedValue({
       id: "s1",
       store_id: "store1",
-      device_id: null,
       cashier_id: "c1",
       opened_at: new Date().toISOString(),
       closed_at: null,
@@ -434,7 +371,6 @@ describe("completeCheckout session expiry", () => {
     vi.mocked(sessionRepo.getSession).mockResolvedValue({
       id: "s1",
       store_id: "store1",
-      device_id: null,
       cashier_id: "c1",
       opened_at: new Date().toISOString(),
       closed_at: null,
@@ -468,7 +404,6 @@ describe("completeCheckout session expiry", () => {
     vi.mocked(sessionRepo.getSession).mockResolvedValue({
       id: "s1",
       store_id: "store1",
-      device_id: null,
       cashier_id: "c1",
       opened_at: new Date().toISOString(),
       closed_at: null,
@@ -522,52 +457,10 @@ describe("completeCheckout session expiry", () => {
     expect(orderRepo.completeCheckoutRpc).not.toHaveBeenCalled();
   });
 
-  it("passes device id through to RPC for another paired store device", async () => {
-    vi.mocked(sessionRepo.getSession).mockResolvedValue({
-      id: "s1",
-      store_id: "store1",
-      device_id: "device-a",
-      cashier_id: "c1",
-      opened_at: new Date().toISOString(),
-      closed_at: null,
-      opening_cash: 0,
-      expected_cash: null,
-      actual_cash: null,
-      variance: null,
-      status: "open",
-      notes: null,
-      closed_by: null,
-      close_reason: null,
-      force_closed: false,
-    });
-    vi.mocked(orderRepo.completeCheckoutRpc).mockResolvedValue({
-      order_id: "o1",
-      order_number: "SF-001",
-      subtotal: 10,
-      tax: 0,
-      total: 10,
-    });
-
-    await completeCheckout({
-      storeId: "store1",
-      sessionId: "s1",
-      cashierId: "c1",
-      deviceId: "device-b",
-      cart: [cartLine],
-      customer: null,
-      paymentMethod: "cash",
-    });
-
-    expect(orderRepo.completeCheckoutRpc).toHaveBeenCalledWith(
-      expect.objectContaining({ deviceId: "device-b" })
-    );
-  });
-
   it("does not fail the sale when loyalty redeem throws after checkout RPC", async () => {
     vi.mocked(sessionRepo.getSession).mockResolvedValue({
       id: "s1",
       store_id: "store1",
-      device_id: null,
       cashier_id: "c1",
       opened_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
       closed_at: null,

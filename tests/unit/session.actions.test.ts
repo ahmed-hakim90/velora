@@ -40,7 +40,6 @@ describe("quickOpenSessionAction", () => {
         store_ids: ["store-1"],
       },
       storeId: "store-1",
-      deviceId: null,
       activeCashierId: "cashier-1",
     });
     vi.mocked(cashierVault.getCashierVault).mockResolvedValue({
@@ -59,7 +58,6 @@ describe("quickOpenSessionAction", () => {
     vi.mocked(sessionService.openSession).mockResolvedValue({
       id: "session-1",
       store_id: "store-1",
-      device_id: null,
       cashier_id: "cashier-1",
       opened_at: "2026-09-06T00:00:00.000Z",
       closed_at: null,
@@ -134,7 +132,6 @@ describe("forceCloseSessionAction", () => {
     vi.mocked(sessionService.getSessionById).mockResolvedValue({
       id: "s1",
       store_id: "store1",
-      device_id: null,
       cashier_id: "cashier-1",
       opened_at: new Date().toISOString(),
       closed_at: null,
@@ -184,7 +181,6 @@ describe("forceCloseSessionAction", () => {
     vi.mocked(sessionService.getSessionById).mockResolvedValue({
       id: "s1",
       store_id: "store1",
-      device_id: null,
       cashier_id: "cashier-1",
       opened_at: new Date().toISOString(),
       closed_at: null,
@@ -201,7 +197,6 @@ describe("forceCloseSessionAction", () => {
     vi.mocked(sessionService.forceCloseSession).mockResolvedValue({
       id: "s1",
       store_id: "store1",
-      device_id: null,
       cashier_id: "cashier-1",
       opened_at: new Date().toISOString(),
       closed_at: new Date().toISOString(),
@@ -240,7 +235,6 @@ describe("forceCloseSessionAction", () => {
     vi.mocked(sessionService.getSessionById).mockResolvedValue({
       id: "s1",
       store_id: "store1",
-      device_id: null,
       cashier_id: "cashier-1",
       opened_at: new Date().toISOString(),
       closed_at: null,
@@ -296,7 +290,6 @@ describe("closeSessionAction authorization", () => {
         store_ids: [],
       },
       storeId: "store1",
-      deviceId: "dev-1",
       activeCashierId: "cashier-2",
     });
     vi.mocked(guards.requireAuth).mockResolvedValue({
@@ -313,7 +306,6 @@ describe("closeSessionAction authorization", () => {
     vi.mocked(sessionService.getSessionById).mockResolvedValue({
       id: "s1",
       store_id: "store1",
-      device_id: null,
       cashier_id: "cashier-1",
       opened_at: new Date().toISOString(),
       closed_at: null,
@@ -373,7 +365,6 @@ describe("closeSessionAction authorization", () => {
         store_ids: [],
       },
       storeId: "store1",
-      deviceId: "dev-1",
       activeCashierId: "cashier-1",
     });
     vi.mocked(permissionRepo.hasPermission).mockResolvedValue(false);
@@ -383,7 +374,6 @@ describe("closeSessionAction authorization", () => {
     vi.mocked(sessionService.getSessionById).mockResolvedValue({
       id: "s1",
       store_id: "store1",
-      device_id: null,
       cashier_id: "cashier-1",
       opened_at: new Date().toISOString(),
       closed_at: null,

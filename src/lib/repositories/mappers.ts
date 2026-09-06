@@ -7,7 +7,6 @@ import type {
   CashierVaultLedgerEntry,
   Category,
   Customer,
-  Device,
   Expense,
   ExpenseCategory,
   CostCenter,
@@ -52,7 +51,6 @@ import type {
   AuditLogRow,
   CategoryRow,
   CustomerRow,
-  DeviceRow,
   ExpenseRow,
   ExpenseCategoryRow,
   CostCenterRow,
@@ -140,25 +138,6 @@ export function mapUser(row: UserRow, storeIds: string[]): AppUser {
     role: row.role as UserRole,
     is_active: row.is_active,
     store_ids: storeIds,
-  };
-}
-
-export function mapDevice(row: DeviceRow): Device {
-  const settings =
-    row.scale_settings &&
-    typeof row.scale_settings === "object" &&
-    !Array.isArray(row.scale_settings)
-      ? (row.scale_settings as Record<string, unknown>)
-      : {};
-  return {
-    id: row.id,
-    store_id: row.store_id,
-    name: row.name,
-    device_key_hash: row.device_key_hash,
-    is_active: row.is_active,
-    last_seen_at: row.last_seen_at,
-    scale_enabled: row.scale_enabled,
-    scale_settings: settings,
   };
 }
 
@@ -404,7 +383,6 @@ export function mapSession(row: SessionRow): CashierSession {
   return {
     id: row.id,
     store_id: row.store_id,
-    device_id: row.device_id,
     cashier_id: row.cashier_id,
     opened_at: row.opened_at,
     closed_at: row.closed_at,

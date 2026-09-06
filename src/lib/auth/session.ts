@@ -7,13 +7,9 @@ import { isOrganizationSuspended } from "@/lib/org-status";
 import type { AppUser } from "@/lib/types";
 
 export const STORE_COOKIE = "sf_active_store";
-export const REGISTERED_DEVICE_COOKIE = "sf_registered_device";
-/** @deprecated Use REGISTERED_DEVICE_COOKIE */
-export const DEVICE_COOKIE = REGISTERED_DEVICE_COOKIE;
 export const CASHIER_COOKIE = "sf_active_cashier";
 
 const STORE_COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
-const DEVICE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 const CASHIER_COOKIE_MAX_AGE = 60 * 60 * 12;
 
 /** Deduped per request — auth + users row + org status. */
@@ -54,91 +50,15 @@ export async function clearActiveStoreCookie() {
   cookieStore.delete(STORE_COOKIE);
 }
 
-export async function getRegisteredDeviceContext(): Promise<{
-  deviceId: string;
-  storeId: string;
-} | null> {
-  const cookieStore = await cookies();
-  const payload = readSignedCookieValue<{ deviceId?: string; storeId?: string }>(
-    cookieStore.get(REGISTERED_DEVICE_COOKIE)?.value
-  );
-  if (!payload?.deviceId || !payload?.storeId) return null;
-  return { deviceId: payload.deviceId, storeId: payload.storeId };
-}
-
-/** @deprecated Use getRegisteredDeviceContext */
-export async function isDeviceUnlocked(): Promise<boolean> {
-  return Boolean(await getRegisteredDeviceContext());
-}
-
-/** @deprecated Use getRegisteredDeviceContext */
-export async function getUnlockedDeviceContext(): Promise<{
-  storeId: string;
-  deviceId: string | null;
-  unlockedBy: string;
-} | null> {
-  const ctx = await getRegisteredDeviceContext();
-  if (!ctx) return null;
-  return {
-    storeId: ctx.storeId,
-    deviceId: ctx.deviceId,
-    unlockedBy: "",
-  };
-}
-
-export async function setRegisteredDeviceCookie(input: {
-  deviceId: string;
-  storeId: string;
-}) {
-  const cookieStore = await cookies();
-  cookieStore.set(
-    REGISTERED_DEVICE_COOKIE,
-    createSignedCookieValue(
-      { deviceId: input.deviceId, storeId: input.storeId },
-      DEVICE_COOKIE_MAX_AGE
-    ),
-    {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: DEVICE_COOKIE_MAX_AGE,
-    }
-  );
-}
-
-export async function clearRegisteredDeviceCookie() {
-  const cookieStore = await cookies();
-  cookieStore.delete(REGISTERED_DEVICE_COOKIE);
-}
-
-/** @deprecated Use setRegisteredDeviceCookie */
-export async function setDeviceUnlocked(
-  value: boolean,
-  input?: { storeId: string; deviceId: string | null; unlockedBy: string }
-) {
-  if (value && input?.deviceId) {
-    await setRegisteredDeviceCookie({
-      deviceId: input.deviceId,
-      storeId: input.storeId,
-    });
-  } else {
-    await clearRegisteredDeviceCookie();
-  }
-}
-
 export async function getActiveCashierId(
   storeId: string,
-  _deviceId: string | null,
-  _user: AppUser
+  _user?: unknown,
 ): Promise<string | null> {
-  void _deviceId;
   void _user;
   const cookieStore = await cookies();
   const payload = readSignedCookieValue<{
     cashierId?: string;
     storeId?: string;
-    deviceId?: string;
   }>(cookieStore.get(CASHIER_COOKIE)?.value);
 
   if (
@@ -150,17 +70,9 @@ export async function getActiveCashierId(
   return null;
 }
 
-/** @deprecated Use getActiveCashierId with user context */
-export async function getVerifiedActiveCashierId(storeId: string): Promise<string | null> {
-  const user = await getCurrentUser();
-  const deviceCtx = await getRegisteredDeviceContext();
-  if (!user || !deviceCtx || deviceCtx.storeId !== storeId) return null;
-  return getActiveCashierId(storeId, deviceCtx.deviceId, user);
-}
-
 export async function setActiveCashierId(
   cashierId: string | null,
-  input?: { storeId: string; deviceId?: string | null }
+  input?: { storeId: string }
 ) {
   const cookieStore = await cookies();
   if (cashierId && input) {

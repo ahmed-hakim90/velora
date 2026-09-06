@@ -24,7 +24,6 @@ export interface ClosedSessionRow {
   storeName: string;
   cashierName: string;
   closedByName: string | null;
-  deviceName: string | null;
 }
 
 function formatDateTime(iso: string) {

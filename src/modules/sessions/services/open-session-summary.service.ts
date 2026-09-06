@@ -12,7 +12,6 @@ import type { CashierSession, OrderPayment, SessionLifecycleState } from "@/lib/
 export interface OpenSessionSummary {
   session: CashierSession;
   cashierName: string;
-  deviceName: string | null;
   storeName: string;
   openedAt: string;
   durationLabel: string;
@@ -44,7 +43,6 @@ export async function getOpenSessionSummaries(input: {
   storeId?: string;
   storeMap: Map<string, string>;
   userMap: Map<string, string>;
-  deviceMap: Map<string, string>;
 }): Promise<OpenSessionSummary[]> {
   const [sessions, settings] = await Promise.all([
     listOpenSessions(input.storeId),
@@ -137,9 +135,6 @@ export async function getOpenSessionSummaries(input: {
     return {
       session,
       cashierName: input.userMap.get(session.cashier_id) ?? "مستخدم غير معروف",
-      deviceName: session.device_id
-        ? (input.deviceMap.get(session.device_id) ?? null)
-        : null,
       storeName: input.storeMap.get(session.store_id) ?? "فرع غير معروف",
       openedAt: session.opened_at,
       durationLabel: formatSessionDuration(lifecycleResult.hoursOpen),

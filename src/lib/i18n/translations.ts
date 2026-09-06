@@ -2938,20 +2938,15 @@ export const arTranslations: Record<string, string> = {
   "Temporary password": "كلمة مرور مؤقتة",
   "Cashier approval PIN (optional)": "PIN لموافقة الكاشير (اختياري)",
   "PIN (4–8 digits)": "PIN (4–8 أرقام)",
-  "Used to approve discounts, open the cash drawer, and sell after session expiry. It does not switch the device cashier.":
-    "يُستخدم لموافقة الخصم وفتح الدرج والبيع بعد انتهاء الجلسة، ولا يغيّر كاشير الجهاز.",
-  "Restrict user to specific cashier devices":
-    "تقييد المستخدم على أجهزة كاشير محددة",
-  "Leave empty to allow all devices in permitted stores.":
-    "اتركها فارغة للسماح بكل الأجهزة داخل الفروع المسموحة.",
-  "Restrict to specific devices": "تقييد على أجهزة محددة",
+  "Used to approve discounts, open the cash drawer, and sell after session expiry. It does not switch the active cashier.":
+    "يُستخدم لموافقة الخصم وفتح الدرج والبيع بعد انتهاء الجلسة، ولا يغيّر الكاشير النشط.",
   "New PIN (optional)": "PIN جديد (اختياري)",
   "Leave empty to keep it unchanged — 4 to 8 digits":
     "اتركه فارغًا بدون تغيير — من 4 إلى 8 أرقام",
   "The new PIN will be applied when you save changes.":
     "سيُطبق PIN الجديد عند حفظ التغييرات.",
-  "This PIN approves discounts, drawer opening, and sales after expiry. It is not the device cashier PIN.":
-    "هذا PIN لموافقة الخصم وفتح الدرج والبيع بعد انتهاء الجلسة، وليس PIN كاشير الجهاز.",
+  "This PIN approves discounts, drawer opening, and sales after expiry. It does not switch the active cashier.":
+    "هذا PIN لموافقة الخصم وفتح الدرج والبيع بعد انتهاء الجلسة، ولا يغيّر الكاشير النشط.",
   "New password (optional)": "كلمة مرور جديدة (اختياري)",
   "Leave empty to keep it unchanged — at least 8 characters":
     "اتركها فارغة بدون تغيير — 8 أحرف أو أكثر",

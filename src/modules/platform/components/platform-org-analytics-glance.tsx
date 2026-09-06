@@ -55,7 +55,7 @@ export function PlatformOrgAnalyticsGlance({
         <KpiCard
           label="إجمالي الطلبات"
           value={String(glance.orderTotal)}
-          change={`${glance.storeTotal} فرع · ${glance.userTotal} مستخدم · ${glance.deviceTotal} جهاز`}
+          change={`${glance.storeTotal} فرع · ${glance.userTotal} مستخدم`}
           trend="neutral"
         />
       </div>

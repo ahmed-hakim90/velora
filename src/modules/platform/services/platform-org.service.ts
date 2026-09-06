@@ -22,7 +22,6 @@ export type PlatformOrganizationHealth = {
   inventoryMovementCount: number;
   auditLogCount: number;
   databaseBytes: number;
-  deviceCount: number;
   lastOrderAt: string | null;
 };
 
@@ -38,7 +37,6 @@ export type PlatformRollup = {
   storeTotal: number;
   userTotal: number;
   orderTotal: number;
-  deviceTotal: number;
 };
 
 function emptyHealth(): PlatformOrganizationHealth {
@@ -53,7 +51,6 @@ function emptyHealth(): PlatformOrganizationHealth {
     inventoryMovementCount: 0,
     auditLogCount: 0,
     databaseBytes: 0,
-    deviceCount: 0,
     lastOrderAt: null,
   };
 }
@@ -63,10 +60,7 @@ function asCount(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-function parseHealthRpc(raw: unknown): Omit<
-  PlatformOrganizationHealth,
-  "deviceCount" | "lastOrderAt"
-> {
+function parseHealthRpc(raw: unknown): Omit<PlatformOrganizationHealth, "lastOrderAt"> {
   const data =
     raw && typeof raw === "object" && !Array.isArray(raw)
       ? (raw as Record<string, unknown>)
@@ -117,17 +111,6 @@ async function loadOrgStoreIds(
   return (data ?? []).map((row) => row.id);
 }
 
-async function loadDeviceCount(storeIds: string[]): Promise<number> {
-  if (storeIds.length === 0) return 0;
-  const admin = createAdminClient();
-  const { count, error } = await admin
-    .from("devices")
-    .select("id", { count: "exact", head: true })
-    .in("store_id", storeIds);
-  if (error) throw new Error(`devices count failed: ${error.message}`);
-  return count ?? 0;
-}
-
 async function loadLastOrderAt(storeIds: string[]): Promise<string | null> {
   if (storeIds.length === 0) return null;
   const admin = createAdminClient();
@@ -148,9 +131,8 @@ export async function getOrganizationHealth(
   const admin = createAdminClient();
   const storeIds = await loadOrgStoreIds(orgId);
 
-  const [rpcResult, deviceCount, lastOrderAt] = await Promise.all([
+  const [rpcResult, lastOrderAt] = await Promise.all([
     admin.rpc("platform_organization_data_size", { p_org_id: orgId }),
-    loadDeviceCount(storeIds),
     loadLastOrderAt(storeIds),
   ]);
 
@@ -160,7 +142,6 @@ export async function getOrganizationHealth(
 
   return {
     ...parseHealthRpc(rpcResult.data),
-    deviceCount,
     lastOrderAt,
   };
 }
@@ -188,12 +169,7 @@ export async function listOrganizationHealthSummaries(): Promise<
     if (list) list.push(store.id);
   }
 
-  const allStoreIds = (stores ?? []).map((s) => s.id);
-
-  const [devicesResult, ...healthAndActivity] = await Promise.all([
-    allStoreIds.length === 0
-      ? Promise.resolve({ data: [] as { store_id: string }[], error: null })
-      : admin.from("devices").select("store_id").in("store_id", allStoreIds),
+  const healthAndActivity = await Promise.all([
     ...orgs.map(async (org) => {
       const storeIds = storeIdsByOrg.get(org.id) ?? [];
       const [rpc, lastOrderAt] = await Promise.all([
@@ -203,18 +179,6 @@ export async function listOrganizationHealthSummaries(): Promise<
       return { orgId: org.id, rpc, lastOrderAt };
     }),
   ]);
-
-  if (devicesResult.error) {
-    throw new Error(`devices list failed: ${devicesResult.error.message}`);
-  }
-
-  const deviceCountByStore = new Map<string, number>();
-  for (const device of devicesResult.data ?? []) {
-    deviceCountByStore.set(
-      device.store_id,
-      (deviceCountByStore.get(device.store_id) ?? 0) + 1
-    );
-  }
 
   const activityByOrg = new Map(
     healthAndActivity.map((row) => [row.orgId, row] as const)
@@ -230,16 +194,10 @@ export async function listOrganizationHealthSummaries(): Promise<
         `organization health failed (${org.name}): ${activity.rpc.error.message}`
       );
     }
-    const storeIds = storeIdsByOrg.get(org.id) ?? [];
-    const deviceCount = storeIds.reduce(
-      (sum, storeId) => sum + (deviceCountByStore.get(storeId) ?? 0),
-      0
-    );
     return {
       ...org,
       health: {
         ...parseHealthRpc(activity.rpc.data),
-        deviceCount,
         lastOrderAt: activity.lastOrderAt,
       },
     };
@@ -253,7 +211,6 @@ export function getPlatformRollup(
   let storeTotal = 0;
   let userTotal = 0;
   let orderTotal = 0;
-  let deviceTotal = 0;
   let orgActive = 0;
   let orgSuspended = 0;
 
@@ -263,7 +220,6 @@ export function getPlatformRollup(
     storeTotal += row.health.storeCount;
     userTotal += row.health.userCount;
     orderTotal += row.health.orderCount;
-    deviceTotal += row.health.deviceCount;
   }
 
   return {
@@ -274,7 +230,6 @@ export function getPlatformRollup(
     storeTotal,
     userTotal,
     orderTotal,
-    deviceTotal,
   };
 }
 

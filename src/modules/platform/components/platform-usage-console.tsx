@@ -251,16 +251,6 @@ export function PlatformUsageConsole({ rows }: { rows: PlatformOrgUsageRow[] }) 
                       ),
                     },
                     {
-                      label: "سجلات",
-                      value: (
-                        <UsageCell
-                          current={row.usage.devices}
-                          limit={row.plan.max_devices}
-                          pressure={row.pressure.devices}
-                        />
-                      ),
-                    },
-                    {
                       label: "طلبات",
                       value: row.order_count,
                     },
@@ -291,7 +281,6 @@ export function PlatformUsageConsole({ rows }: { rows: PlatformOrgUsageRow[] }) 
                       <th className="px-2 py-2 text-start font-medium">الباقة</th>
                       <th className="px-2 py-2 text-start font-medium">فروع</th>
                       <th className="px-2 py-2 text-start font-medium">مستخدمين</th>
-                      <th className="px-2 py-2 text-start font-medium">سجلات</th>
                       <th className="px-2 py-2 text-start font-medium">ضغط</th>
                       <th className="px-2 py-2 text-start font-medium">تشغيل</th>
                       <th className="px-2 py-2 text-start font-medium">تحكم</th>
@@ -339,13 +328,6 @@ export function PlatformUsageConsole({ rows }: { rows: PlatformOrgUsageRow[] }) 
                               current={row.usage.users}
                               limit={row.plan.max_users}
                               pressure={row.pressure.users}
-                            />
-                          </td>
-                          <td className="px-2 py-3">
-                            <UsageCell
-                              current={row.usage.devices}
-                              limit={row.plan.max_devices}
-                              pressure={row.pressure.devices}
                             />
                           </td>
                           <td className="px-2 py-3">

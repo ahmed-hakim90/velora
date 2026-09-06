@@ -107,7 +107,6 @@ describe("createSupplierPayment", () => {
     vi.mocked(sessionRepo.getSession).mockResolvedValue({
       id: "session-1",
       store_id: "store-1",
-      device_id: null,
       cashier_id: "u1",
       opened_at: "2026-08-27T00:00:00.000Z",
       closed_at: null,

@@ -125,8 +125,6 @@ export function OnboardingWizard({
     createDefaultExpenseCategories: true,
     createDefaultProductCategories: true,
     createDefaultInventoryUnits: true,
-    createFirstPosDevice: false,
-    firstPosDeviceName: "POS-1",
   });
 
   function handleLogoChange(file: File | null) {

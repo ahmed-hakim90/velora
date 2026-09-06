@@ -37,7 +37,9 @@
     "auto-ship:status": "node $HOME/.cursor/ship/cli.mjs status",
     "db:apply-016": "supabase db query --linked --yes -f supabase/migrations/016_supplier_payments.sql",
     "verify:db": "npm run verify:post-006 && npm run verify:inventory-crud && npm run verify:supplier-payments",
-    "verify:security": "npm run verify:rls-policies"
+    "verify:security": "npm run verify:rls-policies",
+    "verify:schema:no-devices": "supabase db query --local -f scripts/sql/verify-no-device-schema.sql",
+    "verify:schema:no-devices:linked": "supabase db query --linked -f scripts/sql/verify-no-device-schema.sql"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

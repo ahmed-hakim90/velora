@@ -687,7 +687,6 @@ export async function invoiceOnlineOrder(input: {
   cashierId: string;
   storeId: string;
   userId: string;
-  deviceId?: string | null;
   payments: { method: import("@/lib/types").PaymentMethod; amount: number }[];
 }) {
   const order = await getOnlineOrderWithItems(input.onlineOrderId);
@@ -728,7 +727,6 @@ export async function invoiceOnlineOrder(input: {
       customerId,
       paymentMethod,
       payments,
-      deviceId: input.deviceId ?? null,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";

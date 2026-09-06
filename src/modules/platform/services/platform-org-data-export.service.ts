@@ -166,13 +166,6 @@ export async function exportOrganizationFullData(
     admin.from("warehouses").select("*").eq("org_id", orgId).range(from, to)
   );
 
-  const devicesRes =
-    storeIds.length > 0
-      ? await fetchByIdChunks(storeIds, (chunk, from, to) =>
-          admin.from("devices").select("*").in("store_id", chunk).range(from, to)
-        )
-      : emptySection();
-
   const stockLevelsRes =
     storeIds.length > 0
       ? await fetchByIdChunks(storeIds, (chunk, from, to) =>
@@ -283,7 +276,6 @@ export async function exportOrganizationFullData(
     expenses: expensesRes,
     cost_centers: costCentersRes,
     warehouses: warehousesRes,
-    devices: devicesRes,
     stock_levels: stockLevelsRes,
     inventory_movements: inventoryMovementsRes,
     orders: ordersRes,
@@ -312,7 +304,7 @@ export async function exportOrganizationFullData(
     meta,
     data,
     notes: [
-      "لا يشمل ملفات Storage (org-assets) ولا أسرار PIN/pairing.",
+      "لا يشمل ملفات Storage (org-assets) ولا أسرار PIN.",
       `الجداول عالية الحجم مقطوعة عند ${MAX_ROWS_PER_TABLE} صف إن لزم.`,
       "للاستعادة استخدم مسار البنية التحتية (Supabase PITR) أو استيراد يدوي.",
     ],

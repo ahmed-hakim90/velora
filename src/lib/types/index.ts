@@ -112,17 +112,6 @@ export interface AppUser {
   store_ids: string[];
 }
 
-export interface Device {
-  id: string;
-  store_id: string;
-  name: string;
-  device_key_hash?: string;
-  is_active: boolean;
-  last_seen_at: string | null;
-  scale_enabled?: boolean;
-  scale_settings?: Record<string, unknown> | null;
-}
-
 export interface Category {
   id: string;
   org_id: string;
@@ -446,7 +435,6 @@ export interface StockCountLine {
 export interface CashierSession {
   id: string;
   store_id: string;
-  device_id: string | null;
   cashier_id: string;
   opened_at: string;
   closed_at: string | null;

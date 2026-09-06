@@ -19,5 +19,12 @@ run("verify:post-006", "node", ["scripts/verify-post-006.mjs"]);
 run("verify:p0-security", "node", ["scripts/verify-p0-security.mjs"]);
 run("verify:inventory-crud", "node", ["scripts/verify-inventory-crud.mjs"]);
 run("verify:supplier-payments", "node", ["scripts/verify-supplier-payments.mjs"]);
+run("verify:no-device-schema", "supabase", [
+  "db",
+  "query",
+  "--linked",
+  "-f",
+  "scripts/sql/verify-no-device-schema.sql",
+]);
 
 console.log("\n✓ Production gate passed (automated). Complete manual steps in docs/SMOKE_TEST.md");

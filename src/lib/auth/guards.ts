@@ -11,7 +11,6 @@ import {
   clearActiveStoreCookie,
   getActiveStoreId,
   getCurrentUser,
-  REGISTERED_DEVICE_COOKIE,
   setActiveStoreCookie,
   STORE_COOKIE,
 } from "@/lib/auth/session";
@@ -163,7 +162,6 @@ export async function clearOperationalCookies() {
 
 export {
   STORE_COOKIE,
-  REGISTERED_DEVICE_COOKIE,
   CASHIER_COOKIE,
   setActiveStoreCookie,
   clearActiveStoreCookie,

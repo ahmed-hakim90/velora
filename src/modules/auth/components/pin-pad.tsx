@@ -51,7 +51,13 @@ export function PinPad({ onSuccess, verifyPin, disabled = false, className }: Pi
       startTransition(async () => {
         const result = verifyPin
           ? await verifyPin(value)
-          : await verifyPinAction(value);
+          : await verifyPinAction(
+              (() => {
+                const formData = new FormData();
+                formData.set("pin", value);
+                return formData;
+              })(),
+            );
         if (result.success) {
           setPin("");
           setError(null);

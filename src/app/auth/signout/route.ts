@@ -3,12 +3,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { authCookieOptions } from "@/lib/supabase/auth-cookie-options";
 import {
   CASHIER_COOKIE,
-  REGISTERED_DEVICE_COOKIE,
   STORE_COOKIE,
 } from "@/lib/auth/session";
 import type { Database } from "@/lib/supabase/database.types";
 
-const APP_COOKIES = [STORE_COOKIE, CASHIER_COOKIE, REGISTERED_DEVICE_COOKIE] as const;
+const APP_COOKIES = [STORE_COOKIE, CASHIER_COOKIE] as const;
 
 /**
  * Clears Supabase + app session cookies, then redirects to login.

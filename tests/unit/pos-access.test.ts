@@ -46,7 +46,6 @@ describe("resolvePosAccess pos_access permission", () => {
 
     const ctx = await resolvePosAccess();
     expect(ctx.storeId).toBe("store-1");
-    expect(ctx.deviceId).toBeNull();
     expect(permissionRepo.hasPermission).not.toHaveBeenCalled();
   });
 

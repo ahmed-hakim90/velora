@@ -128,7 +128,7 @@ export function getPageAccessDenial(
 
   if (navAllowsPath(role, pathname, permissions, flags, options)) return null;
 
-  // Sidebar matching misses real screens like /account and /devices.
+  // Sidebar matching misses real screens such as /account.
   // navItemAllowed still honors feature flags, role legacy, and PATH_PERMISSIONS.
   if (navItemAllowed(pathname, role, permissions, flags, options)) return null;
 

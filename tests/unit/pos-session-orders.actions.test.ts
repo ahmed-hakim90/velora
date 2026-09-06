@@ -16,7 +16,6 @@ vi.mock("@/modules/orders/services/order.service");
 const context = {
   user: { role: "cashier" },
   storeId: "store-1",
-  deviceId: "device-1",
   activeCashierId: "cashier-1",
 };
 

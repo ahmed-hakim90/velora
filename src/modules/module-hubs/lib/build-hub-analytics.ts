@@ -132,21 +132,6 @@ const ACCOUNTING_LINKS: HubAnalysisLink[] = [
   },
 ];
 
-const ADMIN_LINKS: HubAnalysisLink[] = [
-  {
-    href: "/settings",
-    label: "الإعدادات",
-    description: "فروع وخصائص",
-    icon: "Settings",
-  },
-  {
-    href: "/audit",
-    label: "سجل المراجعة",
-    description: "تتبع التغييرات",
-    icon: "ScrollText",
-  },
-];
-
 export function buildOperationsHubAnalytics(input: {
   currency: string;
   todaySales: number;
@@ -394,39 +379,5 @@ export function buildAccountingHubAnalytics(input: {
       ],
     },
     analysisLinks: ACCOUNTING_LINKS,
-  };
-}
-
-export function buildAdminHubAnalytics(input: {
-  totalDevices: number;
-  activeDevices: number;
-  seenRecently: number;
-  staleOrNever: number;
-  byStoreChart: { label: string; count: number }[];
-}): HubAnalyticsPayload {
-  return {
-    kpis: [
-      { label: "أجهزة", value: String(input.totalDevices) },
-      { label: "نشطة", value: String(input.activeDevices) },
-      {
-        label: "شوهدت (24س)",
-        value: String(input.seenRecently),
-        change: "last_seen حديث",
-      },
-      {
-        label: "ساكنة / بلا ظهور",
-        value: String(input.staleOrNever),
-        trend: input.staleOrNever > 0 ? "down" : "neutral",
-      },
-    ],
-    chart: {
-      title: "الأجهزة حسب الفرع",
-      format: "number",
-      rows: input.byStoreChart.map((row) => ({
-        label: row.label,
-        value: row.count,
-      })),
-    },
-    analysisLinks: ADMIN_LINKS,
   };
 }

@@ -23,20 +23,16 @@ import {
 } from "@/modules/system/services/settings.service";
 import {
   createStore,
-  createDevice,
   createUser,
   deactivateUser,
   deleteStorePermanently,
   deleteUserPermanently,
   StoreDeleteBlockedError,
   UserDeleteBlockedError,
-  listDevices,
   listStores,
   listUsers,
   resetUserPin,
   resetUserPassword,
-  deleteDevice,
-  updateDevice,
   updateStore,
   updateUser,
 } from "@/modules/system/services/users.service";
@@ -303,7 +299,6 @@ export async function createUserAction(input: {
   email: string;
   role: "owner" | "manager" | "cashier" | "inventory";
   storeIds: string[];
-  deviceIds?: string[];
   pin?: string;
   password: string;
 }): Promise<CreateUserResult> {
@@ -365,7 +360,6 @@ export async function updateUserAction(
     email?: string;
     role?: "owner" | "manager" | "cashier" | "inventory";
     storeIds?: string[];
-    deviceIds?: string[];
     isActive?: boolean;
   }
 ): Promise<{ success: boolean; error?: string }> {
@@ -391,7 +385,6 @@ export async function updateUserAction(
         email: input.email,
         role: input.role,
         store_ids: input.storeIds,
-        deviceIds: input.deviceIds,
         is_active: input.isActive,
       },
       actor.id
@@ -490,9 +483,10 @@ export async function deleteUserPermanentlyAction(
 }
 
 export async function resetUserPinAction(
-  id: string,
-  pin: string
+  formData: FormData,
 ): Promise<{ success: boolean; error?: string }> {
+  const id = String(formData.get("userId") ?? "");
+  const pin = String(formData.get("pin") ?? "");
   if (!/^[0-9]{4,8}$/.test(pin)) {
     return { success: false, error: "رقم PIN يجب أن يكون من 4 إلى 8 أرقام." };
   }
@@ -518,9 +512,10 @@ export async function resetUserPinAction(
 }
 
 export async function resetUserPasswordAction(
-  id: string,
-  password: string
+  formData: FormData,
 ): Promise<{ success: boolean; error?: string }> {
+  const id = String(formData.get("userId") ?? "");
+  const password = String(formData.get("password") ?? "");
   if (password.length < 8) {
     return { success: false, error: "كلمة المرور يجب أن تكون 8 أحرف أو أكثر." };
   }
@@ -778,56 +773,6 @@ export async function setDefaultWarehouseAction(storeId: string, warehouseId: st
   revalidatePath("/pos");
 }
 
-export async function createDeviceAction(input: { storeId: string; name: string }) {
-  const user = await requirePermissionOrRole("settings_manage", ["owner", "manager"]);
-  const device = await createDevice(input, user.id);
-  revalidatePath("/settings");
-  revalidatePath("/devices");
-  return device;
-}
-
-export async function generateDevicePairingCodeAction(deviceId: string) {
-  await requirePermissionOrRole("settings_manage", ["owner", "manager"]);
-  const code = await import("@/lib/repositories/device.repository").then((m) =>
-    m.createPairingCode(deviceId)
-  );
-  revalidatePath("/settings");
-  revalidatePath("/devices");
-  return { code, expiresInMinutes: 15 };
-}
-
-export async function updateDeviceAction(
-  id: string,
-  input: {
-    storeId?: string;
-    name?: string;
-    isActive?: boolean;
-    scaleEnabled?: boolean;
-    scaleSettings?: Record<string, unknown>;
-  }
-) {
-  const user = await requirePermissionOrRole("settings_manage", ["owner", "manager"]);
-  const device = await updateDevice(id, input, user.id);
-  // Active-only toggles stay local; name/store edits refresh settings/POS surfaces.
-  if (input.name != null || input.storeId != null) {
-    revalidatePath("/settings");
-    revalidatePath("/pos");
-    revalidatePath("/device/pair");
-  }
-  revalidatePath("/devices");
-  return device;
-}
-
-export async function deleteDeviceAction(id: string) {
-  const user = await requirePermissionOrRole("settings_manage", ["owner", "manager"]);
-  const device = await deleteDevice(id, user.id);
-  revalidatePath("/settings");
-  revalidatePath("/pos");
-  revalidatePath("/device/pair");
-  revalidatePath("/devices");
-  return device;
-}
-
 export async function updateExpenseSettingsAction(
   input: Partial<ExpenseSettings>
 ) {
@@ -860,7 +805,6 @@ export async function getSettingsData() {
     costCenters: await listCostCenters(),
     stores: await listStores(),
     warehouses: await warehouseRepo.listWarehouses(),
-    devices: await listDevices(),
   };
 }
 
@@ -927,7 +871,6 @@ async function loadSettingsBundle() {
     costCenters,
     stores,
     warehouses,
-    devices,
     settings,
     menuThemeAccess,
   ] = await Promise.all([
@@ -939,7 +882,6 @@ async function loadSettingsBundle() {
     listCostCenters(),
     listStores(),
     warehouseRepo.listWarehouses(),
-    listDevices(),
     getSettings(),
     import("@/modules/platform/services/platform-menu-themes.service").then((m) =>
       m.getTenantMenuThemeAccess(orgId)
@@ -954,7 +896,6 @@ async function loadSettingsBundle() {
     costCenters,
     stores,
     warehouses,
-    devices,
     settings,
     menuThemeAccess: {
       rows: menuThemeAccess.rows,
@@ -966,16 +907,12 @@ async function loadSettingsBundle() {
 }
 
 async function loadUsersBundle() {
-  const [users, stores, devices] = await Promise.all([
+  const [users, stores] = await Promise.all([
     listUsers(),
     listStores(),
-    listDevices(),
   ]);
-  const cashierIds = users.filter((u) => u.role === "cashier").map((u) => u.id);
   const nonOwnerIds = users.filter((u) => u.role !== "owner").map((u) => u.id);
-  const { getDeviceIdsForUsers } = await import("@/lib/repositories/device.repository");
-  const [deviceIdsByUser, permissionsBase, grantsByUser] = await Promise.all([
-    getDeviceIdsForUsers(cashierIds),
+  const [permissionsBase, grantsByUser] = await Promise.all([
     (async () => {
       try {
         const { getPermissionsData } = await import(
@@ -989,11 +926,6 @@ async function loadUsersBundle() {
     permissionRepo.getUserPermissionGrantsForUsers(nonOwnerIds),
   ]);
 
-  const userDeviceIds: Record<string, string[]> = {};
-  for (const id of cashierIds) {
-    userDeviceIds[id] = deviceIdsByUser.get(id) ?? [];
-  }
-
   let permissionsData = null;
   if (permissionsBase) {
     const userGrants: Record<string, { permission_key: string; granted: boolean }[]> = {};
@@ -1003,7 +935,7 @@ async function loadUsersBundle() {
     permissionsData = { ...permissionsBase, userGrants };
   }
 
-  return { users, stores, devices, userDeviceIds, permissionsData };
+  return { users, stores, permissionsData };
 }
 
 async function loadCostCentersBundle() {

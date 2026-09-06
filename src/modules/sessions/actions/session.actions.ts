@@ -122,7 +122,6 @@ export async function openSessionAction(openingCash?: number | null) {
   const session = await openSession({
     storeId: ctx.storeId,
     cashierId: ctx.activeCashierId,
-    deviceId: null,
     openingCash: resolvedOpeningCash,
   });
 

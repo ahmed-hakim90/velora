@@ -143,7 +143,6 @@ export async function executePosCheckout(input: CheckoutFlowInput): Promise<Chec
       try {
         approver = await assertManagerOverridePin({
           storeId: ctx.storeId,
-          deviceId: ctx.deviceId ?? undefined,
           pin: input.override.pin,
         });
       } catch (error) {
@@ -199,7 +198,6 @@ export async function executePosCheckout(input: CheckoutFlowInput): Promise<Chec
         try {
           expiredApprover = await assertManagerOverridePin({
             storeId: ctx.storeId,
-            deviceId: ctx.deviceId ?? undefined,
             pin: input.override.pin,
           });
         } catch (error) {
@@ -228,7 +226,6 @@ export async function executePosCheckout(input: CheckoutFlowInput): Promise<Chec
       storeId: ctx.storeId,
       sessionId: session.id,
       cashierId: ctx.activeCashierId,
-      deviceId: ctx.deviceId ?? undefined,
       cart: input.cart,
       customer: input.customer,
       paymentMethod,

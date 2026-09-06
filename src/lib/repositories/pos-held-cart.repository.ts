@@ -54,7 +54,6 @@ export async function insertHeldCart(input: {
     .insert({
       org_id: input.orgId,
       store_id: input.storeId,
-      device_id: null,
       created_by: input.createdBy,
       name: input.name,
       payload: asJson(input.payload),

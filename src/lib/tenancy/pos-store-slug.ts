@@ -33,7 +33,6 @@ export const RESERVED_POS_SLUGS = new Set([
   "expenses",
   "accounting",
   "sessions",
-  "devices",
   "kitchen",
   "labels",
   "guide",

@@ -193,7 +193,6 @@ export async function completeCheckoutRpc(input: {
   storeId: string;
   sessionId: string;
   cashierId: string;
-  deviceId?: string | null;
   customerId: string | null;
   paymentMethod: PaymentMethod;
   salesMode?: SalesMode;
@@ -222,7 +221,6 @@ export async function completeCheckoutRpc(input: {
     p_payment_method: input.paymentMethod,
     p_discount: input.discount,
     p_lines: input.lines,
-    p_device_id: input.deviceId ?? null,
     p_sales_mode: input.salesMode ?? "retail",
     p_coupon_code: input.couponCode ?? null,
   });
@@ -241,7 +239,6 @@ export async function completeCheckoutSplitRpc(input: {
   storeId: string;
   sessionId: string;
   cashierId: string;
-  deviceId?: string | null;
   customerId: string | null;
   paymentMethod: PaymentMethod;
   salesMode?: SalesMode;
@@ -274,7 +271,6 @@ export async function completeCheckoutSplitRpc(input: {
     p_discount: input.discount,
     p_lines: input.lines,
     p_payments: input.payments,
-    p_device_id: input.deviceId ?? null,
     p_sales_mode: input.salesMode ?? "retail",
     p_coupon_code: input.couponCode ?? null,
   });
@@ -304,7 +300,6 @@ export async function invoiceOnlineOrderCheckoutRpc(input: {
   customerId: string | null;
   paymentMethod: PaymentMethod;
   payments: PaymentSplit[];
-  deviceId?: string | null;
 }): Promise<{
   order_id: string;
   order_number: string;
@@ -321,7 +316,6 @@ export async function invoiceOnlineOrderCheckoutRpc(input: {
       p_customer_id: input.customerId,
       p_payment_method: input.paymentMethod,
       p_payments: input.payments,
-      p_device_id: input.deviceId ?? null,
     }
   );
   if (error || !data) throwDbError(error, "invoiceOnlineOrderCheckout");
@@ -338,7 +332,6 @@ export async function completeCheckoutExpiredOverrideRpc(input: {
   storeId: string;
   sessionId: string;
   cashierId: string;
-  deviceId?: string | null;
   customerId: string | null;
   paymentMethod: PaymentMethod;
   salesMode?: SalesMode;
@@ -367,7 +360,6 @@ export async function completeCheckoutExpiredOverrideRpc(input: {
     p_payment_method: input.paymentMethod,
     p_discount: input.discount,
     p_lines: input.lines,
-    p_device_id: input.deviceId ?? null,
     p_sales_mode: input.salesMode ?? "retail",
     p_coupon_code: input.couponCode ?? null,
   });
@@ -386,7 +378,6 @@ export async function completeCheckoutSplitExpiredOverrideRpc(input: {
   storeId: string;
   sessionId: string;
   cashierId: string;
-  deviceId?: string | null;
   customerId: string | null;
   paymentMethod: PaymentMethod;
   salesMode?: SalesMode;
@@ -421,7 +412,6 @@ export async function completeCheckoutSplitExpiredOverrideRpc(input: {
       p_discount: input.discount,
       p_lines: input.lines,
       p_payments: input.payments,
-      p_device_id: input.deviceId ?? null,
       p_sales_mode: input.salesMode ?? "retail",
       p_coupon_code: input.couponCode ?? null,
     }

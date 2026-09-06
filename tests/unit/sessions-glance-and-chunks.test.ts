@@ -26,7 +26,6 @@ describe("buildSessionsGlance", () => {
   const baseSession = {
     org_id: "o1",
     store_id: "s1",
-    device_id: null,
     opening_cash: 0,
     expected_cash: null,
     actual_cash: null,

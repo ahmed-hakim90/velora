@@ -18,7 +18,7 @@ describe("assertManagerOverridePin", () => {
 
   it("rejects a missing PIN before calling the database", async () => {
     await expect(
-      assertManagerOverridePin({ storeId: "s1", deviceId: "d1", pin: "  " })
+      assertManagerOverridePin({ storeId: "s1", pin: "  " })
     ).rejects.toThrow("أدخل PIN المالك أو المدير");
     expect(callRpc).not.toHaveBeenCalled();
   });
@@ -37,7 +37,7 @@ describe("assertManagerOverridePin", () => {
     });
 
     await expect(
-      assertManagerOverridePin({ storeId: "s1", deviceId: "d1", pin: "1234" })
+      assertManagerOverridePin({ storeId: "s1", pin: "1234" })
     ).rejects.toThrow("PIN المدير غلط");
   });
 
@@ -51,7 +51,7 @@ describe("assertManagerOverridePin", () => {
     } as never);
 
     await expect(
-      assertManagerOverridePin({ storeId: "s1", deviceId: "d1", pin: "1234" })
+      assertManagerOverridePin({ storeId: "s1", pin: "1234" })
     ).resolves.toEqual({ managerId: "mgr-1", managerName: "مدير الفرع" });
   });
 });

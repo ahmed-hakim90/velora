@@ -97,14 +97,4 @@ console.log("→ Inventory: cannot insert orders");
   await supabase.auth.signOut();
 }
 
-console.log("→ Pairing RPC not granted to anon");
-{
-  const supabase = client();
-  const { error } = await supabase.rpc("consume_device_pairing_code", { p_code: "BADCODE1" });
-  if (!error || !/permission|42501|42883/i.test(error.message)) {
-    fail("anon pairing", error ?? new Error("expected permission error"));
-  }
-  console.log("✓ anon cannot consume pairing codes");
-}
-
 console.log("\nP0 security verification passed.");

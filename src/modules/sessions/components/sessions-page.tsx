@@ -8,7 +8,6 @@ import * as storeRepo from "@/lib/repositories/store.repository";
 import * as userRepo from "@/lib/repositories/user.repository";
 import * as orgRepo from "@/lib/repositories/organization.repository";
 import * as permissionRepo from "@/lib/repositories/permission.repository";
-import { listDevices } from "@/modules/system/services/users.service";
 import Link from "next/link";
 import { Landmark } from "lucide-react";
 import { PageHeader } from "@/components/Velora/page-header";
@@ -56,7 +55,7 @@ export async function SessionsPage({ filterStoreId = "all", filterFrom = "", fil
   const canManageVault = user?.role === "owner" || user?.role === "manager";
   const cashierId =
     user
-      ? await getActiveCashierId(storeId, null, user)
+      ? await getActiveCashierId(storeId, user)
       : null;
 
   const vaultStoreId =
@@ -67,7 +66,6 @@ export async function SessionsPage({ filterStoreId = "all", filterFrom = "", fil
     active,
     stores,
     users,
-    devices,
     sessionSettings,
     costCenters,
     categories,
@@ -78,7 +76,6 @@ export async function SessionsPage({ filterStoreId = "all", filterFrom = "", fil
     cashierId ? getActiveSession(storeId, cashierId) : null,
     storeRepo.listStores(),
     userRepo.listUsers(),
-    listDevices(),
     getSessionSettings(),
     listCostCenters(storeId),
     listExpenseCategories(),
@@ -100,7 +97,6 @@ export async function SessionsPage({ filterStoreId = "all", filterFrom = "", fil
 
   const storeMap = Object.fromEntries(stores.map((s) => [s.id, s.name]));
   const userMap = Object.fromEntries(users.map((u) => [u.id, u.name]));
-  const deviceMap = Object.fromEntries(devices.map((d) => [d.id, d.name]));
   const costCenterMap = Object.fromEntries(costCenters.map((c) => [c.id, c.name]));
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
 
@@ -108,7 +104,6 @@ export async function SessionsPage({ filterStoreId = "all", filterFrom = "", fil
     storeId: canViewAll ? (filteredStoreId ?? undefined) : storeId,
     storeMap: new Map(Object.entries(storeMap)),
     userMap: new Map(Object.entries(userMap)),
-    deviceMap: new Map(Object.entries(deviceMap)),
   });
 
   const closedSessions = scopedSessions
@@ -129,7 +124,6 @@ export async function SessionsPage({ filterStoreId = "all", filterFrom = "", fil
     storeName: storeMap[s.store_id] ?? "—",
     cashierName: userMap[s.cashier_id] ?? "الكاشير",
     closedByName: s.closed_by ? (userMap[s.closed_by] ?? null) : null,
-    deviceName: s.device_id ? (deviceMap[s.device_id] ?? null) : null,
   }));
 
   const [reconciliation, sessionExpenses] = active

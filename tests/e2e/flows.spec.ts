@@ -11,14 +11,14 @@ async function login(page: Page, email: string) {
   await page.locator("#email").fill(email);
   await page.locator("#password").fill(password);
   await page.getByRole("button", { name: /sign in|تسجيل الدخول/i }).click();
-  // Cashiers land on /pos; owners/managers often / or /dashboard; pairing on /device/pair|/pos/start.
+  // Cashiers land on /pos; owners/managers often / or /dashboard.
   await page.waitForURL((url) => !url.pathname.startsWith("/login"), {
     timeout: 30_000,
   });
 }
 
-/** Pair register via POS device gate (or skip if already paired). */
-async function ensureDevicePaired(page: Page) {
+/** Confirm the cashier can enter POS without any hardware pairing gate. */
+async function ensurePosAccessible(page: Page) {
   await page.goto("/pos");
   await expect(page).toHaveURL(/\/pos/);
 
@@ -29,20 +29,6 @@ async function ensureDevicePaired(page: Page) {
     );
   }
 
-  const deviceGate = page.getByRole("heading", { name: "ربط نقطة البيع" });
-  const pairForm = page.getByRole("heading", { name: "اقتران جهاز الكاشير" });
-
-  if (await deviceGate.isVisible({ timeout: 5_000 }).catch(() => false)) {
-    await page.getByRole("button", { name: /استخدم كاشير رئيسي/ }).click();
-    await expect(deviceGate).toBeHidden({ timeout: 20_000 });
-    return;
-  }
-
-  if (await pairForm.isVisible({ timeout: 1_000 }).catch(() => false)) {
-    throw new Error(
-      "POS asks for a pairing code with no device list — seed device «كاشير رئيسي» missing or inactive"
-    );
-  }
 }
 
 /** Open a cashier session when the POS shows the no-session CTA. */
@@ -124,14 +110,14 @@ test.describe("Flow 2 — Cashier / POS", () => {
     test.setTimeout(180_000);
     await page.setViewportSize({ width: 1440, height: 900 });
     await login(page, "cashier1@CafeFlow.local");
-    await ensureDevicePaired(page);
+    await ensurePosAccessible(page);
     await ensureSessionOpen(page);
     await cashSellProduct(page);
   });
 });
 
 /**
- * S10 cashier day: pair → open session → cash sell → close.
+ * S10 cashier day: login → open session → cash sell → close.
  * Requires local/staging with CafeFlow demo seed. Gate: E2E_FULL_POS=1.
  */
 test.describe("S10 — Full cashier day", () => {
@@ -140,11 +126,11 @@ test.describe("S10 — Full cashier day", () => {
     "Set E2E_PASSWORD and E2E_FULL_POS=1 for cashier-day E2E"
   );
 
-  test("cashier day — pair, open session, cash sale, close", async ({ page }) => {
+  test("cashier day — login, open session, cash sale, close", async ({ page }) => {
     test.setTimeout(240_000);
     await page.setViewportSize({ width: 1440, height: 900 });
     await login(page, "cashier1@CafeFlow.local");
-    await ensureDevicePaired(page);
+    await ensurePosAccessible(page);
     await ensureSessionOpen(page);
     await cashSellProduct(page);
 

@@ -59,9 +59,6 @@ export function PlatformOrgPlanWebhookPanel(props: {
   const [maxUsers, setMaxUsers] = useState(
     props.plan.max_users == null ? "" : String(props.plan.max_users)
   );
-  const [maxDevices, setMaxDevices] = useState(
-    props.plan.max_devices == null ? "" : String(props.plan.max_devices)
-  );
   const [notes, setNotes] = useState(props.plan.notes);
   const [allowCustomDomain, setAllowCustomDomain] = useState(
     props.plan.allow_custom_domain
@@ -80,7 +77,6 @@ export function PlatformOrgPlanWebhookPanel(props: {
     const preset = PLATFORM_PLAN_PRESETS[next];
     setMaxStores(preset.max_stores == null ? "" : String(preset.max_stores));
     setMaxUsers(preset.max_users == null ? "" : String(preset.max_users));
-    setMaxDevices(preset.max_devices == null ? "" : String(preset.max_devices));
     setAllowCustomDomain(preset.allow_custom_domain);
   }
 
@@ -96,10 +92,6 @@ export function PlatformOrgPlanWebhookPanel(props: {
           />
           <StatusPill
             label={`مستخدمين ${props.usage.users}/${limitLabel(props.plan.max_users)}`}
-            variant="default"
-          />
-          <StatusPill
-            label={`سجلات ${props.usage.devices}/${limitLabel(props.plan.max_devices)}`}
             variant="default"
           />
         </div>
@@ -152,19 +144,6 @@ export function PlatformOrgPlanWebhookPanel(props: {
                 className="text-start"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label>أقصى سجلات تشغيل</Label>
-              <Input
-                value={maxDevices}
-                onChange={(e) => {
-                  setPlanId("custom");
-                  setMaxDevices(e.target.value);
-                }}
-                placeholder="∞"
-                dir="ltr"
-                className="text-start"
-              />
-            </div>
           </div>
           <label className="flex items-center gap-2 text-sm">
             <Checkbox
@@ -191,8 +170,6 @@ export function PlatformOrgPlanWebhookPanel(props: {
                     plan: planId,
                     max_stores: maxStores.trim() === "" ? null : Number(maxStores),
                     max_users: maxUsers.trim() === "" ? null : Number(maxUsers),
-                    max_devices:
-                      maxDevices.trim() === "" ? null : Number(maxDevices),
                     allow_custom_domain: allowCustomDomain,
                     notes,
                   },

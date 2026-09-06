@@ -32,7 +32,6 @@ vi.mock("@/lib/services/email.service", () => ({
 const closedSession = {
   id: "s1",
   store_id: "store1",
-  device_id: null,
   cashier_id: "c1",
   opened_at: new Date().toISOString(),
   closed_at: new Date().toISOString(),

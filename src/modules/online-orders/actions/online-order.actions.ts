@@ -82,7 +82,6 @@ export async function invoiceOnlineOrderAction(
     cashierId: ctx.activeCashierId,
     storeId: ctx.storeId,
     userId: user.id,
-    deviceId: ctx.deviceId,
     payments: normalized,
   });
 

@@ -119,25 +119,6 @@ INSERT INTO pin_codes (user_id, pin_hash, is_active) VALUES
   ('00000000-0000-4000-8000-000000000203', crypt('1234', gen_salt('bf')), true),
   ('00000000-0000-4000-8000-000000000204', crypt('1234', gen_salt('bf')), true);
 
-INSERT INTO devices (id, store_id, name, device_key_hash, is_active) VALUES
-  (
-    '00000000-0000-4000-8000-000000000301',
-    '00000000-0000-4000-8000-000000000101',
-    'كاشير رئيسي',
-    crypt('change-this-device-key', gen_salt('bf')),
-    true
-  ),
-  (
-    '00000000-0000-4000-8000-000000000302',
-    '00000000-0000-4000-8000-000000000102',
-    'كاشير المول',
-    crypt('change-this-device-key-mall', gen_salt('bf')),
-    true
-  )
-ON CONFLICT (id) DO UPDATE
-SET name = EXCLUDED.name,
-    is_active = EXCLUDED.is_active;
-
 INSERT INTO suppliers (id, org_id, name, contact_info) VALUES
   ('00000000-0000-4000-8000-000000000501', '00000000-0000-4000-8000-000000000001', 'مورد البن والشاي', 'بن، شاي، نسكافيه، كاكاو'),
   ('00000000-0000-4000-8000-000000000502', '00000000-0000-4000-8000-000000000001', 'مورد الألبان والعصائر', 'لبن، فواكه، سحلب'),

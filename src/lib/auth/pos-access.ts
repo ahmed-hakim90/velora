@@ -26,7 +26,6 @@ export class PosAccessError extends Error {
 export interface PosAccessContext {
   user: AppUser;
   storeId: string;
-  deviceId: string | null;
   activeCashierId: string;
 }
 
@@ -73,7 +72,7 @@ export async function resolvePosAccess(
     throw new PosAccessError("Store access denied", "access_denied");
   }
 
-  let activeCashierId = await getActiveCashierId(storeId, null, user);
+  let activeCashierId = await getActiveCashierId(storeId, user);
   if (!activeCashierId) {
     // Cashier already logged in via PIN/email — unlock as self without a second PIN.
     if (user.role === "cashier") {
@@ -97,7 +96,6 @@ export async function resolvePosAccess(
   return {
     user,
     storeId,
-    deviceId: null,
     activeCashierId,
   };
 }

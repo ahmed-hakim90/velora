@@ -13,7 +13,6 @@ export async function openCashDrawerAction(input: { reason?: string; pin?: strin
 
   const approver = await assertManagerOverridePin({
     storeId: ctx.storeId,
-    deviceId: null,
     pin: input.pin,
   });
 
