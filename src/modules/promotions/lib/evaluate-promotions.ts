@@ -23,6 +23,7 @@ export type PromotionScopeType = (typeof PROMOTION_SCOPE_TYPES)[number];
 export type PromotionSaleMode = "retail" | "wholesale";
 
 export interface PromotionRuleConfig {
+  color?: string;
   percent?: number;
   amount?: number;
   sale_price?: number;

@@ -33,10 +33,11 @@ type PromotionRuleRow = {
 };
 
 function mapRule(row: PromotionRuleRow): PromotionRule {
-  const config: Record<string, number | undefined> = {};
+  const config: Record<string, number | string | undefined> = {};
   const raw = row.config ?? {};
   for (const [k, v] of Object.entries(raw)) {
     if (typeof v === "number") config[k] = v;
+    else if (k === "color" && typeof v === "string") config[k] = v;
     else if (typeof v === "string" && v !== "" && Number.isFinite(Number(v))) {
       config[k] = Number(v);
     }
@@ -118,7 +119,7 @@ export type UpsertPromotionRuleInput = {
   min_subtotal?: number;
   scope_type?: PromotionScopeType;
   scope_ids?: string[];
-  config?: Record<string, number | undefined>;
+  config?: Record<string, number | string | undefined>;
   usage_limit_total?: number | null;
   created_by?: string | null;
 };

@@ -13,6 +13,7 @@ import {
 } from "@/modules/promotions/services/promotion.service";
 import { listCategories } from "@/modules/products/services/product.service";
 import { listProducts } from "@/modules/products/services/product.service";
+import { getOrganization } from "@/lib/repositories/organization.repository";
 
 async function requirePromoManage() {
   await requireFeature("promotions");
@@ -21,17 +22,26 @@ async function requirePromoManage() {
 
 export async function getPromotionsPageData() {
   const user = await requirePromoManage();
-  const [rules, categories, products] = await Promise.all([
+  const [rules, categories, products, organization] = await Promise.all([
     listPromotions(),
     listCategories(),
     listProducts(),
+    getOrganization(),
   ]);
   return {
     rules,
     categories: categories.map((c) => ({ id: c.id, name: c.name })),
     products: products
       .filter((p) => p.is_active && p.product_type !== "ingredient")
-      .map((p) => ({ id: p.id, name: p.name, category_id: p.category_id })),
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        category_id: p.category_id,
+        sku: p.sku,
+        barcode: p.barcode,
+        sale_price: p.sale_price ?? p.base_price,
+      })),
+    currency: organization.currency,
     userId: user.id,
   };
 }
@@ -51,7 +61,7 @@ export async function upsertPromotionAction(input: {
   minSubtotal?: number;
   scopeType?: PromotionScopeType;
   scopeIds?: string[];
-  config?: Record<string, number | undefined>;
+  config?: Record<string, number | string | undefined>;
   usageLimitTotal?: number | null;
 }) {
   const user = await requirePromoManage();

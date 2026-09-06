@@ -24,6 +24,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useConfirmationDialog } from "@/components/Velora/confirmation-dialog";
 import type { PromotionRule, PromotionRuleType, PromotionScopeType } from "@/lib/types";
+import { formatCurrency } from "@/lib/format";
 import {
   deletePromotionAction,
   togglePromotionAction,
@@ -41,12 +42,37 @@ const RULE_TYPE_LABELS: Record<PromotionRuleType, string> = {
   qty_threshold: "Quantity discount",
 };
 
-type CatalogOption = { id: string; name: string; category_id?: string };
+const PROMOTION_COLORS = [
+  "#047857",
+  "#0369a1",
+  "#4338ca",
+  "#6d28d9",
+  "#a21caf",
+  "#be123c",
+  "#c2410c",
+  "#a16207",
+] as const;
+
+const SCOPE_LABELS: Record<PromotionScopeType, string> = {
+  all: "All items",
+  product: "Selected products",
+  category: "Selected categories",
+};
+
+type CatalogOption = {
+  id: string;
+  name: string;
+  category_id?: string;
+  sku?: string;
+  barcode?: string;
+  sale_price?: number;
+};
 
 interface PromotionsPageProps {
   rules: PromotionRule[];
   categories: CatalogOption[];
   products: CatalogOption[];
+  currency: string;
 }
 
 type FormState = {
@@ -72,6 +98,7 @@ type FormState = {
   getQty: string;
   getPercent: string;
   minQty: string;
+  color: string;
 };
 
 const emptyForm = (): FormState => ({
@@ -96,6 +123,7 @@ const emptyForm = (): FormState => ({
   getQty: "1",
   getPercent: "100",
   minQty: "5",
+  color: PROMOTION_COLORS[0],
 });
 
 function ruleToForm(rule: PromotionRule): FormState {
@@ -122,43 +150,48 @@ function ruleToForm(rule: PromotionRule): FormState {
     getQty: String(rule.config.get_qty ?? 1),
     getPercent: String(rule.config.get_percent ?? 100),
     minQty: String(rule.config.min_qty ?? 5),
+    color: typeof rule.config.color === "string" ? rule.config.color : PROMOTION_COLORS[0],
   };
 }
 
-function buildConfig(form: FormState): Record<string, number | undefined> {
+function buildConfig(form: FormState): Record<string, number | string | undefined> {
+  const appearance = { color: form.color };
   switch (form.ruleType) {
     case "percent_off_item":
     case "cart_percent":
-      return { percent: parseFloat(form.percent) || 0 };
+      return { ...appearance, percent: parseFloat(form.percent) || 0 };
     case "fixed_off_item":
     case "cart_fixed":
-      return { amount: parseFloat(form.amount) || 0 };
+      return { ...appearance, amount: parseFloat(form.amount) || 0 };
     case "scheduled_sale_price":
-      return { sale_price: parseFloat(form.salePrice) || 0 };
+      return { ...appearance, sale_price: parseFloat(form.salePrice) || 0 };
     case "bogo":
       return {
+        ...appearance,
         buy_qty: parseFloat(form.buyQty) || 0,
         get_qty: parseFloat(form.getQty) || 0,
         get_percent: parseFloat(form.getPercent) || 100,
       };
     case "qty_threshold":
       return {
+        ...appearance,
         min_qty: parseFloat(form.minQty) || 0,
         percent: form.percent ? parseFloat(form.percent) : undefined,
         amount: form.amount && !form.percent ? parseFloat(form.amount) : undefined,
       };
     default:
-      return {};
+      return appearance;
   }
 }
 
-export function PromotionsPage({ rules, categories, products }: PromotionsPageProps) {
+export function PromotionsPage({ rules, categories, products, currency }: PromotionsPageProps) {
   const { t, language } = useTranslation();
   const { requestConfirmation, confirmationDialog } = useConfirmationDialog();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [query, setQuery] = useState("");
+  const [scopeQuery, setScopeQuery] = useState("");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -182,11 +215,13 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
 
   const openCreate = () => {
     setForm(emptyForm());
+    setScopeQuery("");
     setOpen(true);
   };
 
   const openEdit = (rule: PromotionRule) => {
     setForm(ruleToForm(rule));
+    setScopeQuery("");
     setOpen(true);
   };
 
@@ -253,6 +288,20 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
   };
 
   const scopeOptions = form.scopeType === "category" ? categories : products;
+  const filteredScopeOptions = useMemo(() => {
+    const normalizedQuery = scopeQuery
+      .trim()
+      .toLocaleLowerCase(language === "ar" ? "ar" : "en");
+    if (!normalizedQuery) return scopeOptions;
+
+    return scopeOptions.filter((option) =>
+      [option.name, option.sku, option.barcode].some((value) =>
+        value
+          ?.toLocaleLowerCase(language === "ar" ? "ar" : "en")
+          .includes(normalizedQuery)
+      )
+    );
+  }, [language, scopeOptions, scopeQuery]);
   const showItemScope =
     form.ruleType === "percent_off_item" ||
     form.ruleType === "fixed_off_item" ||
@@ -330,7 +379,13 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
                     <Badge variant={rule.is_active ? "default" : "secondary"}>
                       {rule.is_active ? t("Active") : t("Disabled")}
                     </Badge>
-                    <Badge variant="outline">{t(RULE_TYPE_LABELS[rule.rule_type])}</Badge>
+                    <Badge
+                      variant="outline"
+                      className="border-transparent text-white"
+                      style={{ backgroundColor: typeof rule.config.color === "string" ? rule.config.color : PROMOTION_COLORS[0] }}
+                    >
+                      {t(RULE_TYPE_LABELS[rule.rule_type])}
+                    </Badge>
                     {rule.coupon_code ? (
                       <Badge variant="outline">{t("Code")}: {rule.coupon_code}</Badge>
                     ) : null}
@@ -407,7 +462,7 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
               onValueChange={(v) => setForm({ ...form, ruleType: v as PromotionRuleType })}
             >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue>{() => t(RULE_TYPE_LABELS[form.ruleType])}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {(Object.keys(RULE_TYPE_LABELS) as PromotionRuleType[]).map((ruleType) => (
@@ -418,6 +473,31 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
               </SelectContent>
             </Select>
           </div>
+
+          <fieldset className="grid gap-2">
+            <legend className="text-sm font-medium">{t("Offer color")}</legend>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("Offer color")}>
+              {PROMOTION_COLORS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  role="radio"
+                  aria-checked={form.color === color}
+                  aria-label={color}
+                  onClick={() => setForm({ ...form, color })}
+                  className="size-11 rounded-full border-4 border-background shadow-sm ring-1 ring-border transition-transform hover:scale-105 aria-checked:ring-2 aria-checked:ring-foreground"
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
+            <div className="flex items-center gap-2 rounded-md border bg-muted/30 p-2 text-sm">
+              <span className="size-3 rounded-full" style={{ backgroundColor: form.color }} />
+              <span>{t("Preview")}</span>
+              <Badge className="ms-auto border-transparent text-white" style={{ backgroundColor: form.color }}>
+                {form.name.trim() || t("Offer")}
+              </Badge>
+            </div>
+          </fieldset>
 
           {(form.ruleType === "percent_off_item" ||
             form.ruleType === "cart_percent" ||
@@ -520,12 +600,13 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
                 <Label>{t("Scope")}</Label>
                 <Select
                   value={form.scopeType}
-                  onValueChange={(v) =>
-                    setForm({ ...form, scopeType: v as PromotionScopeType, scopeIds: [] })
-                  }
+                  onValueChange={(v) => {
+                    setForm({ ...form, scopeType: v as PromotionScopeType, scopeIds: [] });
+                    setScopeQuery("");
+                  }}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue>{() => t(SCOPE_LABELS[form.scopeType])}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t("All items")}</SelectItem>
@@ -535,24 +616,60 @@ export function PromotionsPage({ rules, categories, products }: PromotionsPagePr
                 </Select>
               </div>
               {form.scopeType !== "all" && (
-                <div className="grid max-h-40 gap-2 overflow-y-auto rounded-md border p-2">
-                  {scopeOptions.map((opt) => {
-                    const checked = form.scopeIds.includes(opt.id);
-                    return (
-                      <label key={opt.id} className="flex items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={(v) => {
-                            const next = v === true
-                              ? [...form.scopeIds, opt.id]
-                              : form.scopeIds.filter((id) => id !== opt.id);
-                            setForm({ ...form, scopeIds: next });
-                          }}
-                        />
-                        {opt.name}
-                      </label>
-                    );
-                  })}
+                <div className="grid gap-2">
+                  <Label htmlFor="promo-scope-search">
+                    {t(form.scopeType === "product" ? "Search products" : "Search categories")}
+                  </Label>
+                  <Input
+                    id="promo-scope-search"
+                    type="search"
+                    value={scopeQuery}
+                    onChange={(event) => setScopeQuery(event.target.value)}
+                    placeholder={t(
+                      form.scopeType === "product"
+                        ? "Search by product name, SKU, or barcode…"
+                        : "Search categories…"
+                    )}
+                  />
+                  <div className="grid max-h-48 gap-1 overflow-y-auto rounded-md border p-2">
+                    {filteredScopeOptions.length === 0 ? (
+                      <p className="px-2 py-3 text-center text-sm text-muted-foreground">
+                        {t("No matching results")}
+                      </p>
+                    ) : (
+                      filteredScopeOptions.map((opt) => {
+                        const checked = form.scopeIds.includes(opt.id);
+                        return (
+                          <label
+                            key={opt.id}
+                            className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-sm px-2 py-1.5 hover:bg-muted/60"
+                          >
+                            <span className="flex min-w-0 items-center gap-2 text-sm">
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(v) => {
+                                  const next = v === true
+                                    ? [...form.scopeIds, opt.id]
+                                    : form.scopeIds.filter((id) => id !== opt.id);
+                                  setForm({ ...form, scopeIds: next });
+                                }}
+                              />
+                              <span className="truncate">{opt.name}</span>
+                            </span>
+                            {form.scopeType === "product" && opt.sale_price != null ? (
+                              <span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
+                                {t("Sale price")}: {formatCurrency(
+                                  opt.sale_price,
+                                  currency,
+                                  language === "ar" ? "ar-EG" : "en-US"
+                                )}
+                              </span>
+                            ) : null}
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               )}
             </>

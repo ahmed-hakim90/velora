@@ -18,7 +18,7 @@ function categoryRule(): PromotionRuleInput {
     min_subtotal: 0,
     scope_type: "category",
     scope_ids: ["drinks"],
-    config: { percent: 20 },
+    config: { percent: 20, color: "#4338ca" },
     usage_limit_total: null,
     usage_count: 0,
   };
@@ -34,6 +34,7 @@ describe("previewProductOffer", () => {
       saleMode: "retail",
     })).toEqual({
       name: "خصم المشروبات",
+      color: "#4338ca",
       originalPrice: 50,
       finalPrice: 40,
     });

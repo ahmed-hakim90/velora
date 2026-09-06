@@ -163,7 +163,10 @@ export function ProductTile({
           {product.name}
         </p>
         {offer ? (
-          <Badge className="w-fit max-w-full truncate rounded-full bg-emerald-600 px-1.5 py-0 text-[9px] text-white dark:bg-emerald-500 sm:text-[10px]">
+          <Badge
+            className="w-fit max-w-full truncate rounded-full border-transparent px-1.5 py-0 text-[9px] text-white sm:text-[10px]"
+            style={{ backgroundColor: offer.color }}
+          >
             {offer.name}
           </Badge>
         ) : null}

@@ -8,6 +8,7 @@ import type { SalesMode } from "@/lib/constants";
 
 export interface ProductOfferPreview {
   name: string;
+  color: string;
   originalPrice: number;
   finalPrice: number;
 }
@@ -84,7 +85,13 @@ export function previewProductOffer(input: {
     });
 
   const name = application?.rule_name ?? scheduled?.name;
+  const matchedRule = application
+    ? input.rules.find((rule) => rule.id === application.promotion_rule_id)
+    : scheduled;
+  const color = typeof matchedRule?.config.color === "string"
+    ? matchedRule.config.color
+    : "#047857";
   return name
-    ? { name, originalPrice: input.unitPrice, finalPrice: line.line_total }
+    ? { name, color, originalPrice: input.unitPrice, finalPrice: line.line_total }
     : null;
 }

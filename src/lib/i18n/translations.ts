@@ -2056,6 +2056,11 @@ export const arTranslations: Record<string, string> = {
   "Scan barcode or type a product name, then press Enter to add":
     "امسح الباركود أو اكتب اسم المنتج ثم اضغط Enter للإضافة",
   "Search products": "بحث عن منتجات",
+  "Search categories": "بحث عن فئات",
+  "Search by product name, SKU, or barcode…": "ابحث باسم المنتج أو الكود أو الباركود…",
+  "Search categories…": "ابحث في الفئات…",
+  "Offer color": "لون العرض",
+  Offer: "عرض",
   "Add from search": "إضافة من البحث",
   "Loading products…": "جاري تحميل المنتجات…",
   "This will only take a moment.": "لحظات ونرجع للقائمة.",

@@ -696,7 +696,7 @@ export interface PromotionRule {
   min_subtotal: number;
   scope_type: PromotionScopeType;
   scope_ids: string[];
-  config: Record<string, number | undefined>;
+  config: Record<string, number | string | undefined>;
   usage_limit_total: number | null;
   usage_count: number;
   created_by: string | null;
