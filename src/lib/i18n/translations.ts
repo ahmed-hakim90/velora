@@ -680,6 +680,7 @@ export const arTranslations: Record<string, string> = {
   Cash: "نقدي",
   "Cash sales": "مبيعات نقدية",
   "Cashier PIN": "رقم PIN للكاشير",
+  "POS operator PIN": "رقم PIN لمستخدم نقطة البيع",
   "Cashier can add session expense": "الكاشير يقدر يضيف مصروف للجلسة",
   "Cashier max expense amount": "أقصى مبلغ مصروف للكاشير",
   Categories: "التصنيفات",

@@ -43,7 +43,7 @@ export function PosCashierPinGate({ currentUserName, onSuccess }: PosCashierPinG
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto overscroll-y-contain px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4 sm:py-5">
         <div className="w-full max-w-md space-y-3 rounded-xl border bg-card p-3.5 shadow-md ring-1 ring-foreground/5 sm:space-y-4 sm:p-4">
           <div className="space-y-1 text-center">
-            <h1 className="text-lg font-semibold tracking-tight">{t("Cashier PIN")}</h1>
+            <h1 className="text-lg font-semibold tracking-tight">{t("POS operator PIN")}</h1>
             <p className="text-xs text-muted-foreground">
               {t("Enter your 4-digit PIN to open the POS.")}
             </p>

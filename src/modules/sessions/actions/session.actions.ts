@@ -50,7 +50,7 @@ function mapPosAccessError(error: PosAccessError): string {
     store_mismatch: "افتح رابط الفرع الصحيح قبل فتح الجلسة",
     store_required: "اختر الفرع أولاً قبل فتح الجلسة",
     access_denied: "ليس لديك صلاحية على هذا الفرع",
-    cashier_required: "أدخل رقم PIN للكاشير أولاً",
+    cashier_required: "أدخل PIN مستخدم نقطة البيع أولاً",
     role_denied: "دورك لا يسمح بفتح جلسة كاشير",
   };
   return messages[error.code] ?? error.message;

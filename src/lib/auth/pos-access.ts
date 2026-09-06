@@ -81,8 +81,9 @@ export async function resolvePosAccess(
       }
       activeCashierId = user.id;
     } else {
-      // Owner/manager: PIN switch selects which cashier identity sells.
-      throw new PosAccessError("Cashier PIN required", "cashier_required");
+      // Owner/manager confirms their own PIN (or deliberately selects another
+      // permitted operator) before a selling identity is activated.
+      throw new PosAccessError("POS operator PIN required", "cashier_required");
     }
   }
 
