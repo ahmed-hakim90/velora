@@ -132,8 +132,23 @@ export async function openSessionAction(openingCash?: number | null) {
 }
 
 /** POS quick-open: always uses locked pending float (or 0). */
-export async function quickOpenSessionAction() {
-  return openSessionAction(null);
+export async function quickOpenSessionAction(): Promise<
+  | { success: true; sessionId: string }
+  | { success: false; error: string }
+> {
+  try {
+    const session = await openSessionAction(null);
+    return { success: true, sessionId: session.id };
+  } catch (error) {
+    // Server Action exceptions are hidden as React #441 in production. Return
+    // a controlled result so the cashier sees the actionable Arabic message.
+    console.error("[sessions] quick open failed", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "تعذر فتح الوردية",
+    };
+  }
 }
 
 export async function getPendingOpeningFloatAction(): Promise<{

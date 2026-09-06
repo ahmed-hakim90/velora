@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   closeSessionAction,
   forceCloseSessionAction,
+  quickOpenSessionAction,
 } from "@/modules/sessions/actions/session.actions";
 import * as guards from "@/lib/auth/guards";
 import * as permissionRepo from "@/lib/repositories/permission.repository";
@@ -9,6 +10,7 @@ import * as sessionService from "@/modules/sessions/services/session.service";
 import * as reconciliation from "@/modules/sessions/services/reconciliation.service";
 import * as settingsService from "@/modules/system/services/settings.service";
 import * as posAccess from "@/lib/auth/pos-access";
+import * as cashierVault from "@/modules/sessions/services/cashier-vault.service";
 import { getSessionReconciliationVersion } from "@/modules/sessions/types/session-close";
 import type { AppUser } from "@/lib/types";
 
@@ -19,7 +21,76 @@ vi.mock("@/lib/repositories/permission.repository");
 vi.mock("@/modules/sessions/services/session.service");
 vi.mock("@/modules/sessions/services/reconciliation.service");
 vi.mock("@/modules/system/services/settings.service");
+vi.mock("@/modules/sessions/services/cashier-vault.service");
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+
+describe("quickOpenSessionAction", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.mocked(guards.requirePermissionOrRole).mockResolvedValue(undefined as never);
+    vi.mocked(posAccess.requirePosAccess).mockResolvedValue({
+      user: {
+        id: "cashier-1",
+        org_id: "org-1",
+        auth_user_id: "auth-1",
+        name: "Cashier",
+        email: "cashier@test.com",
+        role: "cashier",
+        is_active: true,
+        store_ids: ["store-1"],
+      },
+      storeId: "store-1",
+      deviceId: null,
+      activeCashierId: "cashier-1",
+    });
+    vi.mocked(cashierVault.getCashierVault).mockResolvedValue({
+      id: "vault-1",
+      org_id: "org-1",
+      store_id: "store-1",
+      cashier_id: "cashier-1",
+      balance: 0,
+      pending_opening_float: 0,
+      created_at: "2026-09-06T00:00:00.000Z",
+      updated_at: "2026-09-06T00:00:00.000Z",
+    });
+  });
+
+  it("returns success instead of exposing a Server Action payload", async () => {
+    vi.mocked(sessionService.openSession).mockResolvedValue({
+      id: "session-1",
+      store_id: "store-1",
+      device_id: null,
+      cashier_id: "cashier-1",
+      opened_at: "2026-09-06T00:00:00.000Z",
+      closed_at: null,
+      opening_cash: 0,
+      expected_cash: null,
+      actual_cash: null,
+      variance: null,
+      status: "open",
+      notes: null,
+      closed_by: null,
+      close_reason: null,
+      force_closed: false,
+    });
+
+    await expect(quickOpenSessionAction()).resolves.toEqual({
+      success: true,
+      sessionId: "session-1",
+    });
+  });
+
+  it("returns an actionable error instead of React #441", async () => {
+    vi.mocked(sessionService.openSession).mockRejectedValue(
+      new Error("تعذر إنشاء الجلسة"),
+    );
+
+    await expect(quickOpenSessionAction()).resolves.toEqual({
+      success: false,
+      error: "تعذر إنشاء الجلسة",
+    });
+  });
+});
 
 describe("forceCloseSessionAction", () => {
   beforeEach(() => {

@@ -29,7 +29,11 @@ export function QuickOpenSessionButton({
   function handleOpen() {
     startTransition(async () => {
       try {
-        await quickOpenSessionAction();
+        const result = await quickOpenSessionAction();
+        if (!result.success) {
+          toast.error(result.error);
+          return;
+        }
         const floatNote =
           pendingOpeningFloat > 0
             ? ` · بداية الدرج ${formatCurrency(pendingOpeningFloat)}`
