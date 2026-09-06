@@ -55,6 +55,7 @@ import {
 } from "@/modules/pos/services/receipt-format.service";
 import { printReceiptViaUsb } from "@/modules/pos/services/receipt-usb-printer.service";
 import { findPosProductByBarcode } from "@/modules/pos/utils/barcode-lookup";
+import { loadPosCatalogWithRetry } from "@/modules/pos/lib/load-pos-catalog";
 import {
   playPosErrorSound,
   playPosNewOrderSound,
@@ -540,21 +541,12 @@ export function PosScreen({
         setCatalogError(null);
       }
       try {
-        const catalogRes = await fetch("/api/pos/catalog", {
-          credentials: "same-origin",
+        const catalog = await loadPosCatalogWithRetry({
           signal: controller.signal,
         });
-        const catalogJson = (await catalogRes.json()) as {
-          categories?: Category[];
-          products?: POSProduct[];
-          error?: string;
-        };
-        if (!catalogRes.ok) {
-          throw new Error(catalogJson.error || "Could not load products");
-        }
         if (!cancelled) {
-          setCatalogCategories(catalogJson.categories ?? []);
-          setCatalogProducts(catalogJson.products ?? []);
+          setCatalogCategories(catalog.categories);
+          setCatalogProducts(catalog.products);
           setCatalogError(null);
           catalogHasLoadedRef.current = true;
           lastCatalogRefreshAtRef.current = Date.now();
