@@ -32,6 +32,11 @@ describe("pos store cart controls", () => {
     expect(getCartTotal(usePosStore.getState().cart, usePosStore.getState().discountAmount)).toBe(0);
   });
 
+  it("preserves category identity for category-scoped promotion previews", () => {
+    usePosStore.getState().addItem({ ...baseLine, categoryId: "category-1" });
+    expect(usePosStore.getState().cart[0]?.categoryId).toBe("category-1");
+  });
+
   it("holds and resumes a cart with its discount", () => {
     usePosStore.getState().addItem(baseLine);
     usePosStore.getState().setDiscountAmount(3);

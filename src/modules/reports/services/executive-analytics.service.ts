@@ -499,10 +499,14 @@ export function buildPnlStatement(profit: ProfitReportDetail): {
   lines: PnlLine[];
   estimatedNet: number;
 } {
-  const estimatedNet =
-    profit.grossProfit - profit.totalExpenses - profit.wasteCost - profit.refunds;
+  // profit.revenue/grossProfit are already net of cancelled and refunded
+  // orders. Reconstruct gross sales for presentation, then show the reversal
+  // once; do not subtract it again from the already-net estimated profit.
+  const grossSales = profit.revenue + profit.refunds;
+  const estimatedNet = profit.estimatedNetProfit;
   const lines: PnlLine[] = [
-    { key: "revenue", labelAr: "الإيراد", amount: profit.revenue, emphasis: "normal" },
+    { key: "revenue", labelAr: "إجمالي المبيعات", amount: grossSales, emphasis: "normal" },
+    { key: "refunds", labelAr: "المرتجعات", amount: -profit.refunds, emphasis: "normal" },
     { key: "cogs", labelAr: "تكلفة البضاعة (COGS)", amount: -profit.cogs, emphasis: "normal" },
     {
       key: "gross",
@@ -517,7 +521,6 @@ export function buildPnlStatement(profit: ProfitReportDetail): {
       emphasis: "normal",
     },
     { key: "waste", labelAr: "الهالك", amount: -profit.wasteCost, emphasis: "normal" },
-    { key: "refunds", labelAr: "المرتجعات", amount: -profit.refunds, emphasis: "normal" },
     {
       key: "net",
       labelAr: "صافي تقديري",

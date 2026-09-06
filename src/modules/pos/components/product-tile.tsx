@@ -9,6 +9,7 @@ import { resolveDisplayPriceRange } from "@/modules/products/lib/display-price-r
 import type { POSProduct } from "@/modules/pos/services/catalog.service";
 import { firstGrapheme } from "@/lib/first-grapheme";
 import { useTranslation } from "@/lib/i18n/use-translation";
+import type { ProductOfferPreview } from "@/modules/pos/lib/pos-promo-preview";
 
 const BADGE_LABELS = {
   in_stock: "In stock",
@@ -32,6 +33,7 @@ interface ProductTileProps {
   allowNegativeStock?: boolean;
   /** Total quantity for this product across the current cart lines. */
   quantityInCart?: number;
+  offer?: ProductOfferPreview | null;
 }
 
 export function ProductTile({
@@ -42,6 +44,7 @@ export function ProductTile({
   showVariants = true,
   allowNegativeStock = false,
   quantityInCart = 0,
+  offer = null,
 }: ProductTileProps) {
   const { t, language } = useTranslation();
   const badgeLabel = BADGE_LABELS[product.stockBadge];
@@ -72,7 +75,8 @@ export function ProductTile({
     : null;
   const accessibleLabel = [
     product.name,
-    formatCurrency(displayPrice),
+    formatCurrency(offer?.finalPrice ?? displayPrice),
+    offer?.name,
     stockLabel,
     showVariants && product.hasVariants
       ? `${product.variants.length} ${t("Variants")}`
@@ -158,15 +162,25 @@ export function ProductTile({
         <p className="line-clamp-2 text-sm font-bold leading-snug text-card-foreground sm:text-[15px]">
           {product.name}
         </p>
+        {offer ? (
+          <Badge className="w-fit max-w-full truncate rounded-full bg-emerald-600 px-1.5 py-0 text-[9px] text-white dark:bg-emerald-500 sm:text-[10px]">
+            {offer.name}
+          </Badge>
+        ) : null}
         <div className="min-w-0 pt-0.5">
           {showVariantPrice ? (
             <p className="text-[10px] text-muted-foreground max-sm:hidden">
               {priceRange ? t("From") : t("Price")}
             </p>
           ) : null}
-          <p className="truncate text-[13px] font-bold tabular-nums text-foreground sm:text-[15px]">
-            {formatCurrency(displayPrice)}
-            {priceRange ? (
+          {offer ? (
+            <p className="truncate text-[10px] tabular-nums text-muted-foreground line-through">
+              {formatCurrency(offer.originalPrice)}
+            </p>
+          ) : null}
+          <p className={cn("truncate text-[13px] font-bold tabular-nums text-foreground sm:text-[15px]", offer && "text-emerald-700 dark:text-emerald-300")}>
+            {formatCurrency(offer?.finalPrice ?? displayPrice)}
+            {priceRange && !offer ? (
               <span className="ms-0.5 text-[10px] font-normal text-muted-foreground">
                 {priceRange}
               </span>

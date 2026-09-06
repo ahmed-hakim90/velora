@@ -160,6 +160,7 @@ export const usePosStore = create<PosState>((set, get) => ({
         {
           id,
           productId: line.productId,
+          categoryId: line.categoryId,
           variantId: line.variantId,
           name: line.name,
           quantity: line.quantity,

@@ -79,7 +79,7 @@ import type { FeatureFlag, SalesMode } from "@/lib/constants";
 import type { ReportBranding } from "@/modules/reports/core/report-context";
 import { usePosStore, type HeldCart } from "@/stores/pos-store";
 import { computePosCartTotals } from "@/modules/pos/lib/cart-totals";
-import { previewPosPromotions } from "@/modules/pos/lib/pos-promo-preview";
+import { previewPosPromotions, previewProductOffer } from "@/modules/pos/lib/pos-promo-preview";
 import type { PromotionRuleInput } from "@/modules/promotions/lib/evaluate-promotions";
 import { EmptyStateBlock } from "@/components/Velora/state-blocks";
 import { PosPinSwitch } from "@/modules/pos/components/pos-pin-switch";
@@ -822,6 +822,25 @@ export function PosScreen({
       productSearchIndex.get(product.id)?.includes(normalizedSearch),
     );
   }, [categoryId, initialProductsLive, productSearchIndex, searchTerm]);
+  const productOffers = useMemo(() => {
+    const offers = new Map<string, ReturnType<typeof previewProductOffer>>();
+    if (!promotionsEnabled) return offers;
+    for (const product of products) {
+      const prices = product.hasVariants && product.variants.length > 0
+        ? product.variants.map((variant) => variant.price)
+        : [product.base_price];
+      const unitPrice = Math.min(...prices.filter(Number.isFinite));
+      offers.set(product.id, previewProductOffer({
+        rules: promoRuleInputs,
+        productId: product.id,
+        categoryId: product.category_id,
+        unitPrice,
+        storeId,
+        saleMode: salesMode,
+      }));
+    }
+    return offers;
+  }, [promotionsEnabled, products, promoRuleInputs, storeId, salesMode]);
 
   /** When variants exist, checkout SQL requires a variant_id — even if UI variants are off. */
   function resolveCheckoutVariant(
@@ -1673,6 +1692,7 @@ export function PosScreen({
                       quantityInCart={
                         cartQuantitiesByProduct.get(product.id) ?? 0
                       }
+                      offer={productOffers.get(product.id)}
                       onAdd={() => handleAdd(product)}
                     />
                   ))}
@@ -1693,6 +1713,7 @@ export function PosScreen({
               promoItemSavings={promoItemSavings}
               promoAdjustedSubtotal={promoAdjustedSubtotal}
               promoLabels={promoLabels}
+              promoLines={promoPreview?.lines}
               loyaltyEnabled={loyaltyEnabled}
               enabledPaymentMethods={enabledPaymentMethods}
               loyaltyRedemptionRate={loyaltyRedemptionRate}
@@ -1984,6 +2005,7 @@ export function PosScreen({
                   promoItemSavings={promoItemSavings}
                   promoAdjustedSubtotal={promoAdjustedSubtotal}
                   promoLabels={promoLabels}
+                  promoLines={promoPreview?.lines}
                   loyaltyEnabled={loyaltyEnabled}
                   enabledPaymentMethods={enabledPaymentMethods}
                   loyaltyRedemptionRate={loyaltyRedemptionRate}

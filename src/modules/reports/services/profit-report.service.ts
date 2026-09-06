@@ -77,6 +77,15 @@ export interface ProfitReportDetail {
   highestSellingProducts: ProductProfitRow[];
 }
 
+export function isPaidReversalOrder(
+  order: Pick<Order, "status" | "payment_status">,
+): boolean {
+  return (
+    (order.status === "refunded" || order.status === "voided") &&
+    order.payment_status !== "unpaid"
+  );
+}
+
 type OrderItemRow = {
   order_id: string;
   product_id: string;
@@ -394,7 +403,7 @@ export async function getProfitReport(options?: {
 
   const refundOrders = allOrders.filter((o) => {
     const d = new Date(orderBusinessAt(o));
-    return (o.status === "refunded" || o.status === "voided") && d >= from && d <= to;
+    return isPaidReversalOrder(o) && d >= from && d <= to;
   });
   const refunds = refundOrders.reduce((s, o) => s + o.total, 0);
 

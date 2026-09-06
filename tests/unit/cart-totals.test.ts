@@ -46,4 +46,27 @@ describe("computePosCartTotals", () => {
     expect(totals.payableBeforeLoyalty).toBe(75);
     expect(totals.payableTotal).toBe(70);
   });
+
+  it("counts scheduled sale price reductions as item savings", () => {
+    const cart = [line({ lineTotal: 100, unitPrice: 100 })];
+    const promoPreview: EvaluatePromotionsResult = {
+      lines: [{
+        line_key: "1",
+        list_unit_price: 75,
+        unit_price: 75,
+        quantity: 1,
+        discount_amount: 0,
+        promotion_rule_id: null,
+        line_total: 75,
+      }],
+      subtotal: 75,
+      cart_discount: 0,
+      cart_rule_id: null,
+      applications: [],
+    };
+
+    const totals = computePosCartTotals({ cart, promoPreview });
+    expect(totals.promoItemDiscount).toBe(25);
+    expect(totals.payableTotal).toBe(75);
+  });
 });

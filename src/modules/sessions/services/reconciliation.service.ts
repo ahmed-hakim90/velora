@@ -4,7 +4,7 @@ import * as orderRepo from "@/lib/repositories/order.repository";
 import * as expenseRepo from "@/lib/repositories/expense.repository";
 import * as paymentRepo from "@/lib/repositories/supplier-payment.repository";
 import { mapExpense, mapSupplierPayment } from "@/lib/repositories/mappers";
-import type { Expense, SupplierPayment } from "@/lib/types";
+import type { Expense, Order, OrderPayment, SupplierPayment } from "@/lib/types";
 
 export interface SessionReconciliation {
   openingCash: number;
@@ -23,6 +23,44 @@ export interface SessionCashBundle {
   reconciliation: SessionReconciliation;
   expenses: Expense[];
   supplierPayments: SupplierPayment[];
+}
+
+export function summarizeSessionOrderCash(
+  orders: Order[],
+  payments: OrderPayment[],
+): Pick<
+  SessionReconciliation,
+  "cashSales" | "cashRefunds" | "totalSales" | "orderCount"
+> {
+  const cashByOrder = new Map<string, number>();
+  for (const payment of payments) {
+    if (payment.method !== "cash") continue;
+    cashByOrder.set(
+      payment.order_id,
+      (cashByOrder.get(payment.order_id) ?? 0) + payment.amount,
+    );
+  }
+
+  let cashSales = 0;
+  let cashRefunds = 0;
+  let totalSales = 0;
+  let orderCount = 0;
+  for (const order of orders) {
+    const cash = cashByOrder.get(order.id) ?? 0;
+    if (["completed", "voided", "refunded"].includes(order.status)) {
+      // A void/refund reverses a previously collected payment. Count the
+      // receipt and its reversal so the order contributes zero to the drawer.
+      cashSales += cash;
+    }
+    if (order.status === "completed") {
+      totalSales += order.total;
+      orderCount += 1;
+    } else if (order.status === "voided" || order.status === "refunded") {
+      cashRefunds += cash;
+    }
+  }
+
+  return { cashSales, cashRefunds, totalSales, orderCount };
 }
 
 function emptyReconciliation(): SessionReconciliation {
@@ -69,29 +107,8 @@ async function loadSessionCashBundleFallback(
     .map((order) => order.id);
   const payments =
     await orderRepo.getOrderPaymentsForOrders(relevantOrderIds);
-  const cashByOrder = new Map<string, number>();
-  for (const payment of payments) {
-    if (payment.method !== "cash") continue;
-    cashByOrder.set(
-      payment.order_id,
-      (cashByOrder.get(payment.order_id) ?? 0) + payment.amount,
-    );
-  }
-
-  let cashSales = 0;
-  let cashRefunds = 0;
-  let totalSales = 0;
-  let orderCount = 0;
-  for (const order of orders) {
-    const cash = cashByOrder.get(order.id) ?? 0;
-    if (order.status === "completed") {
-      cashSales += cash;
-      totalSales += order.total;
-      orderCount += 1;
-    } else if (order.status === "voided" || order.status === "refunded") {
-      cashRefunds += cash;
-    }
-  }
+  const { cashSales, cashRefunds, totalSales, orderCount } =
+    summarizeSessionOrderCash(orders, payments);
 
   const expenseTotal = expenses
     .filter(

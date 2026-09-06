@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/format";
 import type { PaymentMethod } from "@/lib/types";
+import type { PromotionLineResult } from "@/modules/promotions/lib/evaluate-promotions";
 import { computePosCartTotals } from "@/modules/pos/lib/cart-totals";
 import { getCartSubtotal, usePosStore } from "@/stores/pos-store";
 import { CustomerAttach } from "@/modules/pos/components/customer-attach";
@@ -86,6 +87,7 @@ interface CartPanelProps {
   promoItemSavings?: number;
   promoAdjustedSubtotal?: number | null;
   promoLabels?: string[];
+  promoLines?: PromotionLineResult[];
   loyaltyEnabled?: boolean;
   enabledPaymentMethods?: PaymentMethod[];
   loyaltyRedemptionRate?: number | null;
@@ -107,6 +109,7 @@ export function CartPanel({
   promoItemSavings = 0,
   promoAdjustedSubtotal = null,
   promoLabels = [],
+  promoLines = [],
   loyaltyEnabled = false,
   enabledPaymentMethods = ["cash", "card", "wallet", "other"],
   loyaltyRedemptionRate = null,
@@ -228,6 +231,7 @@ export function CartPanel({
         100,
     ) / 100;
   const uniquePromoLabels = [...new Set(promoLabels.filter(Boolean))];
+  const promoLineById = new Map(promoLines.map((line) => [line.line_key, line]));
 
   function handlePay(method: PaymentMethod) {
     if (payDisabled) return;
@@ -261,7 +265,10 @@ export function CartPanel({
           />
         ) : (
           <ul className="space-y-1 py-1.5">
-            {cart.map((line) => (
+            {cart.map((line) => {
+              const promoLine = promoLineById.get(line.id);
+              const hasLineOffer = Boolean(promoLine && promoLine.line_total < line.lineTotal);
+              return (
               <li
                 key={line.id}
                 className="rounded-lg bg-muted/40 px-2.5 py-2 ring-1 ring-border/40 max-[390px]:px-2 max-[390px]:py-1.5 min-[900px]:flex min-[900px]:items-start min-[900px]:gap-2"
@@ -272,11 +279,13 @@ export function CartPanel({
                       {line.name}
                     </p>
                     <p className="shrink-0 text-sm font-semibold tabular-nums min-[900px]:hidden">
-                      {formatCurrency(line.lineTotal)}
+                      {formatCurrency(promoLine?.line_total ?? line.lineTotal)}
                     </p>
                   </div>
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {formatCurrency(line.unitPrice)}{" "}
+                    {hasLineOffer ? (
+                      <><span className="me-1 line-through">{formatCurrency(line.unitPrice)}</span><span className="font-semibold text-emerald-700 dark:text-emerald-300">{formatCurrency(promoLine?.unit_price ?? line.unitPrice)}</span>{" "}</>
+                    ) : formatCurrency(line.unitPrice)}{" "}
                     {line.saleUnit ? `/${line.saleUnit}` : t("each")}
                     {line.saleInputMode === "by_amount" &&
                     line.enteredAmount != null
@@ -332,11 +341,12 @@ export function CartPanel({
                     </Button>
                   </div>
                   <p className="hidden text-base font-semibold tabular-nums min-[900px]:block">
-                    {formatCurrency(line.lineTotal)}
+                    {formatCurrency(promoLine?.line_total ?? line.lineTotal)}
                   </p>
                 </div>
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </div>

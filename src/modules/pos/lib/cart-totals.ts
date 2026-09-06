@@ -32,8 +32,9 @@ export function computePosCartTotals(input: {
   const promo = input.promoPreview ?? null;
   const promoAdjustedSubtotal = promo ? roundMoney(promo.subtotal) : rawSubtotal;
   const promoCartDiscount = promo ? roundMoney(promo.cart_discount) : 0;
+  // Includes explicit item discounts and scheduled-sale price reductions.
   const promoItemDiscount = promo
-    ? roundMoney(promo.lines.reduce((sum, line) => sum + line.discount_amount, 0))
+    ? roundMoney(Math.max(0, rawSubtotal - promoAdjustedSubtotal))
     : 0;
   const discountAmount = roundMoney(Math.max(0, input.discountAmount ?? 0));
   const loyaltyAmount = roundMoney(Math.max(0, input.loyaltyAmount ?? 0));

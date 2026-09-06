@@ -153,7 +153,7 @@ describe("executive analytics pure helpers", () => {
     expect(rows[0].profit).toBe(70);
   });
 
-  it("builds pnl lines including refunds in estimated net", () => {
+  it("shows refunds once without subtracting them twice from net profit", () => {
     const { lines, estimatedNet } = buildPnlStatement({
       revenue: 1000,
       cogs: 400,
@@ -178,8 +178,9 @@ describe("executive analytics pure helpers", () => {
       highestProfitProducts: [],
       highestSellingProducts: [],
     });
-    expect(estimatedNet).toBe(425);
-    expect(lines.find((l) => l.key === "net")?.amount).toBe(425);
+    expect(estimatedNet).toBe(450);
+    expect(lines.find((l) => l.key === "revenue")?.amount).toBe(1025);
+    expect(lines.find((l) => l.key === "net")?.amount).toBe(450);
     expect(lines.find((l) => l.key === "refunds")?.amount).toBe(-25);
   });
 });

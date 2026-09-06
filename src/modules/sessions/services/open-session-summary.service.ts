@@ -8,6 +8,7 @@ import {
 } from "@/modules/sessions/services/session-lifecycle.service";
 import { getSessionSettings } from "@/modules/system/services/settings.service";
 import type { CashierSession, OrderPayment, SessionLifecycleState } from "@/lib/types";
+import { summarizeSessionOrderCash } from "@/modules/sessions/services/reconciliation.service";
 
 export interface OpenSessionSummary {
   session: CashierSession;
@@ -89,19 +90,16 @@ export async function getOpenSessionSummaries(input: {
     const sessionOrders = ordersBySession.get(session.id) ?? [];
     const completedOrders = sessionOrders.filter((o) => o.status === "completed");
     const completedIds = new Set(completedOrders.map((o) => o.id));
-    const refundedOrders = sessionOrders.filter(
-      (o) => o.status === "voided" || o.status === "refunded"
-    );
-    const refundedIds = new Set(refundedOrders.map((o) => o.id));
 
-    const cashSales = sumPayments(completedIds, payments, "cash");
+    const { cashSales, cashRefunds } = summarizeSessionOrderCash(
+      sessionOrders,
+      payments,
+    );
     const cardSales = sumPayments(completedIds, payments, "card");
     const otherSales =
       sumPayments(completedIds, payments, "other") +
       sumPayments(completedIds, payments, "wallet") +
       sumPayments(completedIds, payments, "credit");
-    const cashRefunds = sumPayments(refundedIds, payments, "cash");
-
     const sessionExpenseTotal = (expensesBySession.get(session.id) ?? [])
       .filter(
         (e) =>
