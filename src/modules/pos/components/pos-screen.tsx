@@ -677,12 +677,16 @@ export function PosScreen({
     [cart, discountAmount, loyaltyRedemption?.amount, promoPreview],
   );
   const {
+    rawSubtotal: cartRawSubtotal,
     promoCartDiscount,
     promoItemDiscount: promoItemSavings,
     promoAdjustedSubtotal,
     payableBeforeLoyalty: cartTotal,
     payableTotal: cartPayableTotal,
   } = cartTotals;
+  const cartTotalSavings = Math.round(
+    Math.max(0, cartRawSubtotal - cartPayableTotal) * 100,
+  ) / 100;
   const promoLabels = useMemo(
     () =>
       promoPreview?.applications
@@ -2178,7 +2182,7 @@ export function PosScreen({
             onClick={() => setCartOpen(true)}
             aria-label={
               cartItemCount > 0
-                ? `${t("Open cart")}, ${cartItemCount} ${t("items")}, ${t("Total")} ${formatCurrency(cartTotal, "EGP", locale)}`
+                ? `${t("Open cart")}, ${cartItemCount} ${t("items")}, ${t("Total")} ${formatCurrency(cartPayableTotal, "EGP", locale)}${cartTotalSavings > 0 ? `, ${t("You saved")} ${formatCurrency(cartTotalSavings, "EGP", locale)}` : ""}`
                 : t("Open cart")
             }
           >
@@ -2204,11 +2208,13 @@ export function PosScreen({
             </span>
             <span className="flex shrink-0 flex-col items-end gap-0.5">
               <span className="text-lg font-bold tabular-nums leading-none">
-                {cartTotal === 0 ? "—" : formatCurrency(cartTotal)}
+                {cartPayableTotal === 0 ? "—" : formatCurrency(cartPayableTotal)}
               </span>
               {cartItemCount > 0 ? (
-                <span className="rounded-full bg-primary-foreground/15 px-2 py-0.5 text-[11px] font-bold tracking-wide text-primary-foreground">
-                  {t("Pay")}
+                <span className="max-w-32 truncate rounded-full bg-primary-foreground/15 px-2 py-0.5 text-[11px] font-bold tracking-wide text-primary-foreground">
+                  {cartTotalSavings > 0
+                    ? `${t("You saved")} ${formatCurrency(cartTotalSavings)}`
+                    : t("Pay")}
                 </span>
               ) : null}
             </span>

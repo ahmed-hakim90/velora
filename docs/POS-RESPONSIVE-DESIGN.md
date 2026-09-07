@@ -3,6 +3,7 @@
 The POS uses one task-first layout with two responsive compositions:
 
 - Below `768px`, the catalog is the primary surface. The cart is opened from a persistent bottom summary and uses a bottom sheet.
+- The persistent mobile cart summary always mirrors the payable total; whenever promotions, manual discounts, or loyalty reduce it, the collapsed summary also shows the saved amount so the benefit remains visible without opening the cart.
 - Below `640px`, cashier utilities move out of the top bar into a full-height side sheet opened by an icon-only button beside the persistent cart summary. The sheet shows the current cashier and only actions whose feature, permission, and session requirements are satisfied; tablet and desktop retain the icon-only top bar.
 - From `768px`, the cart remains visible beside the catalog so small landscape tablets can sell without switching surfaces.
 - Product tiles are compact, keep a stable `16:9` media slot, and use the whole tile as the add target. Products with variants or modifiers keep their existing selection flows.
