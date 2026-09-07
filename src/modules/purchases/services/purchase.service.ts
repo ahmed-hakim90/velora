@@ -16,6 +16,10 @@ import { lineTotalAfterDiscount } from "@/lib/line-discount";
 import type { MeasurementUnit, PaymentMethod, PurchaseInvoice, PurchaseInvoiceLine } from "@/lib/types";
 import { isFeatureEnabled } from "@/modules/system/services/settings.service";
 import { remainingPurchaseLineQty } from "@/modules/purchases/lib/remaining-qty";
+import {
+  canEditPurchaseSupplier,
+  purchaseDocumentRequiresSupplier,
+} from "@/modules/purchases/lib/purchase-supplier-policy";
 import { isReceiveTimeSupplierPayment } from "@/modules/purchases/lib/receive-time-payment";
 import { canImportPurchaseOrderStatus } from "@/lib/commercial-document-import";
 import { after } from "next/server";
@@ -174,7 +178,7 @@ export async function createDraftPurchase(input: {
   await assertPeriodOpen(input.storeId, documentDateToOccurredAt(documentDate));
   await assertWarehouseBelongsToStore(input.warehouseId, input.storeId);
   const kind = input.documentKind ?? "purchase_invoice";
-  if (kind !== "purchase_request" && !input.supplierId) {
+  if (purchaseDocumentRequiresSupplier(kind) && !input.supplierId) {
     throw new Error("اختار المورد");
   }
   const currency = (input.currency ?? "EGP").trim().toUpperCase() || "EGP";
@@ -691,15 +695,11 @@ export async function updateDraftPurchase(
   const invoice = await purchaseRepo.getPurchase(invoiceId);
   if (!invoice) throw new Error("فاتورة الشراء غير موجودة");
   const kind = invoice.document_kind ?? "purchase_invoice";
-  const prOpen =
-    kind === "purchase_request" &&
-    (invoice.status === "draft" ||
-      invoice.status === "submitted" ||
-      invoice.status === "approved");
-  if (invoice.status !== "draft" && !prOpen) {
+  const supplierEditable = canEditPurchaseSupplier(kind, invoice.status);
+  if (!supplierEditable) {
     throw new Error("Cannot edit received purchase");
   }
-  if (invoice.status !== "draft" && prOpen) {
+  if (invoice.status !== "draft") {
     if (
       input.invoiceNumber !== undefined ||
       input.extraCost !== undefined ||
@@ -718,7 +718,7 @@ export async function updateDraftPurchase(
   if (documentDate) {
     await assertPeriodOpen(invoice.store_id, documentDateToOccurredAt(documentDate));
   }
-  if (kind !== "purchase_request" && input.supplierId === null) {
+  if (purchaseDocumentRequiresSupplier(kind) && input.supplierId === null) {
     throw new Error("اختار المورد");
   }
   const currency =
@@ -968,11 +968,18 @@ export async function transitionPurchaseDocument(input: {
     >
   > = {
     purchase_request: { draft: ["submitted"], submitted: ["approved", "rejected"] },
-    purchase_order: { draft: ["sent"] },
+    purchase_order: { draft: ["sent"], sent: ["draft"] },
   };
   const next = allowed[kind]?.[input.from] ?? [];
   if (!next.includes(input.to)) {
     throw new Error("حالة المستند لا تسمح بهذا الإجراء");
+  }
+  if (
+    kind === "purchase_order" &&
+    input.to === "sent" &&
+    !current.supplier_id
+  ) {
+    throw new Error("اختار المورد قبل إرسال أمر التوريد");
   }
   const updated = await purchaseRepo.updatePurchase(input.invoiceId, { status: input.to });
   if (!updated) throw new Error("تعذر تحديث المستند");

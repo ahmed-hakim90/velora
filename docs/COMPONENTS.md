@@ -122,6 +122,12 @@ Existing stable component → semantic variant → composition → new shared pr
 - User-facing title, description, and action labels use automatic text direction so Arabic and English remain correct in mixed-language states.
 - Destructive intent changes the semantic color and icon, not the modal presentation or responsive behavior.
 
+### Searchable selection contract
+
+- Use `SearchableSelect` for long single-value option lists that need client-side lookup instead of extending the basic `Select`.
+- Keep the component domain-neutral: callers provide the visible label, optional description, and extra search keywords such as SKU, barcode, phone, or reference number.
+- Clearing is an explicit action; typing a new query must not clear or apply the current selection until the user chooses a result.
+
 Inventory buttons, inputs, fields, status, feedback, skeletons, dialogs, sheets, menus, typography, containers, navigation, headers, filters, lists/tables, pagination, forms, upload, confirmation, empty/error states, and repeated domain units. Prefer composition, slots, semantic props, predictable defaults, and documented variants. Avoid prop sprawl and page-specific escape hatches. Keep business rules, permissions, data access, validation, and side effects outside presentation. Compare equivalents with KEEP / IMPROVE / REPLACE / REMOVE before migration.
 
 <!-- CODEX-PRODUCT-FOUNDATION:START -->

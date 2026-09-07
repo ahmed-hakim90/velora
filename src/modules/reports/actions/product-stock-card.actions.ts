@@ -102,6 +102,7 @@ export async function getProductStockCardPageData(
       id: p.id,
       name: p.name,
       sku: p.sku,
+      barcode: p.barcode,
       unitLabel: formatUnit(p.unit),
     })),
     currency: org.currency,

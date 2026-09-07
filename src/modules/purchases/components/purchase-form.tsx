@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useAppRouter as useRouter } from "@/hooks/use-app-router";
-import { Plus, Tags, Trash2, X, Save, PackageCheck, FileText, Receipt, Undo2, Send, MessageCircle } from "lucide-react";
+import { Plus, Tags, Trash2, X, Save, PackageCheck, FileText, Receipt, Undo2, Send, MessageCircle, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import {
   backgroundMutationKey,
@@ -99,6 +99,10 @@ import {
 } from "@/modules/pos/services/receipt-format.service";
 import { COMMERCIAL_DOCUMENT_KIND_LABELS } from "@/modules/print-engine/lib/print-engine-settings";
 import { EXTRA_COST_INVOICE_HINT } from "@/modules/purchases/lib/landed-cost-split";
+import {
+  canEditPurchaseSupplier,
+  purchaseDocumentRequiresSupplier,
+} from "@/modules/purchases/lib/purchase-supplier-policy";
 import type {
   ImportablePurchaseOrder,
   PurchaseWithLines,
@@ -229,11 +233,12 @@ export function PurchaseForm({
   const [loading, setLoading] = useState(!!initialInvoiceId);
   const defaultWarehouseId =
     warehouses.find((w) => w.is_default)?.id ?? warehouses[0]?.id ?? "";
-  const defaultSupplierId = suppliers[0]?.id ?? "";
+  // Never preselect a supplier on a new document. An explicit choice avoids
+  // accidentally saving a purchase against the first supplier in the list.
+  const defaultSupplierId = "";
   const [invoice, setInvoice] = useState<PurchaseWithLines | null>(() => {
     if (initialInvoiceId) return null;
     if (!defaultWarehouseId) return null;
-    if (documentKind !== "purchase_request" && !defaultSupplierId) return null;
     return buildLocalPurchaseDraft({
       documentKind,
       supplierId: defaultSupplierId,
@@ -456,7 +461,7 @@ export function PurchaseForm({
       toast.error(t("Choose a warehouse"));
       return null;
     }
-    if (documentKind !== "purchase_request" && !nextSupplierId) {
+    if (purchaseDocumentRequiresSupplier(documentKind) && !nextSupplierId) {
       toast.error(t("Choose a supplier"));
       return null;
     }
@@ -833,17 +838,17 @@ export function PurchaseForm({
     ? Number((invoice.total - (parseFloat(amountPaidNow) || 0)).toFixed(2))
     : 0;
 
-  const commitHeader = useCallback(() => {
-    if (!invoice) return;
+  const commitHeader = useCallback(async (overrides?: {
+    supplierId?: string;
+    docCurrency?: string;
+  }): Promise<boolean> => {
+    if (!invoice) return false;
     const kind = invoice.document_kind ?? documentKind;
-    const prOpen =
-      kind === "purchase_request" &&
-      (invoice.status === "draft" ||
-        invoice.status === "submitted" ||
-        invoice.status === "approved");
-    if (invoice.status !== "draft" && !prOpen) return;
+    if (!canEditPurchaseSupplier(kind, invoice.status)) return false;
+    const nextSupplierId = overrides?.supplierId ?? supplierId;
+    const nextDocCurrency = overrides?.docCurrency ?? docCurrency;
     const nextExtra = parseFloat(extraCost) || 0;
-    const supplier = suppliers.find((s) => s.id === supplierId);
+    const supplier = suppliers.find((s) => s.id === nextSupplierId);
     const invoiceNumberTrimmed = invoiceNumber.trim();
     const notesTrimmed = documentNotes.trim();
     const warehouse = warehouses.find((w) => w.id === warehouseId);
@@ -852,66 +857,65 @@ export function PurchaseForm({
     if (isLocalDraftId(invoice.id)) {
       setInvoice({
         ...invoice,
-        supplier_id: supplierId || null,
+        supplier_id: nextSupplierId || null,
         warehouse_id: warehouseId || invoice.warehouse_id,
         invoice_number: invoiceNumberTrimmed || invoice.invoice_number,
         document_date: documentDate,
         document_notes: notesTrimmed,
         ...withLineTotals(invoice.lines, nextExtra),
-        supplierName: supplier?.name ?? (supplierId ? invoice.supplierName : "No supplier"),
+        supplierName: supplier?.name ?? (nextSupplierId ? invoice.supplierName : "No supplier"),
         warehouseName: warehouse?.name ?? invoice.warehouseName,
         supplierAddress: supplier?.address ?? null,
         supplierTaxId: supplier?.tax_id ?? null,
         supplierContact: supplier?.contact_info ?? null,
       });
-      return;
+      return true;
     }
 
     setInvoice({
       ...invoice,
-      supplier_id: supplierId || null,
+      supplier_id: nextSupplierId || null,
       invoice_number: invoiceNumberTrimmed,
       document_date: documentDate,
       document_notes: notesTrimmed,
       ...withLineTotals(invoice.lines, nextExtra),
-      supplierName: supplier?.name ?? (supplierId ? invoice.supplierName : "No supplier"),
+      supplierName: supplier?.name ?? (nextSupplierId ? invoice.supplierName : "No supplier"),
     });
 
-    void (async () => {
-      const result = await updateDraftPurchaseAction({
-        invoiceId: invoice.id,
-        supplierId: supplierId || null,
-        ...(invoice.status === "draft"
-          ? {
-              invoiceNumber: invoiceNumberTrimmed,
-              extraCost: nextExtra,
-              documentDate,
-              documentNotes: notesTrimmed,
-              ...(importsEnabled
-                ? {
-                    currency: docCurrency,
-                    fxRate: parseFloat(fxRate) || 1,
-                  }
-                : {}),
-            }
-          : {}),
-      });
-      if (!result.ok) {
-        if (snapshotRef.current) setInvoice(snapshotRef.current);
-        toast.error(result.error);
-        return;
-      }
-      setInvoice((prev) =>
-        prev
-          ? {
-              ...prev,
-              ...result.data,
-              ...withLineTotals(prev.lines, nextExtra),
-              supplierName: supplier?.name ?? prev.supplierName,
-            }
-          : prev
-      );
-    })();
+    const result = await updateDraftPurchaseAction({
+      invoiceId: invoice.id,
+      supplierId: nextSupplierId || null,
+      ...(invoice.status === "draft"
+        ? {
+            invoiceNumber: invoiceNumberTrimmed,
+            extraCost: nextExtra,
+            documentDate,
+            documentNotes: notesTrimmed,
+            ...(importsEnabled
+              ? {
+                  currency: nextDocCurrency,
+                  fxRate: parseFloat(fxRate) || 1,
+                }
+              : {}),
+          }
+        : {}),
+    });
+    if (!result.ok) {
+      if (snapshotRef.current) setInvoice(snapshotRef.current);
+      toast.error(result.error);
+      return false;
+    }
+    setInvoice((prev) =>
+      prev
+        ? {
+            ...prev,
+            ...result.data,
+            ...withLineTotals(prev.lines, nextExtra),
+            supplierName: supplier?.name ?? prev.supplierName,
+          }
+        : prev
+    );
+    return true;
   }, [
     invoice,
     extraCost,
@@ -1108,10 +1112,9 @@ export function PurchaseForm({
   const isPurchaseRequest = kind === "purchase_request";
   const isPurchaseOrder = kind === "purchase_order";
   const isPurchaseReturn = kind === "purchase_return";
-  const canEditSupplier =
-    isDraft ||
-    (isPurchaseRequest &&
-      (invoice?.status === "submitted" || invoice?.status === "approved"));
+  const canEditSupplier = invoice
+    ? canEditPurchaseSupplier(kind, invoice.status)
+    : false;
   const kindTitle =
     COMMERCIAL_DOCUMENT_KIND_LABELS[
       (kind ?? "purchase_invoice") as keyof typeof COMMERCIAL_DOCUMENT_KIND_LABELS
@@ -1322,8 +1325,9 @@ export function PurchaseForm({
                 <Select
                   value={supplierId || (isPurchaseRequest ? "__none__" : "")}
                   onValueChange={(v) => {
-                    setSupplierId(!v || v === "__none__" ? "" : v);
-                    window.setTimeout(() => commitHeader(), 0);
+                    const next = !v || v === "__none__" ? "" : v;
+                    setSupplierId(next);
+                    void commitHeader({ supplierId: next });
                   }}
                 >
                   <SelectTrigger className="min-h-11 w-full">
@@ -1415,7 +1419,7 @@ export function PurchaseForm({
                   className="min-h-11"
                   value={invoiceNumber}
                   onChange={(e) => setInvoiceNumber(e.target.value)}
-                  onBlur={commitHeader}
+                  onBlur={() => void commitHeader()}
                 />
               ) : (
                 <p className="min-h-11 content-center text-sm font-medium tabular-nums">
@@ -1432,7 +1436,7 @@ export function PurchaseForm({
                   max={new Date().toISOString().slice(0, 10)}
                   value={documentDate}
                   onChange={(e) => setDocumentDate(e.target.value)}
-                  onBlur={commitHeader}
+                  onBlur={() => void commitHeader()}
                 />
               ) : (
                 <p className="min-h-11 content-center text-sm font-medium tabular-nums">
@@ -1449,7 +1453,7 @@ export function PurchaseForm({
                   inputMode="decimal"
                   value={extraCost}
                   onChange={(e) => setExtraCost(sanitizeDecimalInput(e.target.value))}
-                  onBlur={commitHeader}
+                  onBlur={() => void commitHeader()}
                   placeholder="0"
                 />
               ) : (
@@ -1469,8 +1473,9 @@ export function PurchaseForm({
                     <Select
                       value={docCurrency}
                       onValueChange={(v) => {
-                        setDocCurrency(v ?? currency);
-                        setTimeout(() => commitHeader(), 0);
+                        const next = v ?? currency;
+                        setDocCurrency(next);
+                        void commitHeader({ docCurrency: next });
                       }}
                     >
                       <SelectTrigger className="min-h-11 w-full">
@@ -1497,7 +1502,7 @@ export function PurchaseForm({
                       inputMode="decimal"
                       value={fxRate}
                       onChange={(e) => setFxRate(sanitizeDecimalInput(e.target.value))}
-                      onBlur={commitHeader}
+                      onBlur={() => void commitHeader()}
                       disabled={docCurrency === currency}
                     />
                   ) : (
@@ -1521,7 +1526,7 @@ export function PurchaseForm({
                   className="min-h-16"
                   value={documentNotes}
                   onChange={(e) => setDocumentNotes(e.target.value)}
-                  onBlur={commitHeader}
+                  onBlur={() => void commitHeader()}
                 />
               ) : (
                 <p className="min-h-11 content-center whitespace-pre-wrap text-sm">
@@ -1944,6 +1949,8 @@ export function PurchaseForm({
                     }
                     const persisted = await ensurePersistedDraft();
                     if (!persisted) return;
+                  } else if (!(await commitHeader())) {
+                    return;
                   }
                   toast.success(t("Draft saved. Continue later from the list."));
                   onComplete();
@@ -1989,6 +1996,7 @@ export function PurchaseForm({
                   disabled={invoice.lines.length === 0}
                   onClick={() => {
                     startTransition(async () => {
+                      if (!(await commitHeader())) return;
                       const result = await transitionPurchaseDocumentAction({
                         invoiceId: invoice.id,
                         from: "draft",
@@ -2012,6 +2020,7 @@ export function PurchaseForm({
                   disabled={invoice.lines.length === 0 || !invoice.supplier_id}
                   onClick={() => {
                     startTransition(async () => {
+                      if (!(await commitHeader())) return;
                       const result = await transitionPurchaseDocumentAction({
                         invoiceId: invoice.id,
                         from: "draft",
@@ -2118,31 +2127,56 @@ export function PurchaseForm({
             ) : null}
             {isPurchaseOrder &&
             (invoice.status === "sent" || invoice.status === "partial_invoiced") ? (
-              <CompactAction
-                label={t("Partial receipt / purchase invoice")}
-                icon={FileText}
-                variant="default"
-                onClick={() => {
-                  startTransition(async () => {
-                    const result = await previewPurchaseConvertAction(invoice.id);
-                    if (!result.ok) {
-                      toast.error(result.error);
-                      return;
-                    }
-                    setConvertRows(
-                      result.data
-                        .filter((row) => row.remaining > 0)
-                        .map((row) => ({
-                          sourceLineId: row.sourceLineId,
-                          productId: row.productId,
-                          remaining: row.remaining,
-                          qty: String(row.remaining),
-                        }))
-                    );
-                    setConvertOpen(true);
-                  });
-                }}
-              />
+              <>
+                {invoice.status === "sent" ? (
+                  <CompactAction
+                    label={t("Edit")}
+                    icon={Pencil}
+                    disabled={pending}
+                    className="border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                    onClick={() => {
+                      startTransition(async () => {
+                        const result = await transitionPurchaseDocumentAction({
+                          invoiceId: invoice.id,
+                          from: "sent",
+                          to: "draft",
+                        });
+                        if (!result.ok) {
+                          toast.error(result.error);
+                          return;
+                        }
+                        setInvoice(result.data);
+                        toast.success(t("Purchase order reopened for editing"));
+                      });
+                    }}
+                  />
+                ) : null}
+                <CompactAction
+                  label={t("Partial receipt / purchase invoice")}
+                  icon={FileText}
+                  variant="default"
+                  onClick={() => {
+                    startTransition(async () => {
+                      const result = await previewPurchaseConvertAction(invoice.id);
+                      if (!result.ok) {
+                        toast.error(result.error);
+                        return;
+                      }
+                      setConvertRows(
+                        result.data
+                          .filter((row) => row.remaining > 0)
+                          .map((row) => ({
+                            sourceLineId: row.sourceLineId,
+                            productId: row.productId,
+                            remaining: row.remaining,
+                            qty: String(row.remaining),
+                          }))
+                      );
+                      setConvertOpen(true);
+                    });
+                  }}
+                />
+              </>
             ) : null}
             {invoice.lines.length > 0 ? (
               <>

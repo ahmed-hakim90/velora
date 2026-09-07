@@ -116,6 +116,7 @@
 - Keep one clear primary action and subordinate secondary actions.
 - Design loading, empty, error, partial, stale, network, disabled, read-only, validation, success, and permission-denied states.
 - Keep validation near its cause; reserve toasts for transient confirmation.
+- Supplier-linked purchase documents must start with no supplier selected. Require an explicit supplier choice before persistence or sending. A sent purchase order stays read-only and exposes an explicit full-edit action that reopens it as a draft until downstream invoicing begins.
 - Choose page, drawer/sheet, modal, or popover according to workflow depth and screen size.
 - Mobile reprioritizes rather than shrinking desktop. Verify RTL/LTR navigation, arrows, drawers, inputs, tables, charts, and mixed-direction content.
 - Accessibility is definition of done. Solve root causes before local overrides, duplicated state, or new dependencies.

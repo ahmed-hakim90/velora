@@ -2392,6 +2392,7 @@ export const arTranslations: Record<string, string> = {
   "Purchase request submitted": "تم تقديم طلب الشراء",
   "Send purchase order": "إرسال أمر التوريد",
   "Purchase order sent": "تم إرسال أمر التوريد",
+  "Purchase order reopened for editing": "تم فتح أمر التوريد للتعديل الكامل",
   "Post return": "ترحيل المرتجع",
   "Return posted. Inventory and supplier balance were updated.":
     "تم ترحيل المرتجع وتحديث المخزون ورصيد المورد.",

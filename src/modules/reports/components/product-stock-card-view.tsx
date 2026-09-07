@@ -13,6 +13,7 @@ import {
   Warehouse,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { SearchableSelect } from "@/components/Velora/searchable-select";
 import {
   Select,
   SelectContent,
@@ -48,6 +49,7 @@ interface ProductOption {
   id: string;
   name: string;
   sku: string;
+  barcode: string;
   unitLabel: string;
 }
 
@@ -275,43 +277,23 @@ export function ProductStockCardView({
 
           <div className="min-w-0 space-y-[var(--mds-space-1)]">
             <Label>{t("Product")}</Label>
-            <Select
-              value={filters.productId ?? "__unset"}
-              onValueChange={(v) =>
-                apply({ productId: !v || v === "__unset" ? undefined : v })
-              }
-            >
-              <SelectTrigger className="min-h-11 w-full rounded-[var(--mds-radius-md)] sm:min-h-9 lg:w-[220px]">
-                <SelectValue placeholder={t("Select a product…")}>
-                  {(value) =>
-                    !value || value === "__unset"
-                      ? t("Select a product…")
-                      : selectLabelById(products, value, (p) => p.name)
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__unset" label={t("Select a product…")}>
-                  {t("Select a product…")}
-                </SelectItem>
-                {products.length === 0 ? (
-                  <SelectItem value="__none" disabled>
-                    {t("No tracked products")}
-                  </SelectItem>
-                ) : (
-                  products.map((p) => (
-                    <SelectItem
-                      key={p.id}
-                      value={p.id}
-                      label={p.sku ? `${p.name} · ${p.sku}` : p.name}
-                    >
-                      {p.name}
-                      {p.sku ? ` · ${p.sku}` : ""}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              className="lg:w-[260px]"
+              options={products.map((product) => ({
+                value: product.id,
+                label: product.name,
+                description: [...new Set([product.sku, product.barcode].filter(Boolean))].join(" · "),
+                keywords: [product.sku, product.barcode],
+              }))}
+              value={filters.productId}
+              onValueChange={(productId) => apply({ productId })}
+              placeholder={t("Select a product…")}
+              searchPlaceholder={t("Search by product name, SKU, or barcode…")}
+              emptyMessage={t(products.length === 0 ? "No tracked products" : "No matching product")}
+              clearLabel={t("Clear search")}
+              openLabel={t("Search products")}
+              disabled={pending}
+            />
           </div>
 
           {stores.length > 1 ? (
