@@ -253,3 +253,61 @@ export async function forceCloseSession(input: {
 export async function getSessionById(sessionId: string): Promise<CashierSession | null> {
   return sessionRepo.getSession(sessionId);
 }
+
+export async function correctClosedSessionCash(input: {
+  sessionId: string;
+  actualCash: number;
+  reason: string;
+  userId: string;
+}): Promise<{ session: CashierSession; accountingPending: boolean }> {
+  const actualCash = validateCashAmount(input.actualCash, "المبلغ الفعلي");
+  const reason = input.reason.trim();
+  if (!reason) throw new Error("سبب التصحيح مطلوب");
+
+  const existing = await sessionRepo.getSession(input.sessionId);
+  if (!existing) throw new Error("الجلسة غير موجودة");
+  if (existing.status !== "closed" || !existing.closed_at) {
+    throw new Error("يمكن تصحيح جلسة مقفولة فقط");
+  }
+  await assertPeriodOpen(existing.store_id, existing.closed_at);
+
+  const session = await sessionRepo.correctClosedSessionCash({
+    sessionId: input.sessionId,
+    actualCash,
+    reason,
+  });
+
+  let accountingPending = false;
+  try {
+    const { isFeatureEnabled } = await import(
+      "@/modules/system/services/settings.service"
+    );
+    if (!(await isFeatureEnabled("general_ledger"))) {
+      return { session, accountingPending: false };
+    }
+    const { voidPostedBySource, safePostSessionVarianceJournal } = await import(
+      "@/modules/accounting/services/gl-posting.service"
+    );
+    await voidPostedBySource({
+      source: "adjustment",
+      sourceId: `session_var:${session.id}`,
+      userId: input.userId,
+    });
+    if (roundMoney(Number(session.variance ?? 0)) !== 0) {
+      const posted = await safePostSessionVarianceJournal({
+        sessionId: session.id,
+        storeId: session.store_id,
+        variance: roundMoney(Number(session.variance)),
+        createdBy: input.userId,
+        entryDate: session.closed_at ?? undefined,
+        memo: `تصحيح فرق إقفال وردية — ${reason}`,
+      });
+      accountingPending = posted === null;
+    }
+  } catch (error) {
+    accountingPending = true;
+    console.error("[sessions] corrected cash but GL refresh failed", error);
+  }
+
+  return { session, accountingPending };
+}

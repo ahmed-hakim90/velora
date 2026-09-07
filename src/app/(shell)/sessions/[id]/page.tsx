@@ -6,6 +6,7 @@ import { SessionDetailPage } from "@/modules/sessions/components/session-detail-
 import { getSessionDetail } from "@/modules/sessions/services/session-detail.service";
 import { computeSessionLifecycle } from "@/modules/sessions/services/session-lifecycle.service";
 import { getSessionSettings } from "@/modules/system/services/settings.service";
+import { getCurrentUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default async function SessionDetailRoute({
   }
   const storeId = store.storeId;
   const canViewAll = await permissionRepo.hasPermission("session_view_all");
+  const currentUser = await getCurrentUser();
 
   const detail = await getSessionDetail(id, {
     storeId,
@@ -33,5 +35,11 @@ export default async function SessionDetailRoute({
       ? computeSessionLifecycle(detail.session, await getSessionSettings()).lifecycle
       : null;
 
-  return <SessionDetailPage detail={detail} lifecycle={lifecycle} />;
+  return (
+    <SessionDetailPage
+      detail={detail}
+      lifecycle={lifecycle}
+      canCorrectClosingCash={currentUser?.role === "owner" || currentUser?.role === "manager"}
+    />
+  );
 }

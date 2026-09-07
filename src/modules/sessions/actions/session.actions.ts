@@ -22,6 +22,7 @@ import {
   forceCloseSession,
   openSession,
   getSessionById,
+  correctClosedSessionCash,
   SessionVaultDepositError,
 } from "@/modules/sessions/services/session.service";
 import {
@@ -259,6 +260,35 @@ export async function closeSessionAction(input: {
     actualCash,
     variance: roundMoney(actualCash - reconciliation.expectedCash),
   };
+}
+
+export async function correctClosedSessionCashAction(input: {
+  sessionId: string;
+  actualCash: number;
+  reason: string;
+}): Promise<{ status: "corrected"; accountingPending: boolean }> {
+  const user = await requireAuth();
+  if (user.role !== "owner" && user.role !== "manager") {
+    throw new Error("تصحيح إقفال الوردية متاح للمالك والمدير فقط");
+  }
+
+  const actualCash = validCashAmount(input.actualCash);
+  const reason = input.reason.trim();
+  if (!reason) throw new Error("سبب التصحيح مطلوب");
+
+  await requireStoreAccess((await getSessionById(input.sessionId))?.store_id ?? "");
+  const result = await correctClosedSessionCash({
+    sessionId: input.sessionId,
+    actualCash,
+    reason,
+    userId: user.id,
+  });
+
+  revalidatePath("/sessions");
+  revalidatePath(`/sessions/${input.sessionId}`);
+  revalidatePath("/reports");
+  revalidatePath("/treasury");
+  return { status: "corrected", accountingPending: result.accountingPending };
 }
 
 export async function forceCloseSessionAction(input: {

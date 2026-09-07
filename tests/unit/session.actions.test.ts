@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   closeSessionAction,
+  correctClosedSessionCashAction,
   forceCloseSessionAction,
   quickOpenSessionAction,
 } from "@/modules/sessions/actions/session.actions";
@@ -420,5 +421,77 @@ describe("closeSessionAction authorization", () => {
 
     expect(result.status).toBe("reconciliation_changed");
     expect(sessionService.closeSession).not.toHaveBeenCalled();
+  });
+});
+
+describe("correctClosedSessionCashAction", () => {
+  const closedSession = {
+    id: "s1",
+    store_id: "store1",
+    cashier_id: "cashier-1",
+    opened_at: "2026-09-07T08:00:00.000Z",
+    closed_at: "2026-09-07T16:00:00.000Z",
+    opening_cash: 100,
+    expected_cash: 500,
+    actual_cash: 450,
+    variance: -50,
+    status: "closed" as const,
+    notes: null,
+    closed_by: "cashier-1",
+    close_reason: null,
+    force_closed: false,
+  };
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it("allows a manager and returns accounting state", async () => {
+    vi.mocked(guards.requireAuth).mockResolvedValue({
+      id: "manager-1",
+      org_id: "org-1",
+      auth_user_id: "auth-1",
+      name: "Manager",
+      email: "manager@test.com",
+      role: "manager",
+      is_active: true,
+      store_ids: [],
+    });
+    vi.mocked(guards.requireStoreAccess).mockResolvedValue(undefined as never);
+    vi.mocked(sessionService.getSessionById).mockResolvedValue(closedSession);
+    vi.mocked(sessionService.correctClosedSessionCash).mockResolvedValue({
+      session: { ...closedSession, actual_cash: 500, variance: 0 },
+      accountingPending: false,
+    });
+
+    await expect(
+      correctClosedSessionCashAction({
+        sessionId: "s1",
+        actualCash: 500,
+        reason: "خطأ في العد",
+      }),
+    ).resolves.toEqual({ status: "corrected", accountingPending: false });
+  });
+
+  it("rejects a cashier before changing session data", async () => {
+    vi.mocked(guards.requireAuth).mockResolvedValue({
+      id: "cashier-1",
+      org_id: "org-1",
+      auth_user_id: "auth-1",
+      name: "Cashier",
+      email: "cashier@test.com",
+      role: "cashier",
+      is_active: true,
+      store_ids: [],
+    });
+
+    await expect(
+      correctClosedSessionCashAction({
+        sessionId: "s1",
+        actualCash: 500,
+        reason: "خطأ في العد",
+      }),
+    ).rejects.toThrow("للمالك والمدير فقط");
+    expect(sessionService.correctClosedSessionCash).not.toHaveBeenCalled();
   });
 });

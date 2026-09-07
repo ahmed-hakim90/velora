@@ -1,4 +1,4 @@
-import { getDb, throwDbError } from "@/lib/repositories/client";
+import { callRpc, getDb, throwDbError } from "@/lib/repositories/client";
 import { mapSession } from "@/lib/repositories/mappers";
 import { listStores } from "@/lib/repositories/store.repository";
 import type { CashierSession } from "@/lib/types";
@@ -146,4 +146,18 @@ export async function closeSession(input: {
     .maybeSingle();
   if (error) throwDbError(error, "closeSession");
   return data ? mapSession(data) : null;
+}
+
+export async function correctClosedSessionCash(input: {
+  sessionId: string;
+  actualCash: number;
+  reason: string;
+}): Promise<CashierSession> {
+  const { data, error } = await callRpc<unknown>("correct_closed_session_cash", {
+    p_session_id: input.sessionId,
+    p_actual_cash: input.actualCash,
+    p_reason: input.reason,
+  });
+  if (error || !data) throwDbError(error, "correctClosedSessionCash");
+  return mapSession(data as Parameters<typeof mapSession>[0]);
 }

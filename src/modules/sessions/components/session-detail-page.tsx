@@ -8,6 +8,7 @@ import { SessionInvoicesTable } from "@/modules/sessions/components/session-invo
 import { SessionLifecycleBadge } from "@/modules/sessions/components/session-lifecycle-badge";
 import type { SessionDetail } from "@/modules/sessions/services/session-detail.service";
 import type { SessionLifecycleState } from "@/lib/types";
+import { CorrectSessionCashDialog } from "@/modules/sessions/components/correct-session-cash-dialog";
 
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString("ar-EG", {
@@ -20,9 +21,10 @@ function formatDateTime(iso: string) {
 interface SessionDetailPageProps {
   detail: SessionDetail;
   lifecycle?: SessionLifecycleState | null;
+  canCorrectClosingCash?: boolean;
 }
 
-export function SessionDetailPage({ detail, lifecycle }: SessionDetailPageProps) {
+export function SessionDetailPage({ detail, lifecycle, canCorrectClosingCash = false }: SessionDetailPageProps) {
   const { session } = detail;
   const isOpen = session.status === "open";
 
@@ -60,13 +62,18 @@ export function SessionDetailPage({ detail, lifecycle }: SessionDetailPageProps)
           </div>
         }
         action={
-          <Button
-            variant="outline"
-            nativeButton={false}
-            render={<Link href="/sessions" />}
-          >
-            رجوع للجلسات
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {!isOpen && canCorrectClosingCash ? (
+              <CorrectSessionCashDialog session={session} />
+            ) : null}
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={<Link href="/sessions" />}
+            >
+              رجوع للجلسات
+            </Button>
+          </div>
         }
       />
 
