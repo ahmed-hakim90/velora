@@ -132,16 +132,34 @@ export const usePosStore = create<PosState>((set, get) => ({
       (isWeightOrAmountLine
         ? `line-${line.productId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
         : `line-${line.productId}-${line.variantId ?? "base"}`);
-    const existing = !isWeightOrAmountLine
-      ? get().cart.find((c) => c.id === id)
-      : undefined;
+    const existing = isWeightOrAmountLine
+      ? get().cart.find(
+          (cartLine) =>
+            cartLine.productId === line.productId &&
+            cartLine.variantId === line.variantId &&
+            cartLine.saleInputMode === line.saleInputMode &&
+            cartLine.saleUnit === line.saleUnit &&
+            cartLine.unitPrice === line.unitPrice &&
+            cartLine.tierId === line.tierId &&
+            cartLine.modifiers.length === line.modifiers.length &&
+            cartLine.modifiers.every(
+              (modifier, index) =>
+                modifier.name === line.modifiers[index]?.name &&
+                modifier.price === line.modifiers[index]?.price,
+            ),
+        )
+      : get().cart.find((cartLine) => cartLine.id === id);
     if (existing) {
       set({
         cart: get().cart.map((c) =>
-          c.id === id
+          c.id === existing.id
             ? {
                 ...c,
                 quantity: c.quantity + line.quantity,
+                enteredAmount:
+                  c.enteredAmount != null || line.enteredAmount != null
+                    ? (c.enteredAmount ?? 0) + (line.enteredAmount ?? 0)
+                    : undefined,
                 lineTotal: calcLineTotal(
                   c.quantity + line.quantity,
                   c.unitPrice,

@@ -37,6 +37,64 @@ describe("pos store cart controls", () => {
     expect(usePosStore.getState().cart[0]?.categoryId).toBe("category-1");
   });
 
+  it("merges repeated weight entries for the same product", () => {
+    const weightLine = {
+      ...baseLine,
+      quantity: 1.5,
+      unitPrice: 40,
+      saleUnit: "kg" as const,
+      saleInputMode: "by_weight" as const,
+    };
+    usePosStore.getState().addItem(weightLine);
+    usePosStore.getState().addItem({ ...weightLine, quantity: 0.5 });
+
+    expect(usePosStore.getState().cart).toHaveLength(1);
+    expect(usePosStore.getState().cart[0]).toMatchObject({
+      quantity: 2,
+      lineTotal: 80,
+    });
+  });
+
+  it("merges repeated amount entries and adds their entered amounts", () => {
+    const amountLine = {
+      ...baseLine,
+      quantity: 0.5,
+      unitPrice: 40,
+      saleUnit: "kg" as const,
+      saleInputMode: "by_amount" as const,
+      enteredAmount: 20,
+    };
+    usePosStore.getState().addItem(amountLine);
+    usePosStore.getState().addItem(amountLine);
+
+    expect(usePosStore.getState().cart).toHaveLength(1);
+    expect(usePosStore.getState().cart[0]).toMatchObject({
+      quantity: 1,
+      enteredAmount: 40,
+      lineTotal: 40,
+    });
+  });
+
+  it("keeps weight and amount entry modes on separate lines", () => {
+    usePosStore.getState().addItem({
+      ...baseLine,
+      quantity: 0.5,
+      unitPrice: 40,
+      saleUnit: "kg" as const,
+      saleInputMode: "by_weight" as const,
+    });
+    usePosStore.getState().addItem({
+      ...baseLine,
+      quantity: 0.5,
+      unitPrice: 40,
+      saleUnit: "kg" as const,
+      saleInputMode: "by_amount" as const,
+      enteredAmount: 20,
+    });
+
+    expect(usePosStore.getState().cart).toHaveLength(2);
+  });
+
   it("holds and resumes a cart with its discount", () => {
     usePosStore.getState().addItem(baseLine);
     usePosStore.getState().setDiscountAmount(3);
