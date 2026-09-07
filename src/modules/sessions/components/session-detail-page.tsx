@@ -11,6 +11,7 @@ import type { SessionLifecycleState } from "@/lib/types";
 import { CorrectSessionCashDialog } from "@/modules/sessions/components/correct-session-cash-dialog";
 import { cn } from "@/lib/utils";
 import { getOperationalSessionVariance } from "@/modules/sessions/lib/sessions-glance";
+import { SessionActivityTimeline } from "@/modules/sessions/components/session-activity-timeline";
 
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString("ar-EG", {
@@ -191,6 +192,8 @@ export function SessionDetailPage({ detail, lifecycle, canCorrectClosingCash = f
           }
         />
       </div>
+
+      <SessionActivityTimeline events={detail.activity} />
 
       <section className="flex flex-col gap-[var(--mds-space-3)]">
         <h2 className="font-heading text-base font-semibold">فواتير الجلسة</h2>

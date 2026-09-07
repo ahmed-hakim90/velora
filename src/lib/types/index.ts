@@ -776,6 +776,9 @@ export interface Expense {
   status: ExpenseStatus;
   approved_by: string | null;
   approved_at: string | null;
+  voided_by: string | null;
+  voided_at: string | null;
+  void_reason: string | null;
   created_by: string;
   created_at: string;
   /** When cash is paid from HQ/store treasury (not session drawer). */

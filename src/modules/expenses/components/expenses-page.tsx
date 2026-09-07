@@ -63,11 +63,18 @@ export async function ExpensesPage({ filters = {} }: ExpensesPageProps) {
   ]);
 
   let canApprove = false;
+  let canVoid = false;
   try {
     await requirePermission("expense_approve");
     canApprove = true;
   } catch {
     canApprove = false;
+  }
+  try {
+    await requirePermission("expense_delete");
+    canVoid = true;
+  } catch {
+    canVoid = false;
   }
 
   const centerMap = new Map(costCenters.map((c) => [c.id, c.name]));
@@ -136,6 +143,7 @@ export async function ExpensesPage({ filters = {} }: ExpensesPageProps) {
               centerName={centerMap.get(e.cost_center_id) ?? "—"}
               categoryName={categoryMap.get(e.expense_category_id) ?? "—"}
               canApprove={canApprove}
+              canVoid={canVoid}
             />
           ))}
         </div>

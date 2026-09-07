@@ -51,6 +51,16 @@ export function buildSaleJournalLines(input: {
     paymentTotals.set(key, roundMoney((paymentTotals.get(key) ?? 0) + amount));
   }
 
+  // Older/partial sales may only persist the collected portion. The unpaid
+  // remainder is accounts receivable, otherwise the automatic JE is short.
+  const collected = roundMoney(
+    [...paymentTotals.values()].reduce((sum, amount) => sum + amount, 0)
+  );
+  const receivable = roundMoney(total - collected);
+  if (receivable > 0) {
+    paymentTotals.set("ar", roundMoney((paymentTotals.get("ar") ?? 0) + receivable));
+  }
+
   for (const [systemKey, amount] of paymentTotals) {
     lines.push({ systemKey, debit: amount, credit: 0 });
   }

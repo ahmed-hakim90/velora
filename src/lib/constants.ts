@@ -134,7 +134,7 @@ export const EXPENSE_SOURCES = [
 ] as const;
 export type ExpenseSource = (typeof EXPENSE_SOURCES)[number];
 
-export const EXPENSE_STATUSES = ["pending", "approved"] as const;
+export const EXPENSE_STATUSES = ["pending", "approved", "voided"] as const;
 export type ExpenseStatus = (typeof EXPENSE_STATUSES)[number];
 
 export const PERMISSIONS = [

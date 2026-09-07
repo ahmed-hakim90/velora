@@ -16,6 +16,7 @@ const SOURCE_LABELS: Record<string, string> = {
 const STATUS_LABELS: Record<string, string> = {
   pending: "قيد الموافقة",
   approved: "معتمد",
+  voided: "ملغي",
 };
 
 interface ExpenseFiltersBarProps {

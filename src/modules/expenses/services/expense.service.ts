@@ -17,7 +17,14 @@ import type {
 
 export type CreateExpenseInput = Omit<
   Expense,
-  "id" | "created_at" | "status" | "approved_by" | "approved_at"
+  | "id"
+  | "created_at"
+  | "status"
+  | "approved_by"
+  | "approved_at"
+  | "voided_by"
+  | "voided_at"
+  | "void_reason"
 >;
 
 async function assertSessionEditable(sessionId: string | null) {
@@ -186,6 +193,10 @@ export async function updateExpense(
   const existing = await expenseRepo.getExpense(id);
   if (!existing) return null;
 
+  if (existing.status === "voided") {
+    throw new Error("المصروف ملغي ومينفعش يتعدل");
+  }
+
   if (existing.inventory_item_id) {
     throw new Error("Cannot edit inventory purchase expenses");
   }
@@ -223,9 +234,15 @@ export async function updateExpense(
   return expense;
 }
 
-export async function deleteExpense(id: string, user: AppUser): Promise<boolean> {
+export async function voidExpense(
+  id: string,
+  user: AppUser,
+  reason = "سُجل بالخطأ"
+): Promise<Expense | null> {
   const existing = await expenseRepo.getExpense(id);
-  if (!existing) return false;
+  if (!existing) return null;
+
+  if (existing.status === "voided") return existing;
 
   if (existing.inventory_item_id) {
     throw new Error("Cannot delete inventory purchase expenses");
@@ -234,45 +251,59 @@ export async function deleteExpense(id: string, user: AppUser): Promise<boolean>
   await assertSessionEditable(existing.session_id);
   await assertPeriodOpen(existing.store_id);
 
+  if (existing.status === "approved") {
+    const { reversePostedBySource } = await import(
+      "@/modules/accounting/services/gl-posting.service"
+    );
+    await reversePostedBySource({
+      originalSource: "expense",
+      originalSourceId: id,
+      reverseSource: "adjustment",
+      reverseSourceId: `expense-void:${id}`,
+      storeId: existing.store_id,
+      createdBy: user.id,
+      memo: `عكس مصروف ملغي: ${existing.title}`,
+    });
+  }
+
   const { reverseExpenseFromTreasury } = await import(
     "@/modules/treasury/services/treasury.service"
   );
   await reverseExpenseFromTreasury(id);
 
-  if (existing.status === "approved") {
-    const { safeReversePostedBySource } = await import(
-      "@/modules/accounting/services/gl-posting.service"
-    );
-    await safeReversePostedBySource({
-      originalSource: "expense",
-      originalSourceId: id,
-      reverseSource: "adjustment",
-      reverseSourceId: `expense-delete:${id}`,
-      storeId: existing.store_id,
-      createdBy: user.id,
-      memo: `عكس مصروف محذوف`,
-    });
-  }
-
-  const ok = await expenseRepo.deleteExpense(id);
-  if (ok) {
+  const expense = await expenseRepo.updateExpense(id, {
+    status: "voided",
+    voided_by: user.id,
+    voided_at: new Date().toISOString(),
+    void_reason: reason.trim() || "سُجل بالخطأ",
+  });
+  if (expense) {
     const orgId = await getOrgId();
     await writeAuditLog({
       orgId,
       storeId: existing.store_id,
       userId: user.id,
-      action: "expense.deleted",
+      action: "expense.voided",
       entityType: "expense",
       entityId: id,
+      metadata: {
+        amount: existing.amount,
+        previous_status: existing.status,
+        reason: expense.void_reason,
+        gl_reversal_source_id: `expense-void:${id}`,
+      },
     });
   }
-  return ok;
+  return expense;
 }
 
 export async function approveExpense(id: string, user: AppUser): Promise<Expense | null> {
   const existing = await expenseRepo.getExpense(id);
   if (!existing) return null;
   if (existing.status === "approved") return existing;
+  if (existing.status === "voided") {
+    throw new Error("المصروف ملغي ومينفعش يعتمد");
+  }
 
   const expense = await expenseRepo.updateExpense(id, {
     status: "approved",

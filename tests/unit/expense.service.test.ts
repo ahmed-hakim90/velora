@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createExpense,
-  deleteExpense,
+  voidExpense,
   type CreateExpenseInput,
 } from "@/modules/expenses/services/expense.service";
 import * as expenseRepo from "@/lib/repositories/expense.repository";
@@ -32,7 +32,7 @@ vi.mock("@/lib/services/audit.service", () => ({ writeAuditLog: vi.fn() }));
 vi.mock("@/lib/repositories/organization.repository", () => ({ getOrgId: vi.fn() }));
 vi.mock("@/modules/accounting/services/gl-posting.service", () => ({
   safePostExpenseJournal: vi.fn(),
-  safeReversePostedBySource: vi.fn(),
+  reversePostedBySource: vi.fn(),
 }));
 vi.mock("@/modules/treasury/services/treasury.service", () => ({
   postExpenseToTreasury: vi.fn(),
@@ -74,6 +74,9 @@ const savedExpense: Expense = {
   status: "approved",
   approved_by: "cashier-1",
   approved_at: new Date().toISOString(),
+  voided_by: null,
+  voided_at: null,
+  void_reason: null,
   ...baseInput,
 };
 
@@ -239,18 +242,18 @@ describe("createExpense", () => {
   });
 });
 
-describe("deleteExpense", () => {
+describe("voidExpense", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(getOrgId).mockResolvedValue("org-1");
     vi.mocked(assertPeriodOpen).mockResolvedValue(undefined);
   });
 
-  it("reverses treasury cash before deleting a treasury expense", async () => {
+  it("fully reverses an approved treasury expense and preserves it as voided", async () => {
     const { reverseExpenseFromTreasury } = await import(
       "@/modules/treasury/services/treasury.service"
     );
-    const { safeReversePostedBySource } = await import(
+    const { reversePostedBySource } = await import(
       "@/modules/accounting/services/gl-posting.service"
     );
     const treasuryExpense: Expense = {
@@ -260,16 +263,31 @@ describe("deleteExpense", () => {
       treasury_id: "tr-1",
     };
     vi.mocked(expenseRepo.getExpense).mockResolvedValue(treasuryExpense);
-    vi.mocked(expenseRepo.deleteExpense).mockResolvedValue(true);
+    const voided = {
+      ...treasuryExpense,
+      status: "voided" as const,
+      treasury_id: null,
+      voided_by: cashier.id,
+      voided_at: new Date().toISOString(),
+      void_reason: "سُجل كمصروف بالخطأ",
+    };
+    vi.mocked(expenseRepo.updateExpense).mockResolvedValue(voided);
 
-    await expect(deleteExpense(treasuryExpense.id, cashier)).resolves.toBe(true);
+    await expect(
+      voidExpense(treasuryExpense.id, cashier, "سُجل كمصروف بالخطأ")
+    ).resolves.toEqual(voided);
 
+    expect(reversePostedBySource).toHaveBeenCalledWith(
+      expect.objectContaining({ reverseSourceId: `expense-void:${treasuryExpense.id}` })
+    );
     expect(reverseExpenseFromTreasury).toHaveBeenCalledWith(treasuryExpense.id);
-    expect(safeReversePostedBySource).toHaveBeenCalled();
-    expect(expenseRepo.deleteExpense).toHaveBeenCalledWith(treasuryExpense.id);
+    expect(expenseRepo.updateExpense).toHaveBeenCalledWith(
+      treasuryExpense.id,
+      expect.objectContaining({ status: "voided", voided_by: cashier.id })
+    );
   });
 
-  it("does not delete when treasury reverse fails", async () => {
+  it("does not mark the expense voided when treasury reverse fails", async () => {
     const { reverseExpenseFromTreasury } = await import(
       "@/modules/treasury/services/treasury.service"
     );
@@ -283,7 +301,21 @@ describe("deleteExpense", () => {
       new Error("رصيد الخزينة غير كافٍ")
     );
 
-    await expect(deleteExpense("expense-1", cashier)).rejects.toThrow(/رصيد الخزينة/);
-    expect(expenseRepo.deleteExpense).not.toHaveBeenCalled();
+    await expect(voidExpense("expense-1", cashier)).rejects.toThrow(/رصيد الخزينة/);
+    expect(expenseRepo.updateExpense).not.toHaveBeenCalled();
+  });
+
+  it("is idempotent when the expense is already voided", async () => {
+    const voided = {
+      ...savedExpense,
+      status: "voided" as const,
+      voided_by: cashier.id,
+      voided_at: new Date().toISOString(),
+      void_reason: "سُجل بالخطأ",
+    };
+    vi.mocked(expenseRepo.getExpense).mockResolvedValue(voided);
+
+    await expect(voidExpense(voided.id, cashier)).resolves.toEqual(voided);
+    expect(expenseRepo.updateExpense).not.toHaveBeenCalled();
   });
 });

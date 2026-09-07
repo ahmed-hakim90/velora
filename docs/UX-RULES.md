@@ -240,4 +240,6 @@
 - Choose page, drawer/sheet, modal, or popover according to workflow depth and screen size.
 - Mobile reprioritizes rather than shrinking desktop. Verify RTL/LTR navigation, arrows, drawers, inputs, tables, charts, and mixed-direction content.
 - Accessibility is definition of done. Solve root causes before local overrides, duplicated state, or new dependencies.
+- Fixed document action bars must reserve their measured rendered height in the page flow; action wrapping, safe areas, and localization must never cover the final document row.
+- Re-entrant line-entry submissions must be locked synchronously and expose a disabled pending control so repeated Enter presses cannot create duplicate quantities.
 <!-- CODEX-PRODUCT-FOUNDATION:END -->

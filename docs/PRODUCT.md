@@ -146,6 +146,20 @@ Keep every stage reviewable and reversible. No business-logic change or mass red
 - `Store treasury` posts against the selected store treasury and must not change session reconciliation.
 - Non-cash supplier payments remain linked to the active session for audit context but do not affect expected drawer cash.
 
+# Expense cancellation policy
+
+- A recorded expense is cancelled, never physically deleted from the operational ledger.
+- Cancellation keeps the original document visible with status `voided`, actor, timestamp, and reason.
+- An approved expense must reverse its posted GL entry and any linked treasury payout before the expense is marked voided.
+- Cancellation is idempotent and uses the existing `expense_delete` permission; voided expenses cannot be edited or approved.
+- Voided expenses are excluded from expense totals and reports that count approved expenses.
+
+# Session activity ledger
+
+- A session detail page is the operational audit surface for everything linked to that shift.
+- It shows session open/close, sales and their payment mix, manual and promotional discounts, expenses (including voided state), and supplier payments (including voided state) in one chronological timeline.
+- Session totals continue to come from the reconciliation source of truth; the timeline explains those totals without recalculating them in the UI.
+
 # Product Foundation — velora
 
 ## Repository evidence

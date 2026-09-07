@@ -3,8 +3,14 @@ import * as orderRepo from "@/lib/repositories/order.repository";
 import * as storeRepo from "@/lib/repositories/store.repository";
 import * as userRepo from "@/lib/repositories/user.repository";
 import * as reportRepo from "@/lib/repositories/report.repository";
+import * as purchaseRepo from "@/lib/repositories/purchase.repository";
 import type { CashierSession, Order } from "@/lib/types";
 import { getSessionById } from "@/modules/sessions/services/session.service";
+import { loadSessionCashBundle } from "@/modules/sessions/services/reconciliation.service";
+import {
+  buildSessionActivity,
+  type SessionActivityEvent,
+} from "@/modules/sessions/lib/session-activity";
 
 export interface SessionInvoiceRow extends Order {
   customerName: string | null;
@@ -21,6 +27,7 @@ export interface SessionDetail {
   totalSales: number;
   invoicesWithCustomer: number;
   reconciliation: Awaited<ReturnType<typeof reportRepo.getSessionReconciliationRpc>> | null;
+  activity: SessionActivityEvent[];
 }
 
 export async function getSessionDetail(
@@ -38,11 +45,17 @@ export async function getSessionDetail(
   const store = await storeRepo.getStore(session.store_id);
   if (!store) return null;
 
-  const [orders, users, reconciliation] = await Promise.all([
+  const [orders, users, reconciliation, cashBundle, suppliers] = await Promise.all([
     orderRepo.listOrdersBySessionIds([sessionId]),
     userRepo.listUsers(),
     reportRepo.getSessionReconciliationRpc(sessionId).catch(() => null),
+    loadSessionCashBundle(sessionId),
+    purchaseRepo.listSuppliers(),
   ]);
+
+  const orderPayments = await orderRepo.getOrderPaymentsForOrders(
+    orders.map((order) => order.id)
+  );
 
   const customerIds = orders
     .map((order) => order.customer_id)
@@ -50,6 +63,7 @@ export async function getSessionDetail(
   const customers = await customerRepo.getCustomersByIds(customerIds);
   const customerMap = new Map(customers.map((c) => [c.id, c.name]));
   const userMap = new Map(users.map((u) => [u.id, u.name]));
+  const supplierMap = new Map(suppliers.map((supplier) => [supplier.id, supplier.name]));
 
   const invoices: SessionInvoiceRow[] = orders.map((order) => ({
     ...order,
@@ -73,5 +87,14 @@ export async function getSessionDetail(
     totalSales: completed.reduce((sum, order) => sum + order.total, 0),
     invoicesWithCustomer: invoices.filter((order) => order.hasCustomer).length,
     reconciliation,
+    activity: buildSessionActivity({
+      session,
+      orders,
+      orderPayments,
+      expenses: cashBundle.expenses,
+      supplierPayments: cashBundle.supplierPayments,
+      userNames: userMap,
+      supplierNames: supplierMap,
+    }),
   };
 }

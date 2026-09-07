@@ -34,6 +34,7 @@ import {
 import { ConfirmActionDialog } from "@/components/Velora/confirm-action-dialog";
 import { CompactAction, CompactActions } from "@/components/Velora/compact-actions";
 import { OperatorShortcutHint } from "@/components/Velora/operator-shortcut-hint";
+import { FixedDocumentActionBar } from "@/components/Velora/fixed-document-action-bar";
 import { EmptyStateBlock } from "@/components/Velora/state-blocks";
 import { MobileEntityCard } from "@/components/Velora/mobile-entity-card";
 import { OperationalCard } from "@/components/Velora/operational-card";
@@ -259,12 +260,14 @@ function SalesInvoiceFormEditor({
     title: string;
   } | null>(null);
   const productSearchRef = useRef<HTMLInputElement>(null);
+  const [addingLine, setAddingLine] = useState(false);
   const qtyRef = useRef<HTMLInputElement>(null);
   const amountRef = useRef<HTMLInputElement>(null);
   const snapshotRef = useRef<SalesInvoiceWithDetails | null>(null);
   const taxRateRef = useRef(inferTaxRate(initial));
   const invoiceRef = useRef(invoice);
   const persistPromiseRef = useRef<Promise<SalesInvoiceWithDetails | null> | null>(null);
+  const addingLineRef = useRef(false);
   const isUndoingRef = useRef(false);
   const cancelledTempIdsRef = useRef(new Set<string>());
   const removeLineRef = useRef<(lineId: string) => void>(() => {});
@@ -613,6 +616,7 @@ function SalesInvoiceFormEditor({
   }
 
   function addLine(overrideProductId?: string) {
+    if (addingLineRef.current) return;
     const resolvedId = overrideProductId || productId;
     if (!resolvedId) {
       toast.error(t("Choose an item or scan a barcode"));
@@ -709,6 +713,9 @@ function SalesInvoiceFormEditor({
       productName: product.name,
     };
 
+    addingLineRef.current = true;
+    setAddingLine(true);
+
     const nextLines = existingLine
       ? [
           ...invoice.lines.filter(
@@ -754,12 +761,13 @@ function SalesInvoiceFormEditor({
     }
 
     void (async () => {
-      const persisted = await ensurePersistedDraft();
-      if (!persisted) {
-        if (snapshotRef.current) publishLocal(snapshotRef.current);
-        return;
-      }
-      const result = await addSalesInvoiceLineAction({
+      try {
+        const persisted = await ensurePersistedDraft();
+        if (!persisted) {
+          if (snapshotRef.current) publishLocal(snapshotRef.current);
+          return;
+        }
+        const result = await addSalesInvoiceLineAction({
         orderId: persisted.id,
         productId: resolvedId,
         quantity,
@@ -769,12 +777,12 @@ function SalesInvoiceFormEditor({
           ? { unitPrice: nextUnitPrice, tierId: null }
           : {}),
       });
-      if (!result.ok) {
+        if (!result.ok) {
         if (snapshotRef.current) publishLocal(snapshotRef.current);
         toast.error(result.error);
         return;
       }
-      if (tempId && cancelledTempIdsRef.current.has(tempId)) {
+        if (tempId && cancelledTempIdsRef.current.has(tempId)) {
         cancelledTempIdsRef.current.delete(tempId);
         void removeSalesInvoiceLineAction({
           orderId: persisted.id,
@@ -782,7 +790,7 @@ function SalesInvoiceFormEditor({
         });
         return;
       }
-      {
+        {
         const prev = invoiceRef.current;
         const serverLine = result.data.line;
         const withoutDupes = prev.lines.filter(
@@ -806,6 +814,10 @@ function SalesInvoiceFormEditor({
         };
         taxRateRef.current = inferTaxRate(next) || taxRateRef.current;
         publishLocal(next);
+        }
+      } finally {
+        addingLineRef.current = false;
+        setAddingLine(false);
       }
     })();
   }
@@ -1291,7 +1303,7 @@ function SalesInvoiceFormEditor({
                 icon={Plus}
                 variant="default"
                 type="submit"
-                disabled={lifecyclePending}
+                disabled={lifecyclePending || addingLine}
               />
             </div>
             </form>
@@ -1725,7 +1737,7 @@ function SalesInvoiceFormEditor({
       </div>
     </OperationalCard>
 
-    <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-border/60 bg-background/95 px-3 py-2.5 backdrop-blur-xl lg:bottom-0 lg:pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:ps-64 lg:pt-3">
+    <FixedDocumentActionBar>
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
         <div className="min-w-0 shrink">
           <p className="text-xs text-muted-foreground sm:text-sm">{invoice.lines.length} {t("items")}</p>
@@ -2236,7 +2248,7 @@ function SalesInvoiceFormEditor({
           ) : null}
         </CompactActions>
       </div>
-    </div>
+    </FixedDocumentActionBar>
 
       <DocumentPrintPreviewModal
         open={Boolean(printPreview)}

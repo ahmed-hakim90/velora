@@ -16,6 +16,7 @@ import {
 import { ConfirmActionDialog } from "@/components/Velora/confirm-action-dialog";
 import { CompactAction, CompactActions } from "@/components/Velora/compact-actions";
 import { OperatorShortcutHint } from "@/components/Velora/operator-shortcut-hint";
+import { FixedDocumentActionBar } from "@/components/Velora/fixed-document-action-bar";
 import { OperationalCard } from "@/components/Velora/operational-card";
 import { EmptyStateBlock } from "@/components/Velora/state-blocks";
 import {
@@ -543,7 +544,7 @@ export function TransferForm({
             description={t("Open the draft to add items on this screen.")}
           />
         </OperationalCard>
-        <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-border/60 bg-background/95 px-3 py-2.5 backdrop-blur-xl lg:bottom-0 lg:pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:ps-64 lg:pt-3">
+        <FixedDocumentActionBar>
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">{t("New transfer")}</p>
             <CompactActions>
@@ -562,7 +563,7 @@ export function TransferForm({
               />
             </CompactActions>
           </div>
-        </div>
+        </FixedDocumentActionBar>
       </div>
     );
   }
@@ -764,7 +765,7 @@ export function TransferForm({
         </div>
       </OperationalCard>
 
-      <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-border/60 bg-background/95 px-3 py-2.5 backdrop-blur-xl lg:bottom-0 lg:pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:ps-64 lg:pt-3">
+      <FixedDocumentActionBar>
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
           <div className="min-w-0 shrink">
             <p className="text-xs text-muted-foreground sm:text-sm">{transfer.lines.length} {t("items")}</p>
@@ -833,7 +834,7 @@ export function TransferForm({
           />
           </CompactActions>
         </div>
-      </div>
+      </FixedDocumentActionBar>
 
       <ConfirmActionDialog
         open={confirmDelete}

@@ -63,7 +63,16 @@ export async function getExpense(id: string): Promise<Expense | null> {
 }
 
 export async function createExpense(
-  input: Omit<Expense, "id" | "created_at" | "approved_by" | "approved_at"> & {
+  input: Omit<
+    Expense,
+    | "id"
+    | "created_at"
+    | "approved_by"
+    | "approved_at"
+    | "voided_by"
+    | "voided_at"
+    | "void_reason"
+  > & {
     approved_by?: string | null;
     approved_at?: string | null;
   }
@@ -97,6 +106,9 @@ export type ExpenseUpdatePatch = Partial<
     | "status"
     | "approved_by"
     | "approved_at"
+    | "voided_by"
+    | "voided_at"
+    | "void_reason"
   >
 >;
 

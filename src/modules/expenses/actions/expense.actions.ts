@@ -9,7 +9,7 @@ import {
 } from "@/lib/auth/guards";
 import {
   createExpense,
-  deleteExpense,
+  voidExpense,
   updateExpense,
   approveExpense,
 } from "@/modules/expenses/services/expense.service";
@@ -45,14 +45,17 @@ export async function updateExpenseAction(id: string, patch: ExpenseUpdatePatch)
   return expense;
 }
 
-export async function deleteExpenseAction(id: string) {
+export async function voidExpenseAction(id: string, reason?: string) {
   const user = await requirePermission("expense_delete");
   await requireFeature("session_expenses");
-  const ok = await deleteExpense(id, user);
-  if (!ok) throw new Error("Expense not found");
+  const expense = await voidExpense(id, user, reason);
+  if (!expense) throw new Error("Expense not found");
   revalidatePath("/expenses");
   revalidatePath("/sessions");
   revalidatePath("/treasury");
+  revalidatePath("/reports");
+  revalidatePath("/accounting/journals");
+  return expense;
 }
 
 export async function approveExpenseAction(id: string) {

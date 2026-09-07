@@ -66,6 +66,22 @@ describe("buildSaleJournalLines", () => {
     expect(lines.find((l) => l.systemKey === "card")?.debit).toBe(60);
     expect(isJournalBalanced(lines)).toBe(true);
   });
+
+  it("posts an unpaid sale remainder to accounts receivable", () => {
+    const lines = buildSaleJournalLines({
+      total: 84,
+      tax: 0,
+      discount: 0,
+      payments: [{ method: "cash", amount: 74 }],
+    });
+    expect(lines).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ systemKey: "cash", debit: 74, credit: 0 }),
+        expect.objectContaining({ systemKey: "ar", debit: 10, credit: 0 }),
+      ])
+    );
+    expect(isJournalBalanced(lines)).toBe(true);
+  });
 });
 
 describe("buildPurchaseJournalLines", () => {

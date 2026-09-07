@@ -17,7 +17,7 @@ import {
 import { ConfirmActionDialog } from "@/components/Velora/confirm-action-dialog";
 import {
   createExpenseAction,
-  deleteExpenseAction,
+  voidExpenseAction,
   updateExpenseAction,
 } from "@/modules/expenses/actions/expense.actions";
 import { TreasuryPicker } from "@/modules/treasury/components/treasury-picker";
@@ -212,16 +212,16 @@ export function ExpenseWizard({
     });
   }
 
-  function confirmDelete() {
+  function confirmVoid() {
     if (!expense) return;
     startTransition(async () => {
       try {
-        await deleteExpenseAction(expense.id);
-        toast.success("تم حذف المصروف");
+        await voidExpenseAction(expense.id);
+        toast.success("تم إلغاء المصروف وعكس أثره بالكامل");
         setOpen(false);
         onDone?.();
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "تعذر حذف المصروف");
+        toast.error(error instanceof Error ? error.message : "تعذر إلغاء المصروف");
       }
     });
   }
@@ -383,7 +383,7 @@ export function ExpenseWizard({
             disabled={pending}
             onClick={() => setDeleteConfirmOpen(true)}
           >
-            حذف
+            إلغاء المصروف
           </Button>
         ) : null}
       </div>
@@ -397,11 +397,11 @@ export function ExpenseWizard({
         <ConfirmActionDialog
           open={deleteConfirmOpen}
           onOpenChange={setDeleteConfirmOpen}
-          title="حذف المصروف؟"
-          description="هيتشال المصروف ومش هتقدر ترجّعه من هنا."
-          confirmLabel="حذف"
+          title="إلغاء المصروف وعكسه؟"
+          description="هيفضل ظاهر كسجل ملغي، وهيتعكس قيده المحاسبي وحركة الخزينة بالكامل إن وُجدت."
+          confirmLabel="إلغاء وعكس"
           destructive
-          onConfirm={confirmDelete}
+          onConfirm={confirmVoid}
         />
       </>
     );
@@ -427,11 +427,11 @@ export function ExpenseWizard({
       <ConfirmActionDialog
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
-        title="حذف المصروف؟"
-        description="هيتشال المصروف ومش هتقدر ترجّعه من هنا."
-        confirmLabel="حذف"
+        title="إلغاء المصروف وعكسه؟"
+        description="هيفضل ظاهر كسجل ملغي، وهيتعكس قيده المحاسبي وحركة الخزينة بالكامل إن وُجدت."
+        confirmLabel="إلغاء وعكس"
         destructive
-        onConfirm={confirmDelete}
+        onConfirm={confirmVoid}
       />
     </>
   );

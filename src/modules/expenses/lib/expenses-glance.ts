@@ -30,8 +30,8 @@ export function buildExpensesGlance(input: {
   const byMonth = new Map<string, number>();
 
   for (const expense of input.expenses) {
-    totalAmount += expense.amount;
     const status = expense.status as ExpenseStatus;
+    if (status !== "voided") totalAmount += expense.amount;
     if (status === "approved") {
       approvedAmount += expense.amount;
       approvedCount += 1;

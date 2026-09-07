@@ -296,27 +296,20 @@ export async function completeCheckout(input: CheckoutInput): Promise<CheckoutRe
     });
   }
 
-  // Soft-fail GL posting — never break POS checkout.
-  after(() => {
-    void (async () => {
-      try {
-        const items = (await orderRepo.getOrderItems(order.id)) ?? [];
-        const cogs = items.reduce((sum, item) => sum + Number(item.line_cost ?? 0), 0);
-        await safePostSaleJournal({
-          orderId: order.id,
-          storeId: input.storeId,
-          total: order.total,
-          tax: order.tax,
-          discount: glSaleDiscount(order.discount, items),
-          payments,
-          cogs,
-          createdBy: input.cashierId,
-          memo: `بيع ${order.order_number}`,
-        });
-      } catch (error) {
-        console.error("[checkout] deferred GL sale post failed", error);
-      }
-    })();
+  // Keep the authenticated request context while posting. The operation remains
+  // soft-fail, so a GL issue is audited without duplicating or failing the sale.
+  const items = (await orderRepo.getOrderItems(order.id)) ?? [];
+  const cogs = items.reduce((sum, item) => sum + Number(item.line_cost ?? 0), 0);
+  await safePostSaleJournal({
+    orderId: order.id,
+    storeId: input.storeId,
+    total: order.total,
+    tax: order.tax,
+    discount: glSaleDiscount(order.discount, items),
+    payments,
+    cogs,
+    createdBy: input.cashierId,
+    memo: `بيع ${order.order_number}`,
   });
 
   return { order, orderNumber: result.order_number, loyaltyRedeemWarning };

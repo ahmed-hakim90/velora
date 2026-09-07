@@ -33,6 +33,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { CompactAction, CompactActions } from "@/components/Velora/compact-actions";
+import { FixedDocumentActionBar } from "@/components/Velora/fixed-document-action-bar";
 import { DataTableShell } from "@/components/Velora/data-table-shell";
 import { MobileEntityCard } from "@/components/Velora/mobile-entity-card";
 import { ResponsiveListLayout } from "@/components/Velora/responsive-list-layout";
@@ -784,7 +785,7 @@ export function StockCountWizard({
         )}
       </DataTableShell>
 
-      <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-border/60 bg-background/95 px-3 py-2.5 backdrop-blur-xl lg:bottom-0 lg:pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:ps-64 lg:pt-3">
+      <FixedDocumentActionBar>
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
           <p className="min-w-0 truncate text-sm text-muted-foreground">{saveLabel}</p>
           <CompactActions>
@@ -804,7 +805,7 @@ export function StockCountWizard({
             />
           </CompactActions>
         </div>
-      </div>
+      </FixedDocumentActionBar>
     </div>
   );
 }

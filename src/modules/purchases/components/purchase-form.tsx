@@ -41,6 +41,7 @@ import {
 import { ConfirmActionDialog } from "@/components/Velora/confirm-action-dialog";
 import { CompactAction, CompactActions } from "@/components/Velora/compact-actions";
 import { OperatorShortcutHint } from "@/components/Velora/operator-shortcut-hint";
+import { FixedDocumentActionBar } from "@/components/Velora/fixed-document-action-bar";
 import { OperationalCard } from "@/components/Velora/operational-card";
 import {
   DocumentHeaderGrid,
@@ -285,11 +286,13 @@ export function PurchaseForm({
   const [receivePaymentMethod, setReceivePaymentMethod] =
     useState<PaymentMethod>("cash");
   const [highlightIndex, setHighlightIndex] = useState(0);
+  const [addingLine, setAddingLine] = useState(false);
   const productSearchRef = useRef<HTMLInputElement>(null);
   const qtyRef = useRef<HTMLInputElement>(null);
   const snapshotRef = useRef<PurchaseWithLines | null>(null);
   const invoiceRef = useRef<PurchaseWithLines | null>(null);
   const persistPromiseRef = useRef<Promise<PurchaseWithLines | null> | null>(null);
+  const addingLineRef = useRef(false);
   const isUndoingRef = useRef(false);
   const cancelledTempIdsRef = useRef(new Set<string>());
   const removeLineRef = useRef<(lineId: string) => void>(() => {});
@@ -523,8 +526,14 @@ export function PurchaseForm({
       discountAmount = 0
     ) => {
       void (async () => {
+        if (addingLineRef.current) return;
         let inv = invoiceRef.current;
         if (!inv || qty <= 0 || cost < 0) return;
+
+        addingLineRef.current = true;
+        setAddingLine(true);
+
+        try {
 
         if (isLocalDraftId(inv.id)) {
           const persisted = await ensurePersistedDraft();
@@ -686,6 +695,10 @@ export function PurchaseForm({
             ...withLineTotals([...others, result.data], prev.extra_cost),
           };
         });
+        } finally {
+          addingLineRef.current = false;
+          setAddingLine(false);
+        }
       })();
     },
     [ensurePersistedDraft, productMap, pushUndo, importsEnabled, docCurrency, currency, fxRate, t]
@@ -1659,7 +1672,7 @@ export function PurchaseForm({
                   icon={Plus}
                   variant="default"
                   type="submit"
-                  disabled={!selectedProductId && !barcode.trim()}
+                  disabled={addingLine || (!selectedProductId && !barcode.trim())}
                 />
               </div>
             </form>
@@ -1670,43 +1683,48 @@ export function PurchaseForm({
                 {formatCurrency(entryPreview.lineTotal, currency)}
               </p>
             ) : null}
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="space-y-1.5">
-                <Label>{t("Batch number")}</Label>
-                <Input
-                  className="min-h-11"
-                  value={batchNumber}
-                  onChange={(e) => setBatchNumber(e.target.value)}
-                  placeholder={t("Optional")}
-                />
+            <details className="rounded-[var(--mds-radius-lg)] border border-border/70 bg-background/70 px-3 py-2">
+              <summary className="cursor-pointer select-none text-sm font-medium text-foreground">
+                {t("Batch and expiry dates")}
+              </summary>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="space-y-1.5">
+                  <Label>{t("Batch number")}</Label>
+                  <Input
+                    className="min-h-11"
+                    value={batchNumber}
+                    onChange={(e) => setBatchNumber(e.target.value)}
+                    placeholder={t("Optional")}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("Production date")}</Label>
+                  <Input
+                    className="min-h-11"
+                    type="date"
+                    value={productionDate}
+                    onChange={(e) => setProductionDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("Expiry date")}</Label>
+                  <Input
+                    className="min-h-11"
+                    type="date"
+                    value={expiryDate}
+                    onChange={(e) => setExpiryDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("Calculated expiry")}</Label>
+                  <Input
+                    className="min-h-11"
+                    value={calculatedExpiryDate ?? "-"}
+                    readOnly
+                  />
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label>{t("Production date")}</Label>
-                <Input
-                  className="min-h-11"
-                  type="date"
-                  value={productionDate}
-                  onChange={(e) => setProductionDate(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t("Expiry date")}</Label>
-                <Input
-                  className="min-h-11"
-                  type="date"
-                  value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t("Calculated expiry")}</Label>
-                <Input
-                  className="min-h-11"
-                  value={calculatedExpiryDate ?? "-"}
-                  readOnly
-                />
-              </div>
-            </div>
+            </details>
             </DocumentLineComposer>
           ) : null}
 
@@ -1893,7 +1911,7 @@ export function PurchaseForm({
         </div>
       </OperationalCard>
 
-      <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-border/60 bg-background/95 px-3 py-2.5 backdrop-blur-xl lg:bottom-0 lg:pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:ps-64 lg:pt-3">
+      <FixedDocumentActionBar>
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
           <div className="min-w-0 shrink">
             <p className="text-xs text-muted-foreground sm:text-sm">{invoice.lines.length} {t("lines")}</p>
@@ -2244,7 +2262,7 @@ export function PurchaseForm({
             ) : null}
           </CompactActions>
         </div>
-      </div>
+      </FixedDocumentActionBar>
 
       <DocumentPrintPreviewModal
         open={Boolean(printPreview)}

@@ -1202,6 +1202,9 @@ export type Database = {
           title: string
           treasury_id: string | null
           unit_cost: number | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
         }
         Insert: {
           amount: number
@@ -1225,6 +1228,9 @@ export type Database = {
           title?: string
           treasury_id?: string | null
           unit_cost?: number | null
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Update: {
           amount?: number
@@ -1248,6 +1254,9 @@ export type Database = {
           title?: string
           treasury_id?: string | null
           unit_cost?: number | null
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Relationships: [
           {
@@ -1311,6 +1320,13 @@ export type Database = {
             columns: ["treasury_id"]
             isOneToOne: false
             referencedRelation: "cash_treasuries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -6087,7 +6103,7 @@ export type Database = {
       customs_certificate_status: "open" | "closed"
       expense_payment_method: "cash" | "card" | "wallet" | "other"
       expense_source: "session_cash" | "external" | "purchase"
-      expense_status: "pending" | "approved"
+      expense_status: "pending" | "approved" | "voided"
       expiry_policy_type: "block_sale" | "warn_only" | "manager_override"
       gl_account_type: "asset" | "liability" | "equity" | "revenue" | "expense"
       import_job_status: "pending" | "completed" | "failed"
@@ -6467,7 +6483,7 @@ export const Constants = {
       customs_certificate_status: ["open", "closed"],
       expense_payment_method: ["cash", "card", "wallet", "other"],
       expense_source: ["session_cash", "external", "purchase"],
-      expense_status: ["pending", "approved"],
+      expense_status: ["pending", "approved", "voided"],
       expiry_policy_type: ["block_sale", "warn_only", "manager_override"],
       gl_account_type: ["asset", "liability", "equity", "revenue", "expense"],
       import_job_status: ["pending", "completed", "failed"],
