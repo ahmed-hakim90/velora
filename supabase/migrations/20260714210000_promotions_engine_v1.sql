@@ -314,18 +314,21 @@ BEGIN
         v_disc := round(LEAST(v_gross, v_amt * v_qty), 2);
       ELSIF v_rule->>'rule_type' = 'qty_threshold' THEN
         v_min_qty := GREATEST(0, COALESCE((v_cfg->>'min_qty')::numeric, 0));
-        IF v_qty >= v_min_qty THEN
+        IF v_min_qty > 0 AND v_qty >= v_min_qty THEN
           IF v_cfg ? 'percent' THEN
             v_pct := LEAST(100, GREATEST(0, COALESCE((v_cfg->>'percent')::numeric, 0)));
-            v_disc := round(v_gross * (v_pct / 100.0), 2);
+            v_disc := round(
+              v_list_unit * (floor(v_qty / v_min_qty) * v_min_qty) * (v_pct / 100.0),
+              2
+            );
           ELSE
             v_amt := GREATEST(0, COALESCE((v_cfg->>'amount')::numeric, 0));
-            v_disc := round(LEAST(v_gross, v_amt), 2);
+            v_disc := round(LEAST(v_gross, v_amt * floor(v_qty / v_min_qty)), 2);
           END IF;
         END IF;
       ELSIF v_rule->>'rule_type' = 'bogo' THEN
-        v_buy := GREATEST(1, COALESCE((v_cfg->>'buy_qty')::numeric, 1));
-        v_get := GREATEST(1, COALESCE((v_cfg->>'get_qty')::numeric, 1));
+        v_buy := GREATEST(1, floor(COALESCE((v_cfg->>'buy_qty')::numeric, 1)));
+        v_get := GREATEST(1, floor(COALESCE((v_cfg->>'get_qty')::numeric, 1)));
         v_get_pct := LEAST(100, GREATEST(0, COALESCE((v_cfg->>'get_percent')::numeric, 100)));
         v_bundle := v_buy + v_get;
         IF v_qty >= v_bundle AND v_bundle > 0 THEN

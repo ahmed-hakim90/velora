@@ -79,7 +79,7 @@ import type { FeatureFlag, SalesMode } from "@/lib/constants";
 import type { ReportBranding } from "@/modules/reports/core/report-context";
 import { usePosStore, type HeldCart } from "@/stores/pos-store";
 import { computePosCartTotals } from "@/modules/pos/lib/cart-totals";
-import { previewPosPromotions, previewProductOffer } from "@/modules/pos/lib/pos-promo-preview";
+import { getPosPromotionNudges, previewPosPromotions, previewProductOffer } from "@/modules/pos/lib/pos-promo-preview";
 import type { PromotionRuleInput } from "@/modules/promotions/lib/evaluate-promotions";
 import { EmptyStateBlock } from "@/components/Velora/state-blocks";
 import { PosPinSwitch } from "@/modules/pos/components/pos-pin-switch";
@@ -689,6 +689,12 @@ export function PosScreen({
         ?.map((app) => app.rule_name?.trim())
         .filter((name): name is string => Boolean(name)) ?? [],
     [promoPreview],
+  );
+  const promoNudges = useMemo(
+    () => promotionsEnabled
+      ? getPosPromotionNudges({ rules: promoRuleInputs, cart, storeId, saleMode: salesMode })
+      : [],
+    [promotionsEnabled, promoRuleInputs, cart, storeId, salesMode],
   );
   const loyaltyEnabled = featureFlags.loyalty !== false;
   const cartItemCount = cart.reduce((total, line) => total + line.quantity, 0);
@@ -1714,6 +1720,7 @@ export function PosScreen({
               promoAdjustedSubtotal={promoAdjustedSubtotal}
               promoLabels={promoLabels}
               promoLines={promoPreview?.lines}
+              promoNudges={promoNudges}
               loyaltyEnabled={loyaltyEnabled}
               enabledPaymentMethods={enabledPaymentMethods}
               loyaltyRedemptionRate={loyaltyRedemptionRate}
@@ -2006,6 +2013,7 @@ export function PosScreen({
                   promoAdjustedSubtotal={promoAdjustedSubtotal}
                   promoLabels={promoLabels}
                   promoLines={promoPreview?.lines}
+                  promoNudges={promoNudges}
                   loyaltyEnabled={loyaltyEnabled}
                   enabledPaymentMethods={enabledPaymentMethods}
                   loyaltyRedemptionRate={loyaltyRedemptionRate}

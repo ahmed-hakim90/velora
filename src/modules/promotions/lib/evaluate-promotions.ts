@@ -168,8 +168,8 @@ function lineGross(listUnit: number, qty: number): number {
 }
 
 function computeBogoDiscount(listUnit: number, qty: number, config: PromotionRuleConfig): number {
-  const buyQty = Math.max(1, Number(config.buy_qty ?? 1));
-  const getQty = Math.max(1, Number(config.get_qty ?? 1));
+  const buyQty = Math.max(1, Math.floor(Number(config.buy_qty ?? 1)));
+  const getQty = Math.max(1, Math.floor(Number(config.get_qty ?? 1)));
   const getPercent = Math.min(100, Math.max(0, Number(config.get_percent ?? 100)));
   const bundle = buyQty + getQty;
   if (qty < bundle) return 0;
@@ -197,13 +197,16 @@ function computeItemDiscount(
     }
     case "qty_threshold": {
       const minQty = Math.max(0, Number(cfg.min_qty ?? 0));
-      if (qty < minQty) return 0;
+      if (minQty <= 0 || qty < minQty) return 0;
+      const completeGroups = Math.floor(qty / minQty);
+      const eligibleQty = completeGroups * minQty;
+      const eligibleGross = lineGross(listUnit, eligibleQty);
       if (cfg.percent != null) {
         const percent = Math.min(100, Math.max(0, Number(cfg.percent)));
-        return roundMoney(gross * (percent / 100));
+        return roundMoney(eligibleGross * (percent / 100));
       }
       const amount = Math.max(0, Number(cfg.amount ?? 0));
-      return roundMoney(Math.min(gross, amount));
+      return roundMoney(Math.min(eligibleGross, amount * completeGroups));
     }
     case "bogo":
       return computeBogoDiscount(listUnit, qty, cfg);

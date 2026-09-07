@@ -119,7 +119,7 @@ const emptyForm = (): FormState => ({
   percent: "10",
   amount: "10",
   salePrice: "",
-  buyQty: "2",
+  buyQty: "1",
   getQty: "1",
   getPercent: "100",
   minQty: "5",
@@ -146,7 +146,7 @@ function ruleToForm(rule: PromotionRule): FormState {
     percent: String(rule.config.percent ?? 10),
     amount: String(rule.config.amount ?? 10),
     salePrice: String(rule.config.sale_price ?? ""),
-    buyQty: String(rule.config.buy_qty ?? 2),
+    buyQty: String(rule.config.buy_qty ?? 1),
     getQty: String(rule.config.get_qty ?? 1),
     getPercent: String(rule.config.get_percent ?? 100),
     minQty: String(rule.config.min_qty ?? 5),
@@ -549,6 +549,8 @@ export function PromotionsPage({ rules, categories, products, currency }: Promot
                 <Label>{t("Buy")}</Label>
                 <Input
                   type="number"
+                  min={1}
+                  step={1}
                   value={form.buyQty}
                   onChange={(e) => setForm({ ...form, buyQty: e.target.value })}
                 />
@@ -557,6 +559,8 @@ export function PromotionsPage({ rules, categories, products, currency }: Promot
                 <Label>{t("Get")}</Label>
                 <Input
                   type="number"
+                  min={1}
+                  step={1}
                   value={form.getQty}
                   onChange={(e) => setForm({ ...form, getQty: e.target.value })}
                 />
@@ -565,6 +569,8 @@ export function PromotionsPage({ rules, categories, products, currency }: Promot
                 <Label>{t("Discount percent")}</Label>
                 <Input
                   type="number"
+                  min={1}
+                  max={100}
                   value={form.getPercent}
                   onChange={(e) => setForm({ ...form, getPercent: e.target.value })}
                 />
@@ -577,9 +583,14 @@ export function PromotionsPage({ rules, categories, products, currency }: Promot
               <Label>{t("Minimum quantity")}</Label>
               <Input
                 type="number"
+                min={0.001}
+                step="any"
                 value={form.minQty}
                 onChange={(e) => setForm({ ...form, minQty: e.target.value })}
               />
+              <p className="text-xs text-muted-foreground">
+                {t("The discount repeats for complete quantity groups; any remainder stays at the regular price.")}
+              </p>
             </div>
           )}
 

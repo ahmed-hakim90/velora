@@ -176,12 +176,12 @@ export function ProductTile({
               {priceRange ? t("From") : t("Price")}
             </p>
           ) : null}
-          {offer ? (
+          {offer && !offer.conditional ? (
             <p className="truncate text-[10px] tabular-nums text-muted-foreground line-through">
               {formatCurrency(offer.originalPrice)}
             </p>
           ) : null}
-          <p className={cn("truncate text-[13px] font-bold tabular-nums text-foreground sm:text-[15px]", offer && "text-emerald-700 dark:text-emerald-300")}>
+          <p className={cn("truncate text-[13px] font-bold tabular-nums text-foreground sm:text-[15px]", offer && !offer.conditional && "text-emerald-700 dark:text-emerald-300")}>
             {formatCurrency(offer?.finalPrice ?? displayPrice)}
             {priceRange && !offer ? (
               <span className="ms-0.5 text-[10px] font-normal text-muted-foreground">

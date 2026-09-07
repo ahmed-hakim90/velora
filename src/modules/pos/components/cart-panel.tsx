@@ -8,6 +8,7 @@ import {
   Pause,
   Percent,
   Plus,
+  Sparkles,
   Star,
   Trash2,
   UserCircle,
@@ -20,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/format";
 import type { PaymentMethod } from "@/lib/types";
 import type { PromotionLineResult } from "@/modules/promotions/lib/evaluate-promotions";
+import type { PosPromotionNudge } from "@/modules/pos/lib/pos-promo-preview";
 import { computePosCartTotals } from "@/modules/pos/lib/cart-totals";
 import { getCartSubtotal, usePosStore } from "@/stores/pos-store";
 import { CustomerAttach } from "@/modules/pos/components/customer-attach";
@@ -88,6 +90,7 @@ interface CartPanelProps {
   promoAdjustedSubtotal?: number | null;
   promoLabels?: string[];
   promoLines?: PromotionLineResult[];
+  promoNudges?: PosPromotionNudge[];
   loyaltyEnabled?: boolean;
   enabledPaymentMethods?: PaymentMethod[];
   loyaltyRedemptionRate?: number | null;
@@ -110,6 +113,7 @@ export function CartPanel({
   promoAdjustedSubtotal = null,
   promoLabels = [],
   promoLines = [],
+  promoNudges = [],
   loyaltyEnabled = false,
   enabledPaymentMethods = ["cash", "card", "wallet", "other"],
   loyaltyRedemptionRate = null,
@@ -120,7 +124,7 @@ export function CartPanel({
   onDiscountOpenChange,
   onRequestClearCart,
 }: CartPanelProps) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const cart = usePosStore((s) => s.cart);
   const customer = usePosStore((s) => s.customer);
   const loyaltyBalance = usePosStore((s) => s.customerLoyaltyBalance);
@@ -248,6 +252,23 @@ export function CartPanel({
     holdCurrentPosCart();
   }
 
+  function nudgeText(nudge: PosPromotionNudge) {
+    const quantity = new Intl.NumberFormat(language === "ar" ? "ar-EG" : "en-EG", {
+      maximumFractionDigits: 3,
+    }).format(nudge.quantityNeeded);
+    if (nudge.kind === "bogo") {
+      const benefit = nudge.discountPercent === 100
+        ? (language === "ar" ? "مجانًا" : "for free")
+        : (language === "ar" ? `بخصم ${nudge.discountPercent}%` : `at ${nudge.discountPercent}% off`);
+      return language === "ar"
+        ? `أضف ${quantity} أخرى واحصل عليها ${benefit}`
+        : `Add ${quantity} more and get it ${benefit}`;
+    }
+    return language === "ar"
+      ? `أضف ${quantity} لإكمال مجموعة جديدة وتطبيق الخصم`
+      : `Add ${quantity} to complete another discounted group`;
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-none bg-card text-card-foreground shadow-none ring-0 sm:rounded-2xl sm:shadow-sm sm:ring-1 sm:ring-border">
       <CustomerAttach
@@ -257,6 +278,22 @@ export function CartPanel({
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-2 max-[390px]:px-1.5 [-webkit-overflow-scrolling:touch]">
+        {promoNudges.length > 0 ? (
+          <div className="mx-1.5 mt-2 space-y-1.5" aria-live="polite">
+            {promoNudges.slice(0, 3).map((nudge) => (
+              <div
+                key={`${nudge.lineKey}-${nudge.ruleId}`}
+                className="flex items-start gap-2 rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2 text-amber-950 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-100"
+              >
+                <Sparkles className="mt-0.5 size-4 shrink-0" aria-hidden />
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold">{nudge.ruleName}</p>
+                  <p className="text-xs">{nudgeText(nudge)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
         {!hasCart ? (
           <EmptyStateBlock
             title={t("Cart is empty")}

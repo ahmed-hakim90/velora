@@ -209,8 +209,17 @@ function validatePromotionInput(input: promoRepo.UpsertPromotionRuleInput) {
     }
   }
   if (type === "bogo") {
-    if (!(Number(cfg.buy_qty) > 0) || !(Number(cfg.get_qty) > 0)) {
+    if (
+      !Number.isInteger(Number(cfg.buy_qty)) ||
+      !Number.isInteger(Number(cfg.get_qty)) ||
+      !(Number(cfg.buy_qty) > 0) ||
+      !(Number(cfg.get_qty) > 0)
+    ) {
       throw new Error("Buy-and-get requires valid quantities");
+    }
+    const pct = Number(cfg.get_percent ?? NaN);
+    if (!Number.isFinite(pct) || pct <= 0 || pct > 100) {
+      throw new Error("Discount percent must be between 1 and 100");
     }
   }
   if (type === "qty_threshold") {

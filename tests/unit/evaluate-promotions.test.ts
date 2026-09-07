@@ -198,6 +198,48 @@ describe("evaluatePromotions", () => {
     expect(result2.lines[0].discount_amount).toBe(7.5);
   });
 
+  it("discounts only complete quantity groups and leaves the remainder at list price", () => {
+    const result = evaluatePromotions({
+      rules: [rule({
+        id: "kg",
+        name: "كل كيلو",
+        rule_type: "qty_threshold",
+        config: { min_qty: 1, percent: 20 },
+      })],
+      lines: [{ line_key: "0", product_id: "p1", category_id: null, quantity: 2.4, unit_price: 100 }],
+    });
+    expect(result.lines[0].discount_amount).toBe(40);
+    expect(result.lines[0].line_total).toBe(200);
+  });
+
+  it("repeats a fixed quantity discount for every complete group", () => {
+    const result = evaluatePromotions({
+      rules: [rule({
+        id: "pairs",
+        name: "خصم كل قطعتين",
+        rule_type: "qty_threshold",
+        config: { min_qty: 2, amount: 5 },
+      })],
+      lines: [{ line_key: "0", product_id: "p1", category_id: null, quantity: 5, unit_price: 10 }],
+    });
+    expect(result.lines[0].discount_amount).toBe(10);
+    expect(result.lines[0].line_total).toBe(40);
+  });
+
+  it("applies a configurable discount to the get piece in every complete bogo bundle", () => {
+    const result = evaluatePromotions({
+      rules: [rule({
+        id: "second-half",
+        name: "الثانية بنصف السعر",
+        rule_type: "bogo",
+        config: { buy_qty: 1, get_qty: 1, get_percent: 50 },
+      })],
+      lines: [{ line_key: "0", product_id: "p1", category_id: null, quantity: 5, unit_price: 20 }],
+    });
+    expect(result.lines[0].discount_amount).toBe(20);
+    expect(result.lines[0].line_total).toBe(80);
+  });
+
   it("requires coupon code for coupon-gated rules", () => {
     const rules = [
       rule({

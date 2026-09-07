@@ -617,6 +617,8 @@ export const arTranslations: Record<string, string> = {
   "Discount percent": "نسبة الخصم %",
   Get: "احصل",
   "Minimum quantity": "الحد الأدنى للكمية",
+  "The discount repeats for complete quantity groups; any remainder stays at the regular price.":
+    "يتكرر الخصم على مجموعات الكمية الكاملة، وأي كمية زائدة تُحسب بالسعر العادي.",
   "Minimum subtotal": "الحد الأدنى للإجمالي",
   Scope: "النطاق",
   "All items": "كل الأصناف",

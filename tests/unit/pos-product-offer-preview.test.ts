@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { previewProductOffer } from "@/modules/pos/lib/pos-promo-preview";
+import { getPosPromotionNudges, previewProductOffer } from "@/modules/pos/lib/pos-promo-preview";
 import type { PromotionRuleInput } from "@/modules/promotions/lib/evaluate-promotions";
 
 function categoryRule(): PromotionRuleInput {
@@ -47,5 +47,44 @@ describe("previewProductOffer", () => {
       categoryId: "drinks",
       unitPrice: 50,
     })).toBeNull();
+  });
+
+  it("advertises a buy-and-get offer before the second piece is added", () => {
+    expect(previewProductOffer({
+      rules: [{ ...categoryRule(), rule_type: "bogo", name: "الثانية خصم 50%", config: { buy_qty: 1, get_qty: 1, get_percent: 50 } }],
+      productId: "cola",
+      categoryId: "drinks",
+      unitPrice: 50,
+    })).toMatchObject({
+      name: "الثانية خصم 50%",
+      originalPrice: 50,
+      finalPrice: 50,
+      conditional: true,
+    });
+  });
+
+  it("prompts for the missing discounted piece and clears at a complete pair", () => {
+    const offer = { ...categoryRule(), rule_type: "bogo" as const, name: "الثانية خصم 50%", config: { buy_qty: 1, get_qty: 1, get_percent: 50 } };
+    const cartLine = {
+      id: "line-cola-base",
+      productId: "cola",
+      variantId: null,
+      name: "كولا",
+      quantity: 1,
+      unitPrice: 50,
+      categoryId: "drinks",
+      modifiers: [],
+      lineTotal: 50,
+      imageUrl: null,
+    };
+    expect(getPosPromotionNudges({ rules: [offer], cart: [cartLine] })).toMatchObject([{
+      quantityNeeded: 1,
+      discountPercent: 50,
+      kind: "bogo",
+    }]);
+    expect(getPosPromotionNudges({
+      rules: [offer],
+      cart: [{ ...cartLine, quantity: 2, lineTotal: 100 }],
+    })).toEqual([]);
   });
 });
