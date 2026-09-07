@@ -75,7 +75,7 @@ describe("pos store cart controls", () => {
     });
   });
 
-  it("keeps weight and amount entry modes on separate lines", () => {
+  it("merges weight and amount entries for the same product into one weight line", () => {
     usePosStore.getState().addItem({
       ...baseLine,
       quantity: 0.5,
@@ -92,7 +92,13 @@ describe("pos store cart controls", () => {
       enteredAmount: 20,
     });
 
-    expect(usePosStore.getState().cart).toHaveLength(2);
+    expect(usePosStore.getState().cart).toHaveLength(1);
+    expect(usePosStore.getState().cart[0]).toMatchObject({
+      quantity: 1,
+      saleInputMode: "by_weight",
+      lineTotal: 40,
+    });
+    expect(usePosStore.getState().cart[0]?.enteredAmount).toBeUndefined();
   });
 
   it("holds and resumes a cart with its discount", () => {

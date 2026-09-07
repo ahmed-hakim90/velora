@@ -137,7 +137,8 @@ export const usePosStore = create<PosState>((set, get) => ({
           (cartLine) =>
             cartLine.productId === line.productId &&
             cartLine.variantId === line.variantId &&
-            cartLine.saleInputMode === line.saleInputMode &&
+            (cartLine.saleInputMode === "by_weight" ||
+              cartLine.saleInputMode === "by_amount") &&
             cartLine.saleUnit === line.saleUnit &&
             cartLine.unitPrice === line.unitPrice &&
             cartLine.tierId === line.tierId &&
@@ -156,8 +157,14 @@ export const usePosStore = create<PosState>((set, get) => ({
             ? {
                 ...c,
                 quantity: c.quantity + line.quantity,
+                saleInputMode:
+                  c.saleInputMode === "by_amount" &&
+                  line.saleInputMode === "by_amount"
+                    ? "by_amount"
+                    : "by_weight",
                 enteredAmount:
-                  c.enteredAmount != null || line.enteredAmount != null
+                  c.saleInputMode === "by_amount" &&
+                  line.saleInputMode === "by_amount"
                     ? (c.enteredAmount ?? 0) + (line.enteredAmount ?? 0)
                     : undefined,
                 lineTotal: calcLineTotal(
