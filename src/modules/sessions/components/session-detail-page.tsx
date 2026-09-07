@@ -9,6 +9,8 @@ import { SessionLifecycleBadge } from "@/modules/sessions/components/session-lif
 import type { SessionDetail } from "@/modules/sessions/services/session-detail.service";
 import type { SessionLifecycleState } from "@/lib/types";
 import { CorrectSessionCashDialog } from "@/modules/sessions/components/correct-session-cash-dialog";
+import { cn } from "@/lib/utils";
+import { getOperationalSessionVariance } from "@/modules/sessions/lib/sessions-glance";
 
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString("ar-EG", {
@@ -16,6 +18,16 @@ function formatDateTime(iso: string) {
     timeStyle: "short",
     timeZone: "Africa/Cairo",
   });
+}
+
+function formatDuration(openedAt: string, closedAt: string | null) {
+  const end = closedAt ? new Date(closedAt).getTime() : Date.now();
+  const minutes = Math.max(0, Math.floor((end - new Date(openedAt).getTime()) / 60_000));
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) return `${rest} دقيقة`;
+  if (rest === 0) return `${hours} ساعة`;
+  return `${hours} ساعة و${rest} دقيقة`;
 }
 
 interface SessionDetailPageProps {
@@ -27,6 +39,7 @@ interface SessionDetailPageProps {
 export function SessionDetailPage({ detail, lifecycle, canCorrectClosingCash = false }: SessionDetailPageProps) {
   const { session } = detail;
   const isOpen = session.status === "open";
+  const variance = getOperationalSessionVariance(session);
 
   return (
     <div className="flex flex-col gap-3">
@@ -76,6 +89,84 @@ export function SessionDetailPage({ detail, lifecycle, canCorrectClosingCash = f
           </div>
         }
       />
+
+      <OperationalCard
+        title={isOpen ? "ملخص الوردية" : "ملخص الإقفال"}
+        description="الأوقات وحركة درج الكاشير المسجلة لهذه الوردية"
+        className="mb-1"
+      >
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm md:grid-cols-4">
+          <div>
+            <dt className="text-xs text-muted-foreground">وقت الفتح</dt>
+            <dd className="mt-1 font-medium">{formatDateTime(session.opened_at)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">وقت الإغلاق</dt>
+            <dd className="mt-1 font-medium">
+              {session.closed_at ? formatDateTime(session.closed_at) : "لسه مفتوحة"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">مدة الوردية</dt>
+            <dd className="mt-1 font-semibold tabular-nums">
+              {formatDuration(session.opened_at, session.closed_at)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">أغلقها</dt>
+            <dd className="mt-1 font-medium">{detail.closedByName ?? (isOpen ? "—" : detail.cashierName)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">بداية الدرج</dt>
+            <dd className="mt-1 font-semibold tabular-nums">{formatCurrency(session.opening_cash)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">المبلغ المتوقع</dt>
+            <dd className="mt-1 font-semibold tabular-nums">
+              {session.expected_cash == null ? "—" : formatCurrency(session.expected_cash)}
+            </dd>
+          </div>
+          <div className="rounded-lg bg-primary/5 px-3 py-2 -m-2">
+            <dt className="text-xs text-muted-foreground">اتقفلت فعليًا على</dt>
+            <dd className="mt-1 text-base font-bold tabular-nums">
+              {session.actual_cash == null ? "—" : formatCurrency(session.actual_cash)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">فرق الدرج</dt>
+            <dd className={cn("mt-1 font-bold tabular-nums", variance < 0 ? "text-destructive" : variance > 0 ? "text-amber-700 dark:text-amber-300" : "text-emerald-700 dark:text-emerald-300") }>
+              {session.variance == null ? "—" : `${variance > 0 ? "+" : ""}${formatCurrency(variance)}`}
+            </dd>
+          </div>
+        </dl>
+        {detail.reconciliation ? (
+          <div className="mt-4 border-t pt-4">
+            <h3 className="mb-3 text-sm font-semibold">تفاصيل حركة الوردية</h3>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm md:grid-cols-4">
+              {[
+                ["مبيعات نقدي", detail.reconciliation.cashSales],
+                ["مبيعات بطاقة", detail.reconciliation.cardSales],
+                ["مبيعات محفظة", detail.reconciliation.walletSales],
+                ["مبيعات آجل", detail.reconciliation.creditSales],
+                ["مرتجعات نقدية", -detail.reconciliation.cashRefunds],
+                ["مصروفات من الدرج", -detail.reconciliation.expenses],
+                ["تحصيلات عملاء", detail.reconciliation.customerPayments],
+              ].map(([label, value]) => (
+                <div key={String(label)}>
+                  <dt className="text-xs text-muted-foreground">{label}</dt>
+                  <dd className="mt-1 font-medium tabular-nums">{formatCurrency(Number(value))}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ) : null}
+        {(session.close_reason || session.notes) ? (
+          <div className="mt-4 border-t pt-3 text-sm">
+            {session.close_reason ? <p><span className="text-muted-foreground">سبب الإغلاق:</span> {session.close_reason}</p> : null}
+            {session.notes ? <p className="mt-1"><span className="text-muted-foreground">ملاحظات:</span> {session.notes}</p> : null}
+          </div>
+        ) : null}
+      </OperationalCard>
 
       <div className="grid grid-cols-2 gap-[var(--mds-space-3)] sm:gap-[var(--mds-space-4)] lg:grid-cols-3">
         <OperationalCard

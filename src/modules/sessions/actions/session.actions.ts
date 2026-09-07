@@ -266,29 +266,57 @@ export async function correctClosedSessionCashAction(input: {
   sessionId: string;
   actualCash: number;
   reason: string;
-}): Promise<{ status: "corrected"; accountingPending: boolean }> {
-  const user = await requireAuth();
-  if (user.role !== "owner" && user.role !== "manager") {
-    throw new Error("تصحيح إقفال الوردية متاح للمالك والمدير فقط");
+}): Promise<
+  | { status: "corrected"; accountingPending: boolean }
+  | { status: "error"; message: string }
+> {
+  try {
+    const user = await requireAuth();
+    if (user.role !== "owner" && user.role !== "manager") {
+      return {
+        status: "error",
+        message: "تصحيح إقفال الوردية متاح للمالك والمدير فقط",
+      };
+    }
+
+    const actualCash = validCashAmount(input.actualCash);
+    const reason = input.reason.trim();
+    if (!reason) return { status: "error", message: "سبب التصحيح مطلوب" };
+
+    const session = await getSessionById(input.sessionId);
+    if (!session) return { status: "error", message: "الجلسة غير موجودة" };
+    await requireStoreAccess(session.store_id);
+    const result = await correctClosedSessionCash({
+      sessionId: input.sessionId,
+      actualCash,
+      reason,
+      userId: user.id,
+    });
+
+    revalidatePath("/sessions");
+    revalidatePath(`/sessions/${input.sessionId}`);
+    revalidatePath("/reports");
+    revalidatePath("/treasury");
+    return { status: "corrected", accountingPending: result.accountingPending };
+  } catch (error) {
+    console.error("[sessions] closing cash correction failed", error);
+    const message = error instanceof Error ? error.message : "";
+    if (
+      message.includes("correct_closed_session_cash") ||
+      message.includes("schema cache")
+    ) {
+      return {
+        status: "error",
+        message: "ميزة التصحيح لسه ما اكتملش تفعيلها على قاعدة البيانات. حاول بعد دقائق.",
+      };
+    }
+    return {
+      status: "error",
+      message: /[\u0600-\u06ff]/.test(message)
+        ? message
+        : "تعذر تصحيح مبلغ الإقفال. حاول مرة أخرى.",
+    };
   }
-
-  const actualCash = validCashAmount(input.actualCash);
-  const reason = input.reason.trim();
-  if (!reason) throw new Error("سبب التصحيح مطلوب");
-
-  await requireStoreAccess((await getSessionById(input.sessionId))?.store_id ?? "");
-  const result = await correctClosedSessionCash({
-    sessionId: input.sessionId,
-    actualCash,
-    reason,
-    userId: user.id,
-  });
-
-  revalidatePath("/sessions");
-  revalidatePath(`/sessions/${input.sessionId}`);
-  revalidatePath("/reports");
-  revalidatePath("/treasury");
-  return { status: "corrected", accountingPending: result.accountingPending };
 }
 
 export async function forceCloseSessionAction(input: {

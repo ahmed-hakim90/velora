@@ -36,6 +36,10 @@ export function CorrectSessionCashDialog({ session }: CorrectSessionCashDialogPr
           actualCash: parsedCash,
           reason,
         });
+        if (result.status === "error") {
+          toast.error(result.message);
+          return;
+        }
         if (result.accountingPending) {
           toast.warning("تم تصحيح الوردية والخزينة، لكن القيد المحاسبي محتاج مراجعة");
         } else {

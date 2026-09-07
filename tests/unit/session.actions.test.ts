@@ -491,7 +491,39 @@ describe("correctClosedSessionCashAction", () => {
         actualCash: 500,
         reason: "خطأ في العد",
       }),
-    ).rejects.toThrow("للمالك والمدير فقط");
+    ).resolves.toEqual({
+      status: "error",
+      message: "تصحيح إقفال الوردية متاح للمالك والمدير فقط",
+    });
     expect(sessionService.correctClosedSessionCash).not.toHaveBeenCalled();
+  });
+
+  it("returns a safe message when the production RPC is not deployed", async () => {
+    vi.mocked(guards.requireAuth).mockResolvedValue({
+      id: "manager-1",
+      org_id: "org-1",
+      auth_user_id: "auth-1",
+      name: "Manager",
+      email: "manager@test.com",
+      role: "manager",
+      is_active: true,
+      store_ids: [],
+    });
+    vi.mocked(guards.requireStoreAccess).mockResolvedValue(undefined as never);
+    vi.mocked(sessionService.getSessionById).mockResolvedValue(closedSession);
+    vi.mocked(sessionService.correctClosedSessionCash).mockRejectedValue(
+      new Error("Could not find the function public.correct_closed_session_cash in the schema cache"),
+    );
+
+    await expect(
+      correctClosedSessionCashAction({
+        sessionId: "s1",
+        actualCash: 500,
+        reason: "خطأ في العد",
+      }),
+    ).resolves.toEqual({
+      status: "error",
+      message: "ميزة التصحيح لسه ما اكتملش تفعيلها على قاعدة البيانات. حاول بعد دقائق.",
+    });
   });
 });

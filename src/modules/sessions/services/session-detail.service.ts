@@ -2,6 +2,7 @@ import * as customerRepo from "@/lib/repositories/customer.repository";
 import * as orderRepo from "@/lib/repositories/order.repository";
 import * as storeRepo from "@/lib/repositories/store.repository";
 import * as userRepo from "@/lib/repositories/user.repository";
+import * as reportRepo from "@/lib/repositories/report.repository";
 import type { CashierSession, Order } from "@/lib/types";
 import { getSessionById } from "@/modules/sessions/services/session.service";
 
@@ -19,6 +20,7 @@ export interface SessionDetail {
   orderCount: number;
   totalSales: number;
   invoicesWithCustomer: number;
+  reconciliation: Awaited<ReturnType<typeof reportRepo.getSessionReconciliationRpc>> | null;
 }
 
 export async function getSessionDetail(
@@ -36,9 +38,10 @@ export async function getSessionDetail(
   const store = await storeRepo.getStore(session.store_id);
   if (!store) return null;
 
-  const [orders, users] = await Promise.all([
+  const [orders, users, reconciliation] = await Promise.all([
     orderRepo.listOrdersBySessionIds([sessionId]),
     userRepo.listUsers(),
+    reportRepo.getSessionReconciliationRpc(sessionId).catch(() => null),
   ]);
 
   const customerIds = orders
@@ -69,5 +72,6 @@ export async function getSessionDetail(
     orderCount: completed.length,
     totalSales: completed.reduce((sum, order) => sum + order.total, 0),
     invoicesWithCustomer: invoices.filter((order) => order.hasCustomer).length,
+    reconciliation,
   };
 }
