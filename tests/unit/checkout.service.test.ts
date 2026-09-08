@@ -4,6 +4,8 @@ import * as sessionRepo from "@/lib/repositories/session.repository";
 import * as orderRepo from "@/lib/repositories/order.repository";
 import * as settingsService from "@/modules/system/services/settings.service";
 import * as loyaltyService from "@/modules/loyalty/services/loyalty.service";
+import * as auditRepo from "@/lib/repositories/audit.repository";
+vi.mock("@/lib/repositories/audit.repository");
 
 vi.mock("next/server", () => ({
   after: (fn: () => void) => {
@@ -76,6 +78,24 @@ describe("completeCheckout session expiry", () => {
     ).rejects.toThrow("انتهت الجلسة - أغلق الوردية للمتابعة");
 
     expect(orderRepo.completeCheckoutRpc).not.toHaveBeenCalled();
+  });
+
+  it("keeps a committed sale successful if journal preparation loses authentication", async () => {
+    vi.mocked(sessionRepo.getSession).mockResolvedValue({
+      id: "s1", store_id: "store1", cashier_id: "c1", status: "open", opened_at: new Date().toISOString(),
+    } as never);
+    vi.mocked(orderRepo.completeCheckoutRpc).mockResolvedValue({
+      order_id: "o1", order_number: "SF-001", subtotal: 10, tax: 0, total: 10,
+    });
+    vi.mocked(orderRepo.getOrderItems).mockRejectedValue(new Error("Not authenticated"));
+    const result = await completeCheckout({
+      storeId: "store1", sessionId: "s1", cashierId: "c1", cart: [cartLine], customer: null, paymentMethod: "cash",
+    });
+    expect(result.orderNumber).toBe("SF-001");
+    expect(orderRepo.completeCheckoutRpc).toHaveBeenCalledTimes(1);
+    expect(auditRepo.insertAuditLog).toHaveBeenCalledWith(expect.objectContaining({
+      entityId: "o1", action: "gl.posting_failed", metadata: expect.objectContaining({error: "Not authenticated"}),
+    }));
   });
 
   it("uses expired-session override RPC when override is provided", async () => {

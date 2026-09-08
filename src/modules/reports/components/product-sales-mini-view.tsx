@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EmptyStateBlock } from "@/components/Velora/state-blocks";
+import { SearchableSelect } from "@/components/Velora/searchable-select";
 import { formatCurrency } from "@/lib/format";
 import { selectLabelById } from "@/lib/select-label";
 import type { Store } from "@/lib/types";
@@ -167,38 +168,22 @@ export function ProductSalesMiniView({
           />
           <div className="min-w-[14rem] space-y-1">
             <Label>المنتج</Label>
-            <Select
-              value={filters.productId ?? "__unset"}
-              onValueChange={(v) =>
-                apply({ productId: !v || v === "__unset" ? undefined : v })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="اختر منتج…">
-                  {(value) =>
-                    !value || value === "__unset"
-                      ? "اختر منتج…"
-                      : selectLabelById(products, value, (p) =>
-                          p.sku ? `${p.name} · ${p.sku}` : p.name
-                        )
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__unset" label="اختر منتج…">
-                  اختر منتج…
-                </SelectItem>
-                {products.map((p) => (
-                  <SelectItem
-                    key={p.id}
-                    value={p.id}
-                    label={p.sku ? `${p.name} · ${p.sku}` : p.name}
-                  >
-                    {p.sku ? `${p.name} · ${p.sku}` : p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              options={products.map((product) => ({
+                value: product.id,
+                label: product.name,
+                description: product.sku,
+                keywords: [product.sku],
+              }))}
+              value={filters.productId}
+              onValueChange={(productId) => apply({ productId })}
+              placeholder="اختر منتج…"
+              searchPlaceholder="ابحث باسم المنتج أو SKU…"
+              emptyMessage={products.length === 0 ? "مفيش منتجات" : "مفيش منتج مطابق"}
+              clearLabel="إلغاء اختيار المنتج"
+              openLabel="بحث في المنتجات"
+              disabled={pending}
+            />
           </div>
           {stores.length > 1 ? (
             <div className="min-w-[12rem] space-y-1">

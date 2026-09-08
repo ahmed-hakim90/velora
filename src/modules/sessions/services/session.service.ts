@@ -169,26 +169,29 @@ export async function closeSession(input: {
       throw new SessionVaultDepositError(session.id);
     }
 
-    after(() => {
-      void (async () => {
-        try {
-          const variance = roundMoney(Number(session.variance ?? 0));
-          if (variance === 0) return;
-          const { safePostSessionVarianceJournal } = await import(
-            "@/modules/accounting/services/gl-posting.service"
-          );
-          await safePostSessionVarianceJournal({
-            sessionId: session.id,
-            storeId: session.store_id,
-            variance,
-            createdBy: input.userId,
-            memo: `فرق إقفال وردية`,
-          });
-        } catch (error) {
-          console.error("[sessions] deferred GL variance post failed", error);
-        }
-      })();
-    });
+    try {
+      const variance = roundMoney(Number(session.variance ?? 0));
+      if (variance !== 0) {
+        const { safePostSessionVarianceJournal } =
+          await import("@/modules/accounting/services/gl-posting.service");
+        await safePostSessionVarianceJournal({
+          sessionId: session.id,
+          storeId: session.store_id,
+          variance,
+          createdBy: input.userId,
+          entryDate: session.closed_at ?? undefined,
+          memo: `فرق إقفال وردية`,
+        });
+      }
+    } catch (error) {
+      const { recordGlPostingFailure } =
+        await import("@/modules/accounting/services/gl-posting.service");
+      await recordGlPostingFailure("postSessionVarianceJournal", error, {
+        storeId: session.store_id,
+        entityId: session.id,
+        source: "adjustment",
+      });
+    }
 
     if (existing.status === "open") {
       const orgId = await getOrgId();

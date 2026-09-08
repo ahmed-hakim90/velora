@@ -7,6 +7,11 @@ import { writeAuditLog } from "@/lib/services/audit.service";
 import { getOrgId, getOrganization } from "@/lib/repositories/organization.repository";
 import { getStore } from "@/lib/repositories/store.repository";
 import { getUser } from "@/lib/repositories/user.repository";
+import { safePostSessionVarianceJournal } from "@/modules/accounting/services/gl-posting.service";
+
+vi.mock("@/modules/accounting/services/gl-posting.service", () => ({
+  safePostSessionVarianceJournal: vi.fn(),
+}));
 
 vi.mock("next/server", () => ({
   after: (fn: () => void) => {
@@ -77,6 +82,24 @@ describe("closeSession vault retry", () => {
     });
     expect(writeAuditLog).not.toHaveBeenCalled();
     expect(result?.status).toBe("closed");
+  });
+
+  it("awaits variance posting before the authenticated request completes", async () => {
+    vi.mocked(sessionRepo.getSession).mockResolvedValue({ ...closedSession, variance: 8, actual_cash: 148 });
+    let release!: () => void;
+    vi.mocked(safePostSessionVarianceJournal).mockImplementation(() => new Promise(resolve => {
+      release = () => resolve(null);
+    }));
+    let finished = false;
+    const request = closeSession({ sessionId: "s1", expectedCash: 140, actualCash: 148, userId: "c1" })
+      .then(result => { finished = true; return result; });
+    await vi.waitFor(() => expect(safePostSessionVarianceJournal).toHaveBeenCalled());
+    expect(finished).toBe(false);
+    expect(safePostSessionVarianceJournal).toHaveBeenCalledWith(expect.objectContaining({
+      variance: 8, entryDate: closedSession.closed_at,
+    }));
+    release();
+    expect((await request)?.status).toBe("closed");
   });
 
   it("does not invite a second close when vault deposit fails after closing", async () => {

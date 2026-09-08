@@ -62,3 +62,16 @@ export async function getAuditLog(id: string): Promise<AuditLog | null> {
   if (error) throwDbError(error, "getAuditLog");
   return data ? mapAuditLog(data) : null;
 }
+
+export async function listUnresolvedGlFailures(
+  since: string,
+  limit: number,
+): Promise<AuditLog[]> {
+  const db = await getDb();
+  const { data, error } = await db.rpc("list_unresolved_gl_failures", {
+    p_since: since,
+    p_limit: limit,
+  });
+  if (error) throwDbError(error, "listUnresolvedGlFailures");
+  return (data ?? []).map(mapAuditLog);
+}

@@ -230,12 +230,16 @@ describe("buildSessionVarianceJournalLines", () => {
     expect(isJournalBalanced(lines)).toBe(true);
   });
 
-  it("posts a till overage to cash over/short", () => {
+  it("posts a till overage to other revenue", () => {
     const lines = buildSessionVarianceJournalLines({ variance: 8 });
     expect(lines).toEqual([
       { systemKey: "cash", debit: 8, credit: 0 },
-      { systemKey: "cash_over_short", debit: 0, credit: 8 },
+      { systemKey: "cash_overage", debit: 0, credit: 8 },
     ]);
     expect(isJournalBalanced(lines)).toBe(true);
+  });
+
+  it("does not create lines for a zero variance", () => {
+    expect(buildSessionVarianceJournalLines({ variance: 0 })).toEqual([]);
   });
 });

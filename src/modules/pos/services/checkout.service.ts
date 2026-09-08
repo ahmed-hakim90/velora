@@ -15,7 +15,10 @@ import { computeSessionLifecycle } from "@/modules/sessions/services/session-lif
 import type { CartLine, CashierSession, Customer, Order, PaymentMethod, PaymentSplit } from "@/lib/types";
 import type { SalesMode } from "@/lib/constants";
 import { after } from "next/server";
-import { safePostSaleJournal } from "@/modules/accounting/services/gl-posting.service";
+import {
+  safePostSaleJournal,
+  recordGlPostingFailure,
+} from "@/modules/accounting/services/gl-posting.service";
 
 export interface CheckoutInput {
   storeId: string;
@@ -48,21 +51,30 @@ export interface CheckoutResult {
   loyaltyRedeemWarning?: string;
 }
 
-export async function completeCheckout(input: CheckoutInput): Promise<CheckoutResult> {
+export async function completeCheckout(
+  input: CheckoutInput,
+): Promise<CheckoutResult> {
   if (!input.sessionId) {
     throw new Error("جلسة كاشير نشطة مطلوبة");
   }
 
   // Catalog/stock/variant checks live in complete_checkout RPC — avoid
   // duplicate pre-RPC round-trips that dominate cashier save latency.
-  let session = input.session && input.session.id === input.sessionId ? input.session : null;
+  let session =
+    input.session && input.session.id === input.sessionId
+      ? input.session
+      : null;
   if (!input.sessionGateChecked || !session) {
     const [loadedSession, settings] = await Promise.all([
       session ?? sessionRepo.getSession(input.sessionId),
       getSessionSettings(),
     ]);
     session = loadedSession;
-    if (!session || session.status !== "open" || session.store_id !== input.storeId) {
+    if (
+      !session ||
+      session.status !== "open" ||
+      session.store_id !== input.storeId
+    ) {
       throw new Error("جلسة الكاشير غير صالحة أو مغلقة");
     }
     const lifecycle = computeSessionLifecycle(session, settings);
@@ -132,7 +144,9 @@ export async function completeCheckout(input: CheckoutInput): Promise<CheckoutRe
       throw new Error("برنامج الولاء غير مفعل");
     }
     if (requestedPoints < loyaltyRule.minimum_redeem_points) {
-      throw new Error(`الحد الأدنى لاستبدال النقاط هو ${loyaltyRule.minimum_redeem_points} نقطة`);
+      throw new Error(
+        `الحد الأدنى لاستبدال النقاط هو ${loyaltyRule.minimum_redeem_points} نقطة`,
+      );
     }
     const balance = await getCustomerLoyaltyBalance(input.customer.id);
     if (requestedPoints > balance) {
@@ -182,10 +196,16 @@ export async function completeCheckout(input: CheckoutInput): Promise<CheckoutRe
   try {
     result = input.override?.expiredSession
       ? payments.length > 1
-        ? await orderRepo.completeCheckoutSplitExpiredOverrideRpc({ ...checkoutPayload, payments })
+        ? await orderRepo.completeCheckoutSplitExpiredOverrideRpc({
+            ...checkoutPayload,
+            payments,
+          })
         : await orderRepo.completeCheckoutExpiredOverrideRpc(checkoutPayload)
       : payments.length > 1
-        ? await orderRepo.completeCheckoutSplitRpc({ ...checkoutPayload, payments })
+        ? await orderRepo.completeCheckoutSplitRpc({
+            ...checkoutPayload,
+            payments,
+          })
         : await orderRepo.completeCheckoutRpc(checkoutPayload);
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
@@ -200,12 +220,12 @@ export async function completeCheckout(input: CheckoutInput): Promise<CheckoutRe
     }
     if (message.includes("Credit limit exceeded")) {
       throw new Error(
-        "تم إيقاف البيع الآجل: تجاوز حد الائتمان للعميل. سجّل تحصيلًا من شاشة التحصيل أو بطاقة العميل، أو ارفع الحد."
+        "تم إيقاف البيع الآجل: تجاوز حد الائتمان للعميل. سجّل تحصيلًا من شاشة التحصيل أو بطاقة العميل، أو ارفع الحد.",
       );
     }
     if (message.includes("Expired batch stock")) {
       throw new Error(
-        "مفيش بيع: فيه تشغيلة منتهية الصلاحية لهذا المنتج. راجع الدفعات أو غيّر سياسة الصلاحية من إعدادات النشاط (الصيدلية تمنع البيع المنتهي)."
+        "مفيش بيع: فيه تشغيلة منتهية الصلاحية لهذا المنتج. راجع الدفعات أو غيّر سياسة الصلاحية من إعدادات النشاط (الصيدلية تمنع البيع المنتهي).",
       );
     }
     if (message.includes("Customer required for credit sale")) {
@@ -219,12 +239,12 @@ export async function completeCheckout(input: CheckoutInput): Promise<CheckoutRe
     }
     if (message.includes("Insufficient stock")) {
       throw new Error(
-        "المخزون غير كافٍ — البيع متوقف لأن إعداد «منع المخزون السالب» مفعّل. راجع الرصيد أو عطّل الإعداد من خصائص النظام."
+        "المخزون غير كافٍ — البيع متوقف لأن إعداد «منع المخزون السالب» مفعّل. راجع الرصيد أو عطّل الإعداد من خصائص النظام.",
       );
     }
     if (message.includes("Insufficient batch stock")) {
       throw new Error(
-        "رصيد التشغيلة غير كافٍ — البيع متوقف بسبب منع المخزون السالب. راجع التشغيلات أو عطّل الإعداد."
+        "رصيد التشغيلة غير كافٍ — البيع متوقف بسبب منع المخزون السالب. راجع التشغيلات أو عطّل الإعداد.",
       );
     }
     throw error;
@@ -298,19 +318,30 @@ export async function completeCheckout(input: CheckoutInput): Promise<CheckoutRe
 
   // Keep the authenticated request context while posting. The operation remains
   // soft-fail, so a GL issue is audited without duplicating or failing the sale.
-  const items = (await orderRepo.getOrderItems(order.id)) ?? [];
-  const cogs = items.reduce((sum, item) => sum + Number(item.line_cost ?? 0), 0);
-  await safePostSaleJournal({
-    orderId: order.id,
-    storeId: input.storeId,
-    total: order.total,
-    tax: order.tax,
-    discount: glSaleDiscount(order.discount, items),
-    payments,
-    cogs,
-    createdBy: input.cashierId,
-    memo: `بيع ${order.order_number}`,
-  });
+  try {
+    const items = (await orderRepo.getOrderItems(order.id)) ?? [];
+    const cogs = items.reduce(
+      (sum, item) => sum + Number(item.line_cost ?? 0),
+      0,
+    );
+    await safePostSaleJournal({
+      orderId: order.id,
+      storeId: input.storeId,
+      total: order.total,
+      tax: order.tax,
+      discount: glSaleDiscount(order.discount, items),
+      payments,
+      cogs,
+      createdBy: input.cashierId,
+      memo: `بيع ${order.order_number}`,
+    });
+  } catch (error) {
+    await recordGlPostingFailure("postSaleJournal", error, {
+      storeId: input.storeId,
+      entityId: order.id,
+      source: "sale",
+    });
+  }
 
   return { order, orderNumber: result.order_number, loyaltyRedeemWarning };
 }

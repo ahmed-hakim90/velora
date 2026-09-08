@@ -82,11 +82,17 @@ export async function exportIncomeStatementExcel(input: {
       pageSize: 50,
     },
     user.name,
-    brandingStoreIdForAccountingReport(data.storeId)
+    brandingStoreIdForAccountingReport(data.storeId),
   );
   const lines = [
     ...data.result.revenueLines.map((line) => ({
       section: line.isContraRevenue ? "خصم مبيعات" : "إيراد",
+      code: line.code,
+      name: line.name,
+      amount: line.amount,
+    })),
+    ...data.result.otherRevenueLines.map((line) => ({
+      section: "إيرادات أخرى",
       code: line.code,
       name: line.name,
       amount: line.amount,
@@ -108,6 +114,12 @@ export async function exportIncomeStatementExcel(input: {
       code: "",
       name: "إجمالي المصروفات",
       amount: data.result.totalExpenses,
+    },
+    {
+      section: "ملخص",
+      code: "",
+      name: "إجمالي الإيرادات الأخرى",
+      amount: data.result.otherRevenue,
     },
     {
       section: "ملخص",

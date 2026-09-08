@@ -12,10 +12,12 @@ export async function ensureSeeded(): Promise<void> {
   const count = await glRepo.countGlAccounts();
   if (count === 0) {
     await glRepo.seedDefaultChartOfAccounts(orgId);
-    return;
   }
-  const overShort = await glRepo.getGlAccountBySystemKey("cash_over_short");
-  if (!overShort) {
+  const [overShort, overage] = await Promise.all([
+    glRepo.getGlAccountBySystemKey("cash_over_short"),
+    glRepo.getGlAccountBySystemKey("cash_overage"),
+  ]);
+  if (!overShort || !overage) {
     await glRepo.ensureSystemGlAccounts(orgId);
   }
 }

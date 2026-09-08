@@ -84,7 +84,7 @@ export function buildSaleJournalLines(input: {
 
 /**
  * Session till variance (actual − expected).
- * Shortage: Dr cash_over_short / Cr cash. Overage: Dr cash / Cr cash_over_short.
+ * Shortage: Dr cash_over_short / Cr cash. Overage: Dr cash / Cr cash_overage.
  */
 export function buildSessionVarianceJournalLines(input: {
   variance: number;
@@ -100,7 +100,7 @@ export function buildSessionVarianceJournalLines(input: {
   }
   return [
     { systemKey: "cash", debit: variance, credit: 0 },
-    { systemKey: "cash_over_short", debit: 0, credit: variance },
+    { systemKey: "cash_overage", debit: 0, credit: variance },
   ];
 }
 

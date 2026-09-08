@@ -55,6 +55,7 @@ export async function voidExpenseAction(id: string, reason?: string) {
   revalidatePath("/treasury");
   revalidatePath("/reports");
   revalidatePath("/accounting/journals");
+  revalidatePath("/accounting", "layout");
   return expense;
 }
 

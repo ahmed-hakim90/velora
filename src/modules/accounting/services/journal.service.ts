@@ -200,9 +200,15 @@ export async function createAndPostAutoJournal(input: {
   await ensureSeeded();
   if (!input.sourceId) return null;
 
-  const existing = await journalRepo.findPostedBySource(input.source, input.sourceId);
+  const existing = await journalRepo.findPostedBySource(
+    input.source,
+    input.sourceId,
+  );
   if (existing) {
-    return journalRepo.getJournalEntryWithLines(existing.id);
+    const posted = await journalRepo.getJournalEntryWithLines(existing.id);
+    if (!posted) throw new Error("القيد السابق غير موجود");
+    assertJournalBalanced(posted.lines);
+    return posted;
   }
 
   const lockStore = input.periodStoreId ?? input.storeId ?? null;
@@ -234,7 +240,7 @@ export async function createAndPostAutoJournal(input: {
       credit: roundMoney(line.credit),
       memo: line.memo ?? "",
       line_no: index + 1,
-    }))
+    })),
   );
 
   return { ...entry, lines };

@@ -1,8 +1,5 @@
 import * as auditRepo from "@/lib/repositories/audit.repository";
-import {
-  GL_POSTING_FAILED_ACTION,
-  type GlPostingFailure,
-} from "@/modules/accounting/lib/gl-posting-failure-labels";
+import { type GlPostingFailure } from "@/modules/accounting/lib/gl-posting-failure-labels";
 
 export type { GlPostingFailure };
 
@@ -12,11 +9,10 @@ export async function listRecentGlPostingFailures(limit = 8): Promise<{
 }> {
   const since = new Date();
   since.setDate(since.getDate() - 7);
-  const logs = await auditRepo.listAuditLogs({
-    action: GL_POSTING_FAILED_ACTION,
-    from: since.toISOString(),
-    limit: Math.min(Math.max(limit, 1), 50),
-  });
+  const logs = await auditRepo.listUnresolvedGlFailures(
+    since.toISOString(),
+    limit,
+  );
 
   const failures = logs.map((log) => {
     const meta = (log.metadata ?? {}) as Record<string, unknown>;

@@ -18,7 +18,6 @@ import { allocateLandedCosts } from "@/modules/purchases/services/purchase.servi
 import {
   safePostCustomsCertificateJournal,
 } from "@/modules/accounting/services/gl-posting.service";
-import { after } from "next/server";
 
 export type CertificateWithDetails = importRepo.CustomsCertificateRow & {
   costs: importRepo.CustomsCertificateCostRow[];
@@ -233,12 +232,14 @@ export async function syncCertificateLandedCosts(input: {
   const cert = await importRepo.getCertificate(input.certificateId);
   if (!cert) return;
 
-  const containers = await importRepo.listContainers({ certificateId: cert.id });
+  const containers = await importRepo.listContainers({
+    certificateId: cert.id,
+  });
   const receivedContainers = containers.filter((c) => c.status === "received");
   if (receivedContainers.length === 0) return;
 
   const invoices = await importRepo.listReceivedInvoicesForContainers(
-    receivedContainers.map((c) => c.id)
+    receivedContainers.map((c) => c.id),
   );
   if (invoices.length === 0) return;
 
@@ -276,12 +277,14 @@ export async function syncCertificateLandedCosts(input: {
 
   const certShares = allocateCertificateCosts(
     allLines.map((l) => ({ id: l.id, lineTotal: l.lineTotal })),
-    costsTotal
+    costsTotal,
   );
 
   for (const line of allLines) {
     const certShare = certShares.get(line.id) ?? 0;
-    const landedLineTotal = roundMoney(line.lineTotal + line.extraLanded + certShare);
+    const landedLineTotal = roundMoney(
+      line.lineTotal + line.extraLanded + certShare,
+    );
     const landedUnitCost =
       line.quantity > 0
         ? Number((landedLineTotal / line.quantity).toFixed(4))
@@ -302,19 +305,19 @@ export async function syncCertificateLandedCosts(input: {
   for (const cost of costs) {
     const delta = roundMoney(cost.amount - cost.posted_amount);
     if (delta <= 0) continue;
-    after(() => {
-      void safePostCustomsCertificateJournal({
-        certificateId: cert.id,
-        costId: cost.id,
-        storeId: cert.store_id,
-        amount: delta,
-        paymentMethod: cost.payment_method ?? undefined,
-        createdBy: input.userId,
-        memo: `شهادة جمركية ${cert.certificate_number} — رسملة مصروف`,
+    const postedJournal = await safePostCustomsCertificateJournal({
+      certificateId: cert.id,
+      costId: cost.id,
+      storeId: cert.store_id,
+      amount: delta,
+      paymentMethod: cost.payment_method ?? undefined,
+      createdBy: input.userId,
+      memo: `شهادة جمركية ${cert.certificate_number} — رسملة مصروف`,
+    });
+    if (postedJournal) {
+      await importRepo.updateCertificateCost(cost.id, {
+        posted_amount: cost.amount,
       });
-    });
-    await importRepo.updateCertificateCost(cost.id, {
-      posted_amount: cost.amount,
-    });
+    }
   }
 }

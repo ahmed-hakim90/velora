@@ -11,7 +11,10 @@ import * as supplierPaymentRepo from "@/lib/repositories/supplier-payment.reposi
 import * as wasteRepo from "@/lib/repositories/waste.repository";
 import { glSaleDiscount } from "@/lib/line-discount";
 import { roundMoney } from "@/lib/money";
-import { GL_POSTING_FAILED_ACTION } from "@/modules/accounting/lib/gl-posting-failure-labels";
+import {
+  GL_POSTING_FAILED_ACTION,
+  GL_POSTING_RECOVERED_ACTION,
+} from "@/modules/accounting/lib/gl-posting-failure-labels";
 import {
   postCogsAdjustmentJournal,
   postCreditNoteJournal,
@@ -84,22 +87,38 @@ function asJournalSource(value: unknown): JournalSource | null {
 
 export async function retryFailedGlPosting(
   auditLogId: string,
-  userId: string
+  userId: string,
 ): Promise<{ alreadyPosted: boolean }> {
   const log = await auditRepo.getAuditLog(auditLogId);
   if (!log || log.action !== GL_POSTING_FAILED_ACTION) {
     throw new Error("سجل فشل الترحيل غير موجود");
   }
 
-  const label = typeof log.metadata.label === "string" ? log.metadata.label : "";
+  const label =
+    typeof log.metadata.label === "string" ? log.metadata.label : "";
   const entityId = log.entity_id;
   const posted = await replayLabel(
     label,
     entityId,
     userId,
     log.metadata,
-    log.store_id
+    log.store_id,
   );
+  if (posted === "skipped") {
+    throw new Error("لم يتم إنشاء قيد — راجع حالة العملية وتفعيل المحاسبة");
+  }
+  await auditRepo.insertAuditLog({
+    action: GL_POSTING_RECOVERED_ACTION,
+    entityType: "gl_journal",
+    entityId,
+    storeId: log.store_id,
+    metadata: {
+      failure_id: log.id,
+      label,
+      source: log.metadata.source ?? "",
+      recovered_by: userId,
+    },
+  });
   return { alreadyPosted: posted === "existing" };
 }
 
@@ -108,7 +127,7 @@ async function replayLabel(
   entityId: string,
   userId: string,
   metadata: Record<string, unknown>,
-  storeId: string | null
+  storeId: string | null,
 ): Promise<"posted" | "existing" | "skipped"> {
   switch (label) {
     case "postSaleJournal": {
@@ -123,6 +142,7 @@ async function replayLabel(
         cogs: snap.cogs,
         createdBy: userId,
         memo: `بيع ${snap.order.order_number}`,
+        entryDate: snap.order.document_date ?? snap.order.created_at,
       });
       return result ? "posted" : "skipped";
     }
@@ -139,7 +159,10 @@ async function replayLabel(
         payments: snap.payments,
         cogs: snap.cogs,
         createdBy: userId,
-        memo: kind === "void" ? `إلغاء بيع ${snap.order.order_number}` : `مرتجع بيع ${snap.order.order_number}`,
+        memo:
+          kind === "void"
+            ? `إلغاء بيع ${snap.order.order_number}`
+            : `مرتجع بيع ${snap.order.order_number}`,
       });
       return result ? "posted" : "skipped";
     }
@@ -181,13 +204,13 @@ async function replayLabel(
         : [];
       const receivePays = payments.filter(
         (payment) =>
-          !payment.voided_at && payment.reference === purchase.invoice_number
+          !payment.voided_at && payment.reference === purchase.invoice_number,
       );
       const amountPaid =
         typeof metadata.amountPaid === "number"
           ? roundMoney(Math.max(0, metadata.amountPaid))
           : roundMoney(
-              receivePays.reduce((sum, payment) => sum + payment.amount, 0)
+              receivePays.reduce((sum, payment) => sum + payment.amount, 0),
             );
       const paymentMethod =
         typeof metadata.paymentMethod === "string"
@@ -266,7 +289,8 @@ async function replayLabel(
       if (!record) throw new Error("سجل الهالك غير موجود");
       const product = await catalogRepo.getProduct(record.product_id);
       const cost = roundMoney(
-        Math.max(0, Number(product?.last_unit_cost ?? 0)) * Number(record.quantity)
+        Math.max(0, Number(product?.last_unit_cost ?? 0)) *
+          Number(record.quantity),
       );
       if (cost <= 0) return "skipped";
       const result = await postWasteJournal({
@@ -285,18 +309,18 @@ async function replayLabel(
         throw new Error("الجرد لسه مكتمل");
       }
       const lines = await stockCountRepo.getStockCountLines(count.id);
-      const products = await catalogRepo.getProductsByIds(
-        [...new Set(lines.map((line) => line.product_id))]
-      );
+      const products = await catalogRepo.getProductsByIds([
+        ...new Set(lines.map((line) => line.product_id)),
+      ]);
       const inventoryDeltaValue = roundMoney(
         lines.reduce((sum, line) => {
           if (line.variance === 0) return sum;
           const unitCost = Math.max(
             0,
-            products.get(line.product_id)?.last_unit_cost ?? 0
+            products.get(line.product_id)?.last_unit_cost ?? 0,
           );
           return sum + line.variance * unitCost;
-        }, 0)
+        }, 0),
       );
       const result = await postStockCountJournal({
         countId: count.id,
@@ -334,6 +358,7 @@ async function replayLabel(
         storeId: session.store_id,
         variance: Number(session.variance ?? 0),
         createdBy: userId,
+        entryDate: session.closed_at ?? undefined,
         memo: "فرق إقفال وردية",
       });
       return result ? "posted" : "skipped";
@@ -346,7 +371,9 @@ async function replayLabel(
           ? metadata.reverseSourceId
           : "";
       if (!originalSource || !reverseSource || !reverseSourceId || !storeId) {
-        throw new Error("البيانات ناقصة — أنشئ قيد عكسي يدوي من القيود اليومية");
+        throw new Error(
+          "البيانات ناقصة — أنشئ قيد عكسي يدوي من القيود اليومية",
+        );
       }
       const result = await reversePostedBySource({
         originalSource,

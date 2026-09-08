@@ -22,7 +22,6 @@ import {
 } from "@/modules/purchases/lib/purchase-supplier-policy";
 import { isReceiveTimeSupplierPayment } from "@/modules/purchases/lib/receive-time-payment";
 import { canImportPurchaseOrderStatus } from "@/lib/commercial-document-import";
-import { after } from "next/server";
 
 export interface PurchaseWithLines extends PurchaseInvoice {
   lines: PurchaseInvoiceLine[];
@@ -580,7 +579,7 @@ export async function receivePurchase(
   options?: {
     amountPaid?: number;
     paymentMethod?: PaymentMethod;
-  }
+  },
 ): Promise<ReceivePurchaseResult> {
   const amountPaid = options?.amountPaid ?? 0;
   if (!Number.isFinite(amountPaid) || amountPaid < 0) {
@@ -598,37 +597,40 @@ export async function receivePurchase(
     invoiceId,
     userId,
     amountPaid,
-    paymentMethod: amountPaid > 0 ? options?.paymentMethod ?? "cash" : undefined,
+    paymentMethod:
+      amountPaid > 0 ? (options?.paymentMethod ?? "cash") : undefined,
     preventNegativeStock,
   });
 
   const paymentMethod = (options?.paymentMethod ?? "cash") as PaymentMethod;
   const documentDate = normalizeDocumentDate(
-    received.document_date ?? todayDocumentDate()
+    received.document_date ?? todayDocumentDate(),
   );
 
   // Soft-fail GL — never block the operator on journal posting.
-  after(() => {
-    void (async () => {
-      try {
-        const { safePostPurchaseJournal } = await import(
-          "@/modules/accounting/services/gl-posting.service"
-        );
-        await safePostPurchaseJournal({
-          purchaseId: invoiceId,
-          storeId: received.store_id,
-          total: received.total,
-          amountPaid,
-          paymentMethod,
-          entryDate: documentDate,
-          createdBy: userId,
-          memo: `استلام شراء ${received.invoice_number}`,
-        });
-      } catch (error) {
-        console.error("[purchase] deferred GL post failed", error);
-      }
-    })();
-  });
+  try {
+    const { safePostPurchaseJournal } =
+      await import("@/modules/accounting/services/gl-posting.service");
+    await safePostPurchaseJournal({
+      purchaseId: invoiceId,
+      storeId: received.store_id,
+      total: received.total,
+      amountPaid,
+      paymentMethod,
+      entryDate: documentDate,
+      createdBy: userId,
+      memo: `استلام شراء ${received.invoice_number}`,
+    });
+  } catch (error) {
+    const { recordGlPostingFailure } =
+      await import("@/modules/accounting/services/gl-posting.service");
+    await recordGlPostingFailure("postPurchaseJournal", error, {
+      storeId: received.store_id,
+      entityId: invoiceId,
+      source: "purchase",
+      extra: { amountPaid, paymentMethod },
+    });
+  }
 
   return {
     id: received.id,
@@ -1285,46 +1287,49 @@ export async function convertPurchaseDocument(input: {
   return detail;
 }
 
-export async function postPurchaseReturn(invoiceId: string, userId: string): Promise<PurchaseWithLines> {
+export async function postPurchaseReturn(
+  invoiceId: string,
+  userId: string,
+): Promise<PurchaseWithLines> {
   const current = await getPurchase(invoiceId);
   if (!current || current.document_kind !== "purchase_return") {
     throw new Error("مرتجع غير موجود");
   }
   const flags = await isFeatureEnabled("prevent_negative_stock");
-  const { error } = await (await import("@/lib/repositories/client")).callRpc(
-    "post_purchase_return",
-    {
-      p_invoice_id: invoiceId,
-      p_user_id: userId,
-      p_prevent_negative: flags,
-    }
-  );
+  const { error } = await (
+    await import("@/lib/repositories/client")
+  ).callRpc("post_purchase_return", {
+    p_invoice_id: invoiceId,
+    p_user_id: userId,
+    p_prevent_negative: flags,
+  });
   if (error) throw new Error(error.message);
   const posted = await getPurchase(invoiceId);
   if (!posted) throw new Error("تعذر ترحيل المرتجع");
 
   const documentDate = normalizeDocumentDate(
-    posted.document_date ?? todayDocumentDate()
+    posted.document_date ?? todayDocumentDate(),
   );
-  after(() => {
-    void (async () => {
-      try {
-        const { safePostPurchaseReturnJournal } = await import(
-          "@/modules/accounting/services/gl-posting.service"
-        );
-        await safePostPurchaseReturnJournal({
-          purchaseReturnId: posted.id,
-          storeId: posted.store_id,
-          total: posted.total,
-          entryDate: documentDate,
-          createdBy: userId,
-          memo: `مرتجع مشتريات ${posted.invoice_number}`,
-        });
-      } catch (error) {
-        console.error("[purchase-return] deferred GL post failed", error);
-      }
-    })();
-  });
+  try {
+    const { safePostPurchaseReturnJournal } =
+      await import("@/modules/accounting/services/gl-posting.service");
+    await safePostPurchaseReturnJournal({
+      purchaseReturnId: posted.id,
+      storeId: posted.store_id,
+      total: posted.total,
+      entryDate: documentDate,
+      createdBy: userId,
+      memo: `مرتجع مشتريات ${posted.invoice_number}`,
+    });
+  } catch (error) {
+    const { recordGlPostingFailure } =
+      await import("@/modules/accounting/services/gl-posting.service");
+    await recordGlPostingFailure("postPurchaseReturnJournal", error, {
+      storeId: posted.store_id,
+      entityId: posted.id,
+      source: "adjustment",
+    });
+  }
 
   return posted;
 }

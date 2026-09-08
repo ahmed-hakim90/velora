@@ -5277,6 +5277,61 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      list_unresolved_gl_failures: {
+        Args: { p_limit?: number; p_since: string }
+        Returns: {
+          action: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          metadata: Json
+          org_id: string
+          store_id: string | null
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "audit_logs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      void_expense_atomic: {
+        Args: { p_expense_id: string; p_reason?: string }
+        Returns: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          cost_center_id: string
+          created_at: string
+          created_by: string
+          expense_category_id: string
+          expense_source: Database["public"]["Enums"]["expense_source"]
+          id: string
+          inventory_item_id: string | null
+          notes: string
+          payment_method: Database["public"]["Enums"]["expense_payment_method"]
+          quantity: number | null
+          receipt_url: string | null
+          session_id: string | null
+          status: Database["public"]["Enums"]["expense_status"]
+          store_id: string
+          supplier_id: string | null
+          title: string
+          treasury_id: string | null
+          unit_cost: number | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "expenses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       accounting_missing_recipe_variants: {
         Args: never
         Returns: {

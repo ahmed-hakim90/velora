@@ -139,6 +139,20 @@ export async function deleteExpense(id: string): Promise<boolean> {
   return !error;
 }
 
+/** The database commits GL, treasury, document state and audit together. */
+export async function voidExpenseAtomic(
+  id: string,
+  reason: string,
+): Promise<Expense | null> {
+  const db = await getDb();
+  const { data, error } = await db.rpc("void_expense_atomic", {
+    p_expense_id: id,
+    p_reason: reason,
+  });
+  if (error) throwDbError(error, "voidExpenseAtomic");
+  return data ? mapExpense(data) : null;
+}
+
 export async function sumExpensesByCostCenter(filters: ExpenseFilters = {}) {
   const expenses = await listExpenses(filters);
   const totals = new Map<string, { costCenterId: string; amount: number }>();

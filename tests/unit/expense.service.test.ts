@@ -243,79 +243,33 @@ describe("createExpense", () => {
 });
 
 describe("voidExpense", () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    vi.mocked(getOrgId).mockResolvedValue("org-1");
-    vi.mocked(assertPeriodOpen).mockResolvedValue(undefined);
-  });
+  beforeEach(() => vi.resetAllMocks());
 
-  it("fully reverses an approved treasury expense and preserves it as voided", async () => {
-    const { reverseExpenseFromTreasury } = await import(
-      "@/modules/treasury/services/treasury.service"
-    );
-    const { reversePostedBySource } = await import(
-      "@/modules/accounting/services/gl-posting.service"
-    );
-    const treasuryExpense: Expense = {
-      ...savedExpense,
-      session_id: null,
-      expense_source: "external",
-      treasury_id: "tr-1",
-    };
-    vi.mocked(expenseRepo.getExpense).mockResolvedValue(treasuryExpense);
+  it("delegates the complete cancellation to the atomic database operation", async () => {
     const voided = {
-      ...treasuryExpense,
+      ...savedExpense,
       status: "voided" as const,
-      treasury_id: null,
-      voided_by: cashier.id,
-      voided_at: new Date().toISOString(),
-      void_reason: "سُجل كمصروف بالخطأ",
+      void_reason: "بالخطأ",
     };
-    vi.mocked(expenseRepo.updateExpense).mockResolvedValue(voided);
-
+    vi.mocked(expenseRepo.voidExpenseAtomic).mockResolvedValue(voided);
     await expect(
-      voidExpense(treasuryExpense.id, cashier, "سُجل كمصروف بالخطأ")
+      voidExpense(savedExpense.id, cashier, "  بالخطأ  "),
     ).resolves.toEqual(voided);
-
-    expect(reversePostedBySource).toHaveBeenCalledWith(
-      expect.objectContaining({ reverseSourceId: `expense-void:${treasuryExpense.id}` })
+    expect(expenseRepo.voidExpenseAtomic).toHaveBeenCalledWith(
+      savedExpense.id,
+      "بالخطأ",
     );
-    expect(reverseExpenseFromTreasury).toHaveBeenCalledWith(treasuryExpense.id);
-    expect(expenseRepo.updateExpense).toHaveBeenCalledWith(
-      treasuryExpense.id,
-      expect.objectContaining({ status: "voided", voided_by: cashier.id })
-    );
-  });
-
-  it("does not mark the expense voided when treasury reverse fails", async () => {
-    const { reverseExpenseFromTreasury } = await import(
-      "@/modules/treasury/services/treasury.service"
-    );
-    vi.mocked(expenseRepo.getExpense).mockResolvedValue({
-      ...savedExpense,
-      session_id: null,
-      expense_source: "external",
-      treasury_id: "tr-1",
-    });
-    vi.mocked(reverseExpenseFromTreasury).mockRejectedValue(
-      new Error("رصيد الخزينة غير كافٍ")
-    );
-
-    await expect(voidExpense("expense-1", cashier)).rejects.toThrow(/رصيد الخزينة/);
     expect(expenseRepo.updateExpense).not.toHaveBeenCalled();
+    expect(writeAuditLog).not.toHaveBeenCalled();
   });
 
-  it("is idempotent when the expense is already voided", async () => {
-    const voided = {
-      ...savedExpense,
-      status: "voided" as const,
-      voided_by: cashier.id,
-      voided_at: new Date().toISOString(),
-      void_reason: "سُجل بالخطأ",
-    };
-    vi.mocked(expenseRepo.getExpense).mockResolvedValue(voided);
-
-    await expect(voidExpense(voided.id, cashier)).resolves.toEqual(voided);
+  it("propagates transaction failure without client-side partial updates", async () => {
+    vi.mocked(expenseRepo.voidExpenseAtomic).mockRejectedValue(
+      new Error("رصيد الخزينة"),
+    );
+    await expect(voidExpense(savedExpense.id, cashier)).rejects.toThrow(
+      "رصيد الخزينة",
+    );
     expect(expenseRepo.updateExpense).not.toHaveBeenCalled();
   });
 });

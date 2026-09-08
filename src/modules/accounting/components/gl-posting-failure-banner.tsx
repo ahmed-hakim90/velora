@@ -17,13 +17,17 @@ import {
 
 export function GlPostingFailureBanner() {
   const [failures, setFailures] = useState<GlPostingFailure[]>([]);
+  const [loadError, setLoadError] = useState(false);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function reload() {
     void getRecentGlPostingFailuresAction()
-      .then((result) => setFailures(result.failures))
-      .catch(() => setFailures([]));
+      .then((result) => {
+        setFailures(result.failures);
+        setLoadError(false);
+      })
+      .catch(() => setLoadError(true));
   }
 
   useEffect(() => {
@@ -33,7 +37,7 @@ export function GlPostingFailureBanner() {
         if (!cancelled) setFailures(result.failures);
       })
       .catch(() => {
-        if (!cancelled) setFailures([]);
+        if (!cancelled) setLoadError(true);
       });
     return () => {
       cancelled = true;
@@ -43,38 +47,53 @@ export function GlPostingFailureBanner() {
   function retry(id: string) {
     setPendingId(id);
     startTransition(async () => {
-      const result = await retryFailedGlPostingAction(id);
-      if (!result.ok) {
-        toast.error(result.error);
+      try {
+        const result = await retryFailedGlPostingAction(id);
+        if (!result.ok) {
+          toast.error(result.error);
+          setPendingId(null);
+          return;
+        }
+        toast.success("تم ترحيل القيد");
         setPendingId(null);
-        return;
+        reload();
+      } catch {
+        toast.error("تعذر الاتصال — حاول إعادة الترحيل مرة أخرى");
+      } finally {
+        setPendingId(null);
       }
-      toast.success("تم ترحيل القيد");
-      setPendingId(null);
-      reload();
     });
   }
 
-  if (failures.length === 0) return null;
+  if (failures.length === 0 && !loadError) return null;
 
   return (
     <Alert variant="warning" className="mb-4" dir="rtl">
       <AlertTriangle />
       <AlertTitle>
-        فيه {failures.length} فشل ترحيل محاسبي خلال آخر 7 أيام
+        {loadError
+          ? "تعذر تحديث حالة الترحيل المحاسبي"
+          : `فيه ${failures.length} فشل ترحيل محاسبي لم يُعالج خلال آخر 7 أيام`}
       </AlertTitle>
       <AlertDescription>
-        <p className="mb-2">
-          العملية الأصلية اتمت (بيع/مصروف/…) لكن القيد الأوتوماتيك فشل. جرّب إعادة
-          الترحيل من هنا، أو أنشئ قيد يدوي من{" "}
-          <Link
-            href="/accounting/journals"
-            className="font-medium underline underline-offset-2"
-          >
-            القيود اليومية
-          </Link>
-          .
-        </p>
+        {loadError && (
+          <Button type="button" variant="outline" size="sm" onClick={reload}>
+            إعادة تحميل الحالة
+          </Button>
+        )}
+        {failures.length > 0 && (
+          <p className="mb-2">
+            العملية الأصلية اتمت (بيع/مصروف/…) لكن القيد الأوتوماتيك فشل. جرّب
+            إعادة الترحيل من هنا، أو أنشئ قيد يدوي من{" "}
+            <Link
+              href="/accounting/journals"
+              className="font-medium underline underline-offset-2"
+            >
+              القيود اليومية
+            </Link>
+            .
+          </p>
+        )}
         <ul className="space-y-2 text-xs">
           {failures.slice(0, 5).map((failure) => (
             <li

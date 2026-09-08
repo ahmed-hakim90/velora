@@ -1,5 +1,6 @@
 /** Audit action written when auto GL posting soft-fails. */
 export const GL_POSTING_FAILED_ACTION = "gl.posting_failed";
+export const GL_POSTING_RECOVERED_ACTION = "gl.posting_recovered";
 
 export type GlPostingFailure = {
   id: string;

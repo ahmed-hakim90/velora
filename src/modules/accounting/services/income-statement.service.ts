@@ -20,6 +20,8 @@ export type IncomeStatementResult = {
   to: string;
   storeId: string | null;
   revenueLines: IncomeStatementLine[];
+  otherRevenueLines: IncomeStatementLine[];
+  otherRevenue: number;
   expenseLines: IncomeStatementLine[];
   grossRevenue: number;
   salesDiscounts: number;
@@ -48,13 +50,16 @@ export async function getIncomeStatement(input: {
   });
 
   const revenueLines: IncomeStatementLine[] = [];
+  const otherRevenueLines: IncomeStatementLine[] = [];
   const expenseLines: IncomeStatementLine[] = [];
 
   for (const row of rows) {
     if (row.account_type === "revenue") {
       const amount = revenueContribution(row.debit, row.credit);
       if (amount === 0) continue;
-      revenueLines.push({
+      const target =
+        row.system_key === "cash_overage" ? otherRevenueLines : revenueLines;
+      target.push({
         accountId: row.account_id,
         code: row.code,
         name: row.name,
@@ -77,29 +82,35 @@ export async function getIncomeStatement(input: {
   }
 
   revenueLines.sort((a, b) => a.code.localeCompare(b.code, "en"));
+  otherRevenueLines.sort((a, b) => a.code.localeCompare(b.code, "en"));
   expenseLines.sort((a, b) => a.code.localeCompare(b.code, "en"));
 
   const grossRevenue = roundMoney(
     revenueLines
       .filter((line) => !line.isContraRevenue)
-      .reduce((sum, line) => sum + line.amount, 0)
+      .reduce((sum, line) => sum + line.amount, 0),
   );
   const salesDiscounts = roundMoney(
     revenueLines
       .filter((line) => line.isContraRevenue)
-      .reduce((sum, line) => sum + Math.abs(line.amount), 0)
+      .reduce((sum, line) => sum + Math.abs(line.amount), 0),
   );
   const netRevenue = roundMoney(grossRevenue - salesDiscounts);
   const totalExpenses = roundMoney(
-    expenseLines.reduce((sum, line) => sum + line.amount, 0)
+    expenseLines.reduce((sum, line) => sum + line.amount, 0),
   );
-  const netIncome = roundMoney(netRevenue - totalExpenses);
+  const otherRevenue = roundMoney(
+    otherRevenueLines.reduce((sum, line) => sum + line.amount, 0),
+  );
+  const netIncome = roundMoney(netRevenue + otherRevenue - totalExpenses);
 
   return {
     from: input.from,
     to: input.to,
     storeId: input.storeId ?? null,
     revenueLines,
+    otherRevenueLines,
+    otherRevenue,
     expenseLines,
     grossRevenue,
     salesDiscounts,

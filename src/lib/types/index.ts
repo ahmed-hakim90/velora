@@ -969,6 +969,7 @@ export type GlSystemKey =
   | "cogs"
   | "expense_default"
   | "cash_over_short"
+  | "cash_overage"
   | "waste";
 
 export interface GlAccount {

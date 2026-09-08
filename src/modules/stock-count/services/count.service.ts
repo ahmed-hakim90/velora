@@ -8,7 +8,6 @@ import { adjustStock } from "@/lib/services/inventory-movement.service";
 import { assertPeriodOpen } from "@/lib/services/period-lock.service";
 import { roundMoney } from "@/lib/money";
 import type { StockCount, StockCountLine, StockCountStatus } from "@/lib/types";
-import { after } from "next/server";
 import { filterTrackedProducts, qtyByProductIdFromLevels } from "@/modules/stock-count/lib/count-sheet";
 import {
   openingCountedQty,
@@ -308,7 +307,7 @@ export async function rejectStockCountApproval(
 
 export async function postCountAdjustments(
   countId: string,
-  userId: string
+  userId: string,
 ): Promise<StockCount> {
   const count = await countRepo.getStockCount(countId);
   if (!count) throw new Error("الجرد غير موجود");
@@ -346,9 +345,12 @@ export async function postCountAdjustments(
   const inventoryDeltaValue = roundMoney(
     lines.reduce((sum, line) => {
       if (line.variance === 0) return sum;
-      const unitCost = Math.max(0, products.get(line.product_id)?.last_unit_cost ?? 0);
+      const unitCost = Math.max(
+        0,
+        products.get(line.product_id)?.last_unit_cost ?? 0,
+      );
       return sum + line.variance * unitCost;
-    }, 0)
+    }, 0),
   );
 
   const updated = await countRepo.updateStockCount(countId, {
@@ -371,24 +373,25 @@ export async function postCountAdjustments(
     },
   });
 
-  after(() => {
-    void (async () => {
-      try {
-        const { safePostStockCountJournal } = await import(
-          "@/modules/accounting/services/gl-posting.service"
-        );
-        await safePostStockCountJournal({
-          countId,
-          storeId: count.store_id,
-          inventoryDeltaValue,
-          createdBy: userId,
-          memo: `فروقات جرد`,
-        });
-      } catch (error) {
-        console.error("[stock-count] deferred GL post failed", error);
-      }
-    })();
-  });
+  try {
+    const { safePostStockCountJournal } =
+      await import("@/modules/accounting/services/gl-posting.service");
+    await safePostStockCountJournal({
+      countId,
+      storeId: count.store_id,
+      inventoryDeltaValue,
+      createdBy: userId,
+      memo: `فروقات جرد`,
+    });
+  } catch (error) {
+    const { recordGlPostingFailure } =
+      await import("@/modules/accounting/services/gl-posting.service");
+    await recordGlPostingFailure("postStockCountJournal", error, {
+      storeId: count.store_id,
+      entityId: countId,
+      source: "adjustment",
+    });
+  }
 
   return updated;
 }

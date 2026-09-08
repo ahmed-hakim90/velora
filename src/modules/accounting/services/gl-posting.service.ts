@@ -94,11 +94,7 @@ function entryDateFrom(isoOrDate?: string): string {
 }
 
 async function glEnabled(): Promise<boolean> {
-  try {
-    return await isFeatureEnabled("general_ledger");
-  } catch {
-    return false;
-  }
+  return isFeatureEnabled("general_ledger");
 }
 
 export async function postSaleJournal(input: {
@@ -484,31 +480,40 @@ export async function postStockCountJournal(input: {
 async function softFail<T>(
   label: string,
   fn: () => Promise<T>,
-  context: SoftFailContext
+  context: SoftFailContext,
 ): Promise<T | null> {
   try {
     return await fn();
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message.slice(0, 300) : "فشل ترحيل القيد";
-    console.error(`[gl-posting] ${label} failed`, error);
-    try {
-      await auditRepo.insertAuditLog({
-        action: GL_POSTING_FAILED_ACTION,
-        entityType: "gl_journal",
-        entityId: context.entityId,
-        storeId: context.storeId,
-        metadata: {
-          label,
-          source: context.source,
-          error: message,
-          ...(context.extra ?? {}),
-        },
-      });
-    } catch (auditError) {
-      console.error(`[gl-posting] audit write failed`, auditError);
-    }
+    await recordGlPostingFailure(label, error, context);
     return null;
+  }
+}
+
+/** Also covers preparation failures before a posting function can be called. */
+export async function recordGlPostingFailure(
+  label: string,
+  error: unknown,
+  context: SoftFailContext,
+): Promise<void> {
+  const message =
+    error instanceof Error ? error.message.slice(0, 300) : "فشل ترحيل القيد";
+  console.error(`[gl-posting] ${label} failed`, error);
+  try {
+    await auditRepo.insertAuditLog({
+      action: GL_POSTING_FAILED_ACTION,
+      entityType: "gl_journal",
+      entityId: context.entityId,
+      storeId: context.storeId,
+      metadata: {
+        label,
+        source: context.source,
+        error: message,
+        ...(context.extra ?? {}),
+      },
+    });
+  } catch (auditError) {
+    console.error(`[gl-posting] audit write failed`, auditError);
   }
 }
 

@@ -236,65 +236,10 @@ export async function updateExpense(
 
 export async function voidExpense(
   id: string,
-  user: AppUser,
-  reason = "سُجل بالخطأ"
+  _user: AppUser,
+  reason = "سُجل بالخطأ",
 ): Promise<Expense | null> {
-  const existing = await expenseRepo.getExpense(id);
-  if (!existing) return null;
-
-  if (existing.status === "voided") return existing;
-
-  if (existing.inventory_item_id) {
-    throw new Error("Cannot delete inventory purchase expenses");
-  }
-
-  await assertSessionEditable(existing.session_id);
-  await assertPeriodOpen(existing.store_id);
-
-  if (existing.status === "approved") {
-    const { reversePostedBySource } = await import(
-      "@/modules/accounting/services/gl-posting.service"
-    );
-    await reversePostedBySource({
-      originalSource: "expense",
-      originalSourceId: id,
-      reverseSource: "adjustment",
-      reverseSourceId: `expense-void:${id}`,
-      storeId: existing.store_id,
-      createdBy: user.id,
-      memo: `عكس مصروف ملغي: ${existing.title}`,
-    });
-  }
-
-  const { reverseExpenseFromTreasury } = await import(
-    "@/modules/treasury/services/treasury.service"
-  );
-  await reverseExpenseFromTreasury(id);
-
-  const expense = await expenseRepo.updateExpense(id, {
-    status: "voided",
-    voided_by: user.id,
-    voided_at: new Date().toISOString(),
-    void_reason: reason.trim() || "سُجل بالخطأ",
-  });
-  if (expense) {
-    const orgId = await getOrgId();
-    await writeAuditLog({
-      orgId,
-      storeId: existing.store_id,
-      userId: user.id,
-      action: "expense.voided",
-      entityType: "expense",
-      entityId: id,
-      metadata: {
-        amount: existing.amount,
-        previous_status: existing.status,
-        reason: expense.void_reason,
-        gl_reversal_source_id: `expense-void:${id}`,
-      },
-    });
-  }
-  return expense;
+  return expenseRepo.voidExpenseAtomic(id, reason.trim() || "سُجل بالخطأ");
 }
 
 export async function approveExpense(id: string, user: AppUser): Promise<Expense | null> {

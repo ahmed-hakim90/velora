@@ -43,7 +43,6 @@ import type {
   SalesDocumentStatus,
   Warehouse,
 } from "@/lib/types";
-import { after } from "next/server";
 
 export interface SalesInvoiceLineWithName extends OrderItem {
   productName: string;
@@ -666,7 +665,7 @@ export interface CorrectDeliveredCostsResult {
  */
 export async function correctDeliveredSalesInvoiceCosts(
   orderId: string,
-  actor: AppUser
+  actor: AppUser,
 ): Promise<CorrectDeliveredCostsResult> {
   if (actor.role !== "owner" && actor.role !== "manager") {
     throw new Error("تصحيح التكلفة متاح للمالك والمدير فقط");
@@ -682,9 +681,12 @@ export async function correctDeliveredSalesInvoiceCosts(
   }
 
   const documentDate = normalizeDocumentDate(
-    order.document_date ?? todayDocumentDate()
+    order.document_date ?? todayDocumentDate(),
   );
-  await assertPeriodOpen(order.store_id, documentDateToOccurredAt(documentDate));
+  await assertPeriodOpen(
+    order.store_id,
+    documentDateToOccurredAt(documentDate),
+  );
 
   const items = await orderRepo.getOrderItems(orderId);
   if (items.length === 0) {
@@ -699,7 +701,7 @@ export async function correctDeliveredSalesInvoiceCosts(
   if (flags.recipes) {
     const keys = [
       ...new Set(
-        items.map((item) => `${item.product_id}:${item.variant_id ?? ""}`)
+        items.map((item) => `${item.product_id}:${item.variant_id ?? ""}`),
       ),
     ];
     await Promise.all(
@@ -707,13 +709,16 @@ export async function correctDeliveredSalesInvoiceCosts(
         const [productId, variantRaw] = key.split(":");
         if (!productId) return;
         const variantId = variantRaw ? variantRaw : null;
-        const recipe = await recipeRepo.getRecipeWithLines(productId, variantId);
+        const recipe = await recipeRepo.getRecipeWithLines(
+          productId,
+          variantId,
+        );
         if (!recipe) return;
         recipeCostByKey.set(
           key,
-          recipeRepo.computeRecipeTotalCost(recipe.lines)
+          recipeRepo.computeRecipeTotalCost(recipe.lines),
         );
-      })
+      }),
     );
   }
 
@@ -740,7 +745,7 @@ export async function correctDeliveredSalesInvoiceCosts(
             recipe_unit_cost: recipeUnitCost,
           },
         ],
-      ])
+      ]),
     );
   });
 
@@ -756,7 +761,7 @@ export async function correctDeliveredSalesInvoiceCosts(
       lineId: row.lineId,
       unitCost: row.unitCost,
       lineCost: row.lineCost,
-    }))
+    })),
   );
 
   const orgId = await getOrgId();
@@ -780,25 +785,26 @@ export async function correctDeliveredSalesInvoiceCosts(
     },
   });
 
-  after(() => {
-    void (async () => {
-      try {
-        const { safePostCogsAdjustmentJournal } = await import(
-          "@/modules/accounting/services/gl-posting.service"
-        );
-        await safePostCogsAdjustmentJournal({
-          orderId,
-          storeId: order.store_id,
-          currentCogs: summary.nextTotal,
-          entryDate: documentDate,
-          createdBy: actor.id,
-          memo: `تصحيح تكلفة ${order.order_number}`,
-        });
-      } catch (error) {
-        console.error("[sales-invoice] deferred COGS adjustment failed", error);
-      }
-    })();
-  });
+  try {
+    const { safePostCogsAdjustmentJournal } =
+      await import("@/modules/accounting/services/gl-posting.service");
+    await safePostCogsAdjustmentJournal({
+      orderId,
+      storeId: order.store_id,
+      currentCogs: summary.nextTotal,
+      entryDate: documentDate,
+      createdBy: actor.id,
+      memo: `تصحيح تكلفة ${order.order_number}`,
+    });
+  } catch (error) {
+    const { recordGlPostingFailure } =
+      await import("@/modules/accounting/services/gl-posting.service");
+    await recordGlPostingFailure("postCogsAdjustmentJournal", error, {
+      storeId: order.store_id,
+      entityId: orderId,
+      source: "adjustment",
+    });
+  }
 
   return { ...summary, lines: corrections };
 }
@@ -1059,57 +1065,68 @@ export async function createCreditNoteFromInvoice(input: {
   return detail;
 }
 
-export async function issueSalesCreditNote(orderId: string): Promise<SalesInvoiceWithDetails> {
+export async function issueSalesCreditNote(
+  orderId: string,
+): Promise<SalesInvoiceWithDetails> {
   const note = await getSalesInvoice(orderId);
   if (!note || note.document_kind !== "credit_note") {
     throw new Error("إشعار دائن غير موجود");
   }
-  const { error } = await (await import("@/lib/repositories/client")).callRpc(
-    "issue_sales_credit_note",
-    { p_order_id: orderId, p_restock: true }
-  );
+  const { error } = await (
+    await import("@/lib/repositories/client")
+  ).callRpc("issue_sales_credit_note", {
+    p_order_id: orderId,
+    p_restock: true,
+  });
   if (error) throw new Error(error.message);
   const issued = await getSalesInvoice(orderId);
   if (!issued) throw new Error("تعذر إصدار الإشعار");
 
   const documentDate = normalizeDocumentDate(
-    issued.document_date ?? todayDocumentDate()
+    issued.document_date ?? todayDocumentDate(),
   );
-  after(() => {
-    void (async () => {
-      try {
-        const items = issued.lines.length
-          ? issued.lines
-          : await orderRepo.getOrderItems(orderId);
-        let cogs = items.reduce((sum, item) => sum + Number(item.line_cost ?? 0), 0);
-        if (cogs <= 0 && items.length > 0) {
-          const products = await catalogRepo.getProductsByIds(
-            [...new Set(items.map((item) => item.product_id))]
-          );
-          cogs = items.reduce((sum, item) => {
-            const cost = Math.max(0, products.get(item.product_id)?.last_unit_cost ?? 0);
-            return sum + cost * item.quantity;
-          }, 0);
-        }
-        const { safePostCreditNoteJournal } = await import(
-          "@/modules/accounting/services/gl-posting.service"
+  try {
+    const items = issued.lines.length
+      ? issued.lines
+      : await orderRepo.getOrderItems(orderId);
+    let cogs = items.reduce(
+      (sum, item) => sum + Number(item.line_cost ?? 0),
+      0,
+    );
+    if (cogs <= 0 && items.length > 0) {
+      const products = await catalogRepo.getProductsByIds([
+        ...new Set(items.map((item) => item.product_id)),
+      ]);
+      cogs = items.reduce((sum, item) => {
+        const cost = Math.max(
+          0,
+          products.get(item.product_id)?.last_unit_cost ?? 0,
         );
-        await safePostCreditNoteJournal({
-          creditNoteId: issued.id,
-          storeId: issued.store_id,
-          total: issued.total,
-          tax: issued.tax,
-          discount: glSaleDiscount(issued.discount, items),
-          cogs: roundMoney(cogs),
-          entryDate: documentDate,
-          createdBy: issued.created_by,
-          memo: `إشعار دائن ${issued.order_number}`,
-        });
-      } catch (glError) {
-        console.error("[credit-note] deferred GL post failed", glError);
-      }
-    })();
-  });
+        return sum + cost * item.quantity;
+      }, 0);
+    }
+    const { safePostCreditNoteJournal } =
+      await import("@/modules/accounting/services/gl-posting.service");
+    await safePostCreditNoteJournal({
+      creditNoteId: issued.id,
+      storeId: issued.store_id,
+      total: issued.total,
+      tax: issued.tax,
+      discount: glSaleDiscount(issued.discount, items),
+      cogs: roundMoney(cogs),
+      entryDate: documentDate,
+      createdBy: issued.created_by,
+      memo: `إشعار دائن ${issued.order_number}`,
+    });
+  } catch (glError) {
+    const { recordGlPostingFailure } =
+      await import("@/modules/accounting/services/gl-posting.service");
+    await recordGlPostingFailure("postCreditNoteJournal", glError, {
+      storeId: issued.store_id,
+      entityId: orderId,
+      source: "refund",
+    });
+  }
 
   return issued;
 }

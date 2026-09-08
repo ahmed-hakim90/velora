@@ -52,13 +52,15 @@ export function IncomeStatementPage({
   };
 
   const empty =
-    result.revenueLines.length === 0 && result.expenseLines.length === 0;
+    result.revenueLines.length === 0 &&
+    result.otherRevenueLines.length === 0 &&
+    result.expenseLines.length === 0;
 
   return (
     <>
       <PageHeader
         title="قائمة الدخل"
-        description="الإيرادات والمصروفات من القيود المرحلة — خصم المبيعات يقلل صافي الإيراد"
+        description="الإيرادات والمصروفات من القيود المرحلة — فائض الصندوق ضمن الإيرادات الأخرى والعجز ضمن المصروفات"
         action={
           <ExportButtonGroup
             canPrint={false}
@@ -88,7 +90,7 @@ export function IncomeStatementPage({
         <AccountingSubnav />
       </div>
 
-      <div className="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-3">
         <KpiCard
           label="إجمالي الإيراد"
           value={formatCurrency(result.grossRevenue, currency)}
@@ -100,6 +102,12 @@ export function IncomeStatementPage({
           value={formatCurrency(result.salesDiscounts, currency)}
           trend={result.salesDiscounts > 0 ? "down" : "neutral"}
           icon={<MinusCircle className="size-5" />}
+        />
+        <KpiCard
+          label="الإيرادات الأخرى"
+          value={formatCurrency(result.otherRevenue, currency)}
+          trend={result.otherRevenue > 0 ? "up" : "neutral"}
+          icon={<TrendingUp className="size-5" />}
         />
         <KpiCard
           label="المصروفات"
@@ -121,7 +129,10 @@ export function IncomeStatementPage({
           <DateRangeFilter
             className="col-span-2 min-w-0"
             value={{ from, to }}
-            onChange={(range) => { setFrom(range.from); setTo(range.to); }}
+            onChange={(range) => {
+              setFrom(range.from);
+              setTo(range.to);
+            }}
           />
           <AccountingStoreSelect
             id="is-store"
@@ -131,7 +142,12 @@ export function IncomeStatementPage({
             allowAll
           />
           <div className="flex self-start items-end pt-6">
-            <Button type="button" className="w-full" disabled={pending} onClick={applyFilters}>
+            <Button
+              type="button"
+              className="w-full"
+              disabled={pending}
+              onClick={applyFilters}
+            >
               عرض
             </Button>
           </div>
@@ -189,7 +205,12 @@ export function IncomeStatementPage({
                                   label: "المبلغ",
                                   value: (
                                     <span className="tabular-nums font-medium text-destructive">
-                                      ({formatCurrency(Math.abs(line.amount), currency)})
+                                      (
+                                      {formatCurrency(
+                                        Math.abs(line.amount),
+                                        currency,
+                                      )}
+                                      )
                                     </span>
                                   ),
                                 },
@@ -219,7 +240,12 @@ export function IncomeStatementPage({
                             label: "المبلغ",
                             value: (
                               <span className="tabular-nums text-destructive">
-                                ({formatCurrency(result.salesDiscounts, currency)})
+                                (
+                                {formatCurrency(
+                                  result.salesDiscounts,
+                                  currency,
+                                )}
+                                )
                               </span>
                             ),
                           },
@@ -246,9 +272,15 @@ export function IncomeStatementPage({
                     <table className="w-full min-w-[560px] text-sm">
                       <thead className="bg-muted/40 text-muted-foreground">
                         <tr>
-                          <th className="px-3 py-2 text-start font-medium">الكود</th>
-                          <th className="px-3 py-2 text-start font-medium">الحساب</th>
-                          <th className="px-3 py-2 text-start font-medium">المبلغ</th>
+                          <th className="px-3 py-2 text-start font-medium">
+                            الكود
+                          </th>
+                          <th className="px-3 py-2 text-start font-medium">
+                            الحساب
+                          </th>
+                          <th className="px-3 py-2 text-start font-medium">
+                            المبلغ
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -285,7 +317,12 @@ export function IncomeStatementPage({
                                   </td>
                                   <td className="px-3 py-2">{line.name}</td>
                                   <td className="px-3 py-2 tabular-nums text-destructive">
-                                    ({formatCurrency(Math.abs(line.amount), currency)})
+                                    (
+                                    {formatCurrency(
+                                      Math.abs(line.amount),
+                                      currency,
+                                    )}
+                                    )
                                   </td>
                                 </tr>
                               ))
@@ -306,7 +343,8 @@ export function IncomeStatementPage({
                               خصم المبيعات
                             </td>
                             <td className="px-3 py-2 tabular-nums text-destructive">
-                              ({formatCurrency(result.salesDiscounts, currency)})
+                              ({formatCurrency(result.salesDiscounts, currency)}
+                              )
                             </td>
                           </tr>
                         ) : null}
@@ -325,10 +363,81 @@ export function IncomeStatementPage({
               />
             </section>
 
+            {result.otherRevenueLines.length > 0 && (
+              <section>
+                <h3 className="mb-2 text-sm font-medium">الإيرادات الأخرى</h3>
+                <ResponsiveListLayout
+                  mobile={result.otherRevenueLines.map((line) => (
+                    <MobileEntityCard
+                      key={line.accountId}
+                      href={`/accounting/ledger?accountId=${line.accountId}&from=${result.from}&to=${result.to}&storeId=${selectedStore}`}
+                      title={line.name}
+                      subtitle={`إيرادات أخرى · ${line.code}`}
+                      fields={[
+                        {
+                          label: "المبلغ",
+                          value: formatCurrency(line.amount, currency),
+                        },
+                      ]}
+                      trailingHint="فتح الدفتر ←"
+                    />
+                  ))}
+                  desktop={
+                    <div className="overflow-x-auto rounded-xl border">
+                      <table className="w-full min-w-[560px] text-sm">
+                        <thead className="bg-muted/40 text-muted-foreground">
+                          <tr>
+                            <th className="px-3 py-2 text-start font-medium">
+                              الكود
+                            </th>
+                            <th className="px-3 py-2 text-start font-medium">
+                              الحساب
+                            </th>
+                            <th className="px-3 py-2 text-start font-medium">
+                              المبلغ
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {result.otherRevenueLines.map((line) => (
+                            <tr key={line.accountId} className="border-t">
+                              <td className="px-3 py-2 font-mono tabular-nums">
+                                <Link
+                                  className="text-primary underline-offset-2 hover:underline"
+                                  href={`/accounting/ledger?accountId=${line.accountId}&from=${result.from}&to=${result.to}&storeId=${selectedStore}`}
+                                >
+                                  {line.code}
+                                </Link>
+                              </td>
+                              <td className="px-3 py-2">{line.name}</td>
+                              <td className="px-3 py-2 tabular-nums">
+                                {formatCurrency(line.amount, currency)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t bg-muted/30 font-medium">
+                            <td className="px-3 py-2" colSpan={2}>
+                              إجمالي الإيرادات الأخرى
+                            </td>
+                            <td className="px-3 py-2 tabular-nums">
+                              {formatCurrency(result.otherRevenue, currency)}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  }
+                />
+              </section>
+            )}
             <section>
               <h3 className="mb-2 text-sm font-medium">المصروفات</h3>
               {result.expenseLines.length === 0 ? (
-                <p className="text-sm text-muted-foreground">مفيش مصروفات في الفترة.</p>
+                <p className="text-sm text-muted-foreground">
+                  مفيش مصروفات في الفترة.
+                </p>
               ) : (
                 <ResponsiveListLayout
                   mobile={
@@ -372,9 +481,15 @@ export function IncomeStatementPage({
                       <table className="w-full min-w-[560px] text-sm">
                         <thead className="bg-muted/40 text-muted-foreground">
                           <tr>
-                            <th className="px-3 py-2 text-start font-medium">الكود</th>
-                            <th className="px-3 py-2 text-start font-medium">الحساب</th>
-                            <th className="px-3 py-2 text-start font-medium">المبلغ</th>
+                            <th className="px-3 py-2 text-start font-medium">
+                              الكود
+                            </th>
+                            <th className="px-3 py-2 text-start font-medium">
+                              الحساب
+                            </th>
+                            <th className="px-3 py-2 text-start font-medium">
+                              المبلغ
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -413,7 +528,9 @@ export function IncomeStatementPage({
             </section>
 
             <div className="rounded-xl border bg-muted/30 px-4 py-3">
-              <div className="text-sm text-muted-foreground">صافي الربح / الخسارة</div>
+              <div className="text-sm text-muted-foreground">
+                صافي الربح / الخسارة
+              </div>
               <div
                 className={`text-xl font-semibold tabular-nums ${
                   result.netIncome < 0 ? "text-destructive" : ""
