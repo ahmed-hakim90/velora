@@ -14,6 +14,26 @@ export function convertUnit(
   return qty;
 }
 
+export function areMeasurementUnitsCompatible(
+  from: MeasurementUnit,
+  to: MeasurementUnit
+): boolean {
+  return from === to || tryConvertMetricUnit(1, from, to) != null;
+}
+
+/** Convert recipe/inventory quantities without silently treating mismatched units as 1:1. */
+export function convertUnitStrict(
+  qty: number,
+  from: MeasurementUnit,
+  to: MeasurementUnit
+): number {
+  const converted = tryConvertMetricUnit(qty, from, to);
+  if (converted == null) {
+    throw new Error(`لا يمكن تحويل ${formatUnit(from)} إلى ${formatUnit(to)}`);
+  }
+  return converted;
+}
+
 /** Metric families only — null when units are not convertible via convertUnit. */
 export function tryConvertMetricUnit(
   qty: number,

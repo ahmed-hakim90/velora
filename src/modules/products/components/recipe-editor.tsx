@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import type { MeasurementUnit, Product } from "@/lib/types";
 import { MEASUREMENT_UNITS } from "@/lib/constants";
-import { formatUnit } from "@/lib/units";
+import {
+  areMeasurementUnitsCompatible,
+  convertUnitStrict,
+  formatUnit,
+} from "@/lib/units";
 import { selectLabelById } from "@/lib/select-label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,20 +95,11 @@ export function RecipeEditor({
   const recipeCost = lines.reduce((sum, line) => {
     const ing = ingredients.find((i) => i.id === line.ingredient_product_id);
     if (!ing || line.quantity <= 0) return sum;
-    const costQty =
-      line.unit === ing.cost_unit
-        ? line.quantity
-        : line.unit === "kg" && ing.cost_unit === "gram"
-          ? line.quantity * 1000
-          : line.unit === "gram" && ing.cost_unit === "kg"
-            ? line.quantity / 1000
-            : line.unit === "liter" && ing.cost_unit === "ml"
-              ? line.quantity * 1000
-              : line.unit === "ml" && ing.cost_unit === "liter"
-                ? line.quantity / 1000
-                : line.unit === ing.cost_unit
-                  ? line.quantity
-                  : line.quantity;
+    const costQty = convertUnitStrict(
+      line.quantity,
+      line.unit,
+      ing.base_unit ?? ing.unit
+    );
     return sum + costQty * ing.last_unit_cost;
   }, 0);
 
@@ -139,8 +134,8 @@ export function RecipeEditor({
       await saveRecipeAction(product.id, valid, variantId ?? null);
       toast.success(t("Recipe saved"));
       onSaved?.();
-    } catch {
-      toast.error(t("Could not save recipe"));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("Could not save recipe"));
     } finally {
       setSaving(false);
     }
@@ -162,9 +157,13 @@ export function RecipeEditor({
               <Label className="text-xs">{t("Ingredient")}</Label>
               <Select
                 value={line.ingredient_product_id}
-                onValueChange={(v) =>
-                  updateLine(index, { ingredient_product_id: v ?? "" })
-                }
+                onValueChange={(v) => {
+                  const ingredient = ingredients.find((item) => item.id === v);
+                  updateLine(index, {
+                    ingredient_product_id: v ?? "",
+                    unit: ingredient?.base_unit ?? ingredient?.unit ?? "piece",
+                  });
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder={t("Select an ingredient")}>
@@ -208,7 +207,15 @@ export function RecipeEditor({
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {MEASUREMENT_UNITS.map((u) => (
+                  {MEASUREMENT_UNITS.filter((u) => {
+                    const ingredient = ingredients.find(
+                      (item) => item.id === line.ingredient_product_id
+                    );
+                    return !ingredient || areMeasurementUnitsCompatible(
+                      u,
+                      ingredient.base_unit ?? ingredient.unit
+                    );
+                  }).map((u) => (
                     <SelectItem key={u} value={u} label={formatUnit(u)}>
                       {formatUnit(u)}
                     </SelectItem>

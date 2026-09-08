@@ -1,4 +1,4 @@
-import { getDb, throwDbError } from "@/lib/repositories/client";
+import { callRpc, getDb, throwDbError } from "@/lib/repositories/client";
 import { mapRecipe, mapRecipeLine } from "@/lib/repositories/mappers";
 import { getOrgId } from "@/lib/repositories/organization.repository";
 import * as catalogRepo from "@/lib/repositories/catalog.repository";
@@ -8,6 +8,7 @@ import type {
   ProductRecipeLine,
   ProductRecipeLineWithProduct,
 } from "@/lib/types";
+import { convertUnitStrict } from "@/lib/units";
 
 export async function getRecipeByProductId(
   productId: string,
@@ -78,7 +79,7 @@ export async function getRecipeWithLines(
       base.quantity,
       base.unit,
       ing?.last_unit_cost ?? 0,
-      ing?.cost_unit ?? ing?.unit ?? "piece"
+      ing?.base_unit ?? ing?.unit ?? "piece"
     );
     return {
       ...base,
@@ -86,24 +87,12 @@ export async function getRecipeWithLines(
       ingredient_unit: ing?.unit ?? "piece",
       ingredient_last_unit_cost: ing?.last_unit_cost ?? 0,
       ingredient_cost_unit: ing?.cost_unit ?? ing?.unit ?? "piece",
+      ingredient_base_unit: ing?.base_unit ?? ing?.unit ?? "piece",
       line_cost: lineCost,
     };
   });
 
   return { recipe, lines };
-}
-
-function convertUnit(
-  qty: number,
-  from: MeasurementUnit,
-  to: MeasurementUnit
-): number {
-  if (from === to) return qty;
-  if (from === "kg" && to === "gram") return qty * 1000;
-  if (from === "gram" && to === "kg") return qty / 1000;
-  if (from === "liter" && to === "ml") return qty * 1000;
-  if (from === "ml" && to === "liter") return qty / 1000;
-  return qty;
 }
 
 export function computeLineCost(
@@ -112,12 +101,12 @@ export function computeLineCost(
   unitCost: number,
   costUnit: MeasurementUnit
 ): number {
-  const costQty = convertUnit(qty, unit, costUnit);
+  const costQty = convertUnitStrict(qty, unit, costUnit);
   return Math.round(costQty * unitCost * 10000) / 10000;
 }
 
 export function computeRecipeTotalCost(
-  lines: Pick<ProductRecipeLineWithProduct, "quantity" | "unit" | "ingredient_last_unit_cost" | "ingredient_cost_unit">[]
+  lines: Pick<ProductRecipeLineWithProduct, "quantity" | "unit" | "ingredient_last_unit_cost" | "ingredient_base_unit">[]
 ): number {
   return lines.reduce(
     (sum, line) =>
@@ -126,7 +115,7 @@ export function computeRecipeTotalCost(
         line.quantity,
         line.unit,
         line.ingredient_last_unit_cost,
-        line.ingredient_cost_unit
+        line.ingredient_base_unit
       ),
     0
   );
@@ -137,82 +126,13 @@ export async function upsertRecipe(
   lines: { ingredient_product_id: string; quantity: number; unit: MeasurementUnit }[],
   variantId?: string | null
 ): Promise<ProductRecipe> {
-  const db = await getDb();
-  const orgId = await getOrgId();
-
-  const existing = await getRecipeByProductId(productId, variantId ?? null);
-  const previousLines = existing ? await getRecipeLines(existing.id) : [];
-  let recipe: ProductRecipe;
-
-  if (existing) {
-    const { data, error } = await db
-      .from("product_recipes")
-      .update({ updated_at: new Date().toISOString() })
-      .eq("id", existing.id)
-      .select()
-      .single();
-    if (error || !data) throwDbError(error, "upsertRecipe");
-    recipe = mapRecipe(data);
-
-    const { error: delError } = await db
-      .from("product_recipe_lines")
-      .delete()
-      .eq("recipe_id", recipe.id);
-    if (delError) throwDbError(delError, "upsertRecipe");
-  } else {
-    const { data, error } = await db
-      .from("product_recipes")
-      .insert({
-        org_id: orgId,
-        product_id: productId,
-        variant_id: variantId ?? null,
-      })
-      .select()
-      .single();
-    if (error || !data) throwDbError(error, "upsertRecipe");
-    recipe = mapRecipe(data);
-  }
-
-  if (lines.length > 0) {
-    const { error: lineError } = await db.from("product_recipe_lines").insert(
-      lines.map((line, i) => ({
-        recipe_id: recipe.id,
-        ingredient_product_id: line.ingredient_product_id,
-        quantity: line.quantity,
-        unit: line.unit,
-        sort_order: i,
-      }))
-    );
-    if (lineError) {
-      if (existing) {
-        const { error: restoreError } = await db.from("product_recipe_lines").insert(
-          previousLines.map((line) => ({
-            recipe_id: line.recipe_id,
-            ingredient_product_id: line.ingredient_product_id,
-            quantity: line.quantity,
-            unit: line.unit,
-            sort_order: line.sort_order,
-          }))
-        );
-        if (restoreError) {
-          throw new Error(
-            `فشل حفظ الوصفة وتعذر استعادة سطورها السابقة: ${lineError.message}`
-          );
-        }
-      } else {
-        const { error: cleanupError } = await db
-          .from("product_recipes")
-          .delete()
-          .eq("id", recipe.id);
-        if (cleanupError) {
-          throw new Error(`فشل حفظ الوصفة وتعذر حذف الوصفة غير المكتملة: ${lineError.message}`);
-        }
-      }
-      throwDbError(lineError, "upsertRecipe.lines");
-    }
-  }
-
-  return recipe;
+  const { data, error } = await callRpc<Record<string, unknown>>("save_product_recipe", {
+    p_product_id: productId,
+    p_variant_id: variantId ?? null,
+    p_lines: lines,
+  });
+  if (error || !data) throwDbError(error, "upsertRecipe");
+  return mapRecipe(data as Parameters<typeof mapRecipe>[0]);
 }
 
 export async function deleteRecipe(

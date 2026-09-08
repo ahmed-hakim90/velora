@@ -2,7 +2,7 @@ import * as catalogRepo from "@/lib/repositories/catalog.repository";
 import * as inventoryRepo from "@/lib/repositories/inventory.repository";
 import * as warehouseRepo from "@/lib/repositories/warehouse.repository";
 import * as recipeRepo from "@/lib/repositories/recipe.repository";
-import { convertUnit } from "@/lib/units";
+import { convertUnitStrict } from "@/lib/units";
 import { resolveVariantPrice } from "@/modules/products/services/variant.service";
 import {
   canProductBeRecipeIngredient,
@@ -57,10 +57,10 @@ function computeMakeableFromLines(
       ingredientUnitMap.get(line.ingredient_product_id) ?? "piece";
     const level = levelMap.get(line.ingredient_product_id);
     const stockQty = level?.quantity ?? 0;
-    const neededPerUnit = convertUnit(
+    const neededPerUnit = convertUnitStrict(
       line.quantity,
-      line.unit as Parameters<typeof convertUnit>[1],
-      stockUnit as Parameters<typeof convertUnit>[2],
+      line.unit as Parameters<typeof convertUnitStrict>[1],
+      stockUnit as Parameters<typeof convertUnitStrict>[2],
     );
     if (neededPerUnit <= 0) return 0;
     return Math.floor(stockQty / neededPerUnit);
@@ -140,7 +140,7 @@ async function loadPosCatalog(
       anyRecipeOnCatalog
         ? catalogRepo.listProducts().then((all) => {
             const ingredients = all.filter(canProductBeRecipeIngredient);
-            return new Map(ingredients.map((p) => [p.id, p.unit]));
+            return new Map(ingredients.map((p) => [p.id, p.base_unit ?? p.unit]));
           })
         : Promise.resolve(new Map<string, string>()),
     ]);

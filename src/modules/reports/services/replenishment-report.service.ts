@@ -3,7 +3,7 @@ import * as inventoryRepo from "@/lib/repositories/inventory.repository";
 import * as orderRepo from "@/lib/repositories/order.repository";
 import * as recipeRepo from "@/lib/repositories/recipe.repository";
 import { getDb } from "@/lib/repositories/client";
-import { convertUnit, formatUnit } from "@/lib/units";
+import { convertUnitStrict, formatUnit } from "@/lib/units";
 import type { MeasurementUnit, Product, ProductRecipeLine } from "@/lib/types";
 
 export interface ReplenishmentRow {
@@ -168,7 +168,7 @@ export async function getReplenishmentReport(options: {
         const ingredient = productMap.get(line.ingredient_product_id);
         const stockUnit =
           (ingredient?.base_unit ?? ingredient?.unit ?? line.unit) as MeasurementUnit;
-        const lineQty = convertUnit(line.quantity, line.unit, stockUnit) * qty;
+        const lineQty = convertUnitStrict(line.quantity, line.unit, stockUnit) * qty;
         addUsage(line.ingredient_product_id, lineQty, "ingredient");
       }
       continue;
@@ -178,7 +178,7 @@ export async function getReplenishmentReport(options: {
     if (!product?.track_inventory) continue;
     const stockUnit = (product.base_unit ?? product.unit) as MeasurementUnit;
     const saleUnit = (item.sale_unit ?? product.sale_unit ?? product.unit) as MeasurementUnit;
-    addUsage(productId, convertUnit(qty, saleUnit, stockUnit), "product");
+    addUsage(productId, convertUnitStrict(qty, saleUnit, stockUnit), "product");
   }
 
   const onHandByProduct = new Map<string, number>();

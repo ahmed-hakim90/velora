@@ -4,7 +4,7 @@ import * as inventoryRepo from "@/lib/repositories/inventory.repository";
 import * as warehouseRepo from "@/lib/repositories/warehouse.repository";
 import { writeAuditLog } from "@/lib/services/audit.service";
 import { getOrgId } from "@/lib/repositories/organization.repository";
-import { convertUnit } from "@/lib/units";
+import { areMeasurementUnitsCompatible, convertUnitStrict } from "@/lib/units";
 import type { MeasurementUnit, Product, ProductRecipeLineWithProduct } from "@/lib/types";
 
 const RECIPE_PRODUCT_TYPES = new Set<Product["product_type"]>([
@@ -45,10 +45,23 @@ export async function saveRecipe(
     throw new Error("Only finished products can have recipes");
   }
 
+  if (lines.length === 0) throw new Error("أضف مكوّنًا واحدًا على الأقل");
+  const ingredientIds = new Set<string>();
+
   for (const line of lines) {
+    if (!Number.isFinite(line.quantity) || line.quantity <= 0) {
+      throw new Error("كمية المكوّن يجب أن تكون أكبر من صفر");
+    }
+    if (ingredientIds.has(line.ingredient_product_id)) {
+      throw new Error("لا يمكن تكرار المكوّن نفسه في الوصفة");
+    }
+    ingredientIds.add(line.ingredient_product_id);
     const ing = await catalogRepo.getProduct(line.ingredient_product_id);
     if (!ing || !canProductBeRecipeIngredient(ing)) {
       throw new Error("Recipe lines must reference ingredient products");
+    }
+    if (!areMeasurementUnitsCompatible(line.unit, ing.base_unit ?? ing.unit)) {
+      throw new Error(`وحدة المكوّن غير متوافقة مع وحدة مخزونه: ${ing.name}`);
     }
   }
 
@@ -113,13 +126,15 @@ export async function computeMakeableQty(
   const levelMap = new Map(levels.filter((l) => !l.variant_id).map((l) => [l.product_id, l]));
 
   const ingredientProducts = await listIngredients();
-  const ingredientUnitMap = new Map(ingredientProducts.map((p) => [p.id, p.unit]));
+  const ingredientUnitMap = new Map(
+    ingredientProducts.map((p) => [p.id, p.base_unit ?? p.unit])
+  );
 
   const makeable = recipeData.lines.map((line) => {
     const stockUnit = ingredientUnitMap.get(line.ingredient_product_id) ?? "piece";
     const level = levelMap.get(line.ingredient_product_id);
     const stockQty = level?.quantity ?? 0;
-    const neededPerUnit = convertUnit(line.quantity, line.unit, stockUnit);
+    const neededPerUnit = convertUnitStrict(line.quantity, line.unit, stockUnit);
     if (neededPerUnit <= 0) return 0;
     return Math.floor(stockQty / neededPerUnit);
   });

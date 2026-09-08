@@ -618,6 +618,8 @@ export interface ProductRecipeLineWithProduct extends ProductRecipeLine {
   ingredient_unit: MeasurementUnit;
   ingredient_last_unit_cost: number;
   ingredient_cost_unit: MeasurementUnit;
+  /** Canonical inventory/cost unit; last_unit_cost is priced in this unit. */
+  ingredient_base_unit: MeasurementUnit;
   line_cost: number;
 }
 
