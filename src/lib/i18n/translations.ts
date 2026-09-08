@@ -757,6 +757,7 @@ export const arTranslations: Record<string, string> = {
   "Replenishment Report": "تقرير إعادة الطلب",
   "Reports Overview": "نظرة عامة على التقارير",
   "Product Sales Report": "مبيعات منتج",
+  "Updating results...": "جارٍ تحديث النتائج…",
   "Branch Sales Summary": "ملخص فرع",
   "Cashier Sales Summary": "ملخص موظف",
   "Cashier Performance": "أداء الكاشير",

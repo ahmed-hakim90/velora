@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useCallback, useTransition } from "react";
 import { useAppRouter as useRouter } from "@/hooks/use-app-router";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -42,6 +42,7 @@ import {
 } from "@/modules/reports/core/report-filters.schema";
 import type { ReportContext } from "@/modules/reports/core/report-context";
 import type { ProductSalesMiniReport } from "@/modules/reports/services/sales-entity-report.service";
+import { useFilterTransition } from "@/hooks/use-filter-transition";
 
 interface ProductOption {
   id: string;
@@ -68,12 +69,17 @@ export function ProductSalesMiniView({
   canExcel,
 }: ProductSalesMiniViewProps) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
-
-  const apply = (next: Partial<ReportFilters>) => {
-    const qs = reportFiltersToSearchParams({ ...filters, ...next, page: 1 });
-    router.push(qs ? `/reports/sales/product?${qs}` : "/reports/sales/product");
-  };
+  const [exportPending, startExport] = useTransition();
+  const navigate = useCallback((nextFilters: ReportFilters) => {
+    const qs = reportFiltersToSearchParams({ ...nextFilters, page: 1 });
+    router.push(qs ? `/reports/sales/product?${qs}` : "/reports/sales/product", {
+      scroll: false,
+    });
+  }, [router]);
+  const {
+    filters: optimisticFilters,
+    applyFilters: apply,
+  } = useFilterTransition({ value: filters, onApply: navigate });
 
   const storeColumns: ColumnDef<ProductSalesMiniReport["byStore"][number]>[] = [
     { header: "الفرع", accessorKey: "storeName" },
@@ -125,9 +131,9 @@ export function ProductSalesMiniView({
             canPrint={false}
             canExcel={canExcel}
             canPdf={false}
-            pending={pending}
+            pending={exportPending}
             onExportExcel={() => {
-              startTransition(async () => {
+              startExport(async () => {
                 try {
                   const result = await exportProductSalesMiniExcel(
                     Object.fromEntries(
@@ -155,7 +161,7 @@ export function ProductSalesMiniView({
                 key={days}
                 type="button"
                 size="sm"
-                variant={filters.days === days && !filters.from ? "default" : "outline"}
+                variant={optimisticFilters.days === days && !optimisticFilters.from ? "default" : "outline"}
                 onClick={() => apply({ days, from: undefined, to: undefined })}
               >
                 {days} يوم
@@ -163,7 +169,7 @@ export function ProductSalesMiniView({
             ))}
           </div>
           <DateRangeFilter
-            value={{ from: filters.from ?? "", to: filters.to ?? "" }}
+            value={{ from: optimisticFilters.from ?? "", to: optimisticFilters.to ?? "" }}
             onChange={(range) => apply({ from: range.from || undefined, to: range.to || undefined, days: undefined })}
           />
           <div className="min-w-[14rem] space-y-1">
@@ -175,21 +181,20 @@ export function ProductSalesMiniView({
                 description: product.sku,
                 keywords: [product.sku],
               }))}
-              value={filters.productId}
+              value={optimisticFilters.productId}
               onValueChange={(productId) => apply({ productId })}
               placeholder="اختر منتج…"
               searchPlaceholder="ابحث باسم المنتج أو SKU…"
               emptyMessage={products.length === 0 ? "مفيش منتجات" : "مفيش منتج مطابق"}
               clearLabel="إلغاء اختيار المنتج"
               openLabel="بحث في المنتجات"
-              disabled={pending}
             />
           </div>
           {stores.length > 1 ? (
             <div className="min-w-[12rem] space-y-1">
               <Label>الفرع</Label>
               <Select
-                value={filters.storeId ?? "all"}
+                value={optimisticFilters.storeId ?? "all"}
                 onValueChange={(v) =>
                   apply({ storeId: !v || v === "all" ? undefined : v })
                 }

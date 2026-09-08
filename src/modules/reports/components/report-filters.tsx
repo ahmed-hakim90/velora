@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useCallback } from "react";
 import { useAppRouter as useRouter } from "@/hooks/use-app-router";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,7 @@ import { useTranslation } from "@/lib/i18n/use-translation";
 import type { ReportFilters } from "@/modules/reports/core/report-filters.schema";
 import { reportFiltersToSearchParams } from "@/modules/reports/core/report-filters.schema";
 import { cn } from "@/lib/utils";
+import { useFilterTransition } from "@/hooks/use-filter-transition";
 
 export interface ReportFilterOptions {
   showDateRange?: boolean;
@@ -51,7 +52,6 @@ export function ReportFiltersBar({
 }: ReportFiltersBarProps) {
   const router = useRouter();
   const { t } = useTranslation();
-  const [pending, startTransition] = useTransition();
   const {
     showDateRange = true,
     showStore = true,
@@ -61,16 +61,20 @@ export function ReportFiltersBar({
   } = options;
 
   const showStoreFilter = showStore && stores.length > 1;
-  const customRangeActive = Boolean(filters.from);
-  const activePresetDays =
-    !customRangeActive && typeof filters.days === "number" ? filters.days : null;
+  const navigate = useCallback((nextFilters: Partial<ReportFilters>) => {
+    const qs = reportFiltersToSearchParams({ ...nextFilters, page: 1 });
+    router.push(qs ? `${basePath}?${qs}` : basePath, { scroll: false });
+  }, [basePath, router]);
+  const {
+    filters: optimisticFilters,
+    applyFilters: apply,
+  } = useFilterTransition({ value: filters, onApply: navigate });
 
-  const apply = (next: Partial<ReportFilters>) => {
-    const qs = reportFiltersToSearchParams({ ...filters, ...next, page: 1 });
-    startTransition(() => {
-      router.push(qs ? `${basePath}?${qs}` : basePath);
-    });
-  };
+  const customRangeActive = Boolean(optimisticFilters.from);
+  const activePresetDays =
+    !customRangeActive && typeof optimisticFilters.days === "number"
+      ? optimisticFilters.days
+      : null;
 
   if (!showDaysPresets && !showDateRange && !showStoreFilter && !showPaymentMethod) {
     return null;
@@ -97,7 +101,6 @@ export function ReportFiltersBar({
                         type="button"
                         size="sm"
                         aria-pressed={selected}
-                        disabled={pending}
                         className="min-h-11 min-w-0 rounded-[var(--mds-radius-md)] px-2 sm:min-h-9 sm:min-w-[4.75rem] sm:px-3"
                         variant={selected ? "default" : "outline"}
                         onClick={() =>
@@ -119,7 +122,7 @@ export function ReportFiltersBar({
             {showDateRange ? (
               <DateRangeFilter
                 className="min-w-0 flex-1"
-                value={{ from: filters.from ?? "", to: filters.to ?? "" }}
+                value={{ from: optimisticFilters.from ?? "", to: optimisticFilters.to ?? "" }}
                 onChange={(range) =>
                   apply({
                     from: range.from || undefined,
@@ -143,8 +146,7 @@ export function ReportFiltersBar({
               <div className="min-w-0 space-y-1.5">
                 <Label className={fieldLabelClass}>{t("Store")}</Label>
                 <Select
-                  value={filters.storeId ?? "all"}
-                  disabled={pending}
+                  value={optimisticFilters.storeId ?? "all"}
                   onValueChange={(v) =>
                     apply({ storeId: v === "all" ? undefined : v ?? undefined })
                   }
@@ -176,8 +178,7 @@ export function ReportFiltersBar({
               <div className="min-w-0 space-y-1.5">
                 <Label className={fieldLabelClass}>{t("Payment method")}</Label>
                 <Select
-                  value={filters.paymentMethod ?? "all"}
-                  disabled={pending}
+                  value={optimisticFilters.paymentMethod ?? "all"}
                   onValueChange={(v) =>
                     apply({
                       paymentMethod:

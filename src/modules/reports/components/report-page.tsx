@@ -4,6 +4,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/Velora/page-header";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n/use-translation";
+import { FilterPendingMessage } from "@/components/Velora/filter-pending-message";
 
 interface ReportPageProps {
   title: string;
@@ -36,7 +37,12 @@ export function ReportPage({
         description={description}
         action={actions}
       />
-      {filters ? <div className="print:hidden min-w-0">{filters}</div> : null}
+      {filters ? (
+        <div className="print:hidden min-w-0">
+          {filters}
+          <FilterPendingMessage className="mt-1 justify-end px-1" />
+        </div>
+      ) : null}
       {children}
     </div>
   );

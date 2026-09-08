@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { LocalizedText } from "@/components/Velora/localized-text";
+import { FilterPendingMessage } from "@/components/Velora/filter-pending-message";
 
 export function PageShell({ className, ...props }: ComponentProps<"div">) {
   return (
@@ -45,7 +46,7 @@ export function DetailLayout({
   );
 }
 
-export function FilterBar({ className, ...props }: ComponentProps<"div">) {
+export function FilterBar({ className, children, ...props }: ComponentProps<"div">) {
   return (
     <div
       className={cn(
@@ -53,7 +54,10 @@ export function FilterBar({ className, ...props }: ComponentProps<"div">) {
         className
       )}
       {...props}
-    />
+    >
+      {children}
+      <FilterPendingMessage className="basis-full justify-end" />
+    </div>
   );
 }
 

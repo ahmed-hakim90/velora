@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useCallback, useTransition } from "react";
 import Link from "next/link";
 import { useAppRouter as useRouter } from "@/hooks/use-app-router";
 import { toast } from "sonner";
@@ -43,6 +43,7 @@ import {
 import type { ReportContext } from "@/modules/reports/core/report-context";
 import type { BranchSalesMiniReport } from "@/modules/reports/services/sales-entity-report.service";
 import type { CashierPerformanceRow } from "@/modules/reports/services/executive-analytics.service";
+import { useFilterTransition } from "@/hooks/use-filter-transition";
 
 const PAYMENT_LABELS: Record<string, string> = {
   cash: "نقدي",
@@ -69,12 +70,13 @@ export function BranchSalesMiniView({
   canExcel,
 }: BranchSalesMiniViewProps) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
-
-  const apply = (next: Partial<ReportFilters>) => {
-    const qs = reportFiltersToSearchParams({ ...filters, ...next, page: 1 });
-    router.push(qs ? `/reports/sales/branch?${qs}` : "/reports/sales/branch");
-  };
+  const [exportPending, startExport] = useTransition();
+  const navigate = useCallback((nextFilters: ReportFilters) => {
+    const qs = reportFiltersToSearchParams({ ...nextFilters, page: 1 });
+    router.push(qs ? `/reports/sales/branch?${qs}` : "/reports/sales/branch", { scroll: false });
+  }, [router]);
+  const { filters: optimisticFilters, applyFilters: apply } =
+    useFilterTransition({ value: filters, onApply: navigate });
 
   const productColumns: ColumnDef<BranchSalesMiniReport["topProducts"][number]>[] = [
     {
@@ -111,7 +113,7 @@ export function BranchSalesMiniView({
       cell: ({ row }) => (
         <Link
           href={`/reports/sales/cashier?cashierId=${row.original.cashierId}${
-            filters.storeId ? `&storeId=${filters.storeId}` : ""
+            optimisticFilters.storeId ? `&storeId=${optimisticFilters.storeId}` : ""
           }`}
           className="font-medium hover:underline"
         >
@@ -142,9 +144,9 @@ export function BranchSalesMiniView({
             canPrint={false}
             canExcel={canExcel}
             canPdf={false}
-            pending={pending}
+            pending={exportPending}
             onExportExcel={() => {
-              startTransition(async () => {
+              startExport(async () => {
                 try {
                   const result = await exportBranchSalesMiniExcel(
                     Object.fromEntries(
@@ -172,7 +174,7 @@ export function BranchSalesMiniView({
                 key={days}
                 type="button"
                 size="sm"
-                variant={filters.days === days && !filters.from ? "default" : "outline"}
+                variant={optimisticFilters.days === days && !optimisticFilters.from ? "default" : "outline"}
                 onClick={() => apply({ days, from: undefined, to: undefined })}
               >
                 {days} يوم
@@ -180,13 +182,13 @@ export function BranchSalesMiniView({
             ))}
           </div>
           <DateRangeFilter
-            value={{ from: filters.from ?? "", to: filters.to ?? "" }}
+            value={{ from: optimisticFilters.from ?? "", to: optimisticFilters.to ?? "" }}
             onChange={(range) => apply({ from: range.from || undefined, to: range.to || undefined, days: undefined })}
           />
           <div className="min-w-[12rem] space-y-1">
             <Label>الفرع</Label>
             <Select
-              value={filters.storeId ?? stores[0]?.id ?? "__unset"}
+              value={optimisticFilters.storeId ?? stores[0]?.id ?? "__unset"}
               onValueChange={(v) => apply({ storeId: v || undefined })}
             >
               <SelectTrigger>

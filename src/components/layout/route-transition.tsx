@@ -14,6 +14,8 @@ import {
 } from "@/lib/route-transition";
 import { cn } from "@/lib/utils";
 import { useRouteTransitionStore } from "@/stores/route-transition-store";
+import { useFilterTransitionStore } from "@/stores/filter-transition-store";
+import { LocalizedText } from "@/components/Velora/localized-text";
 
 const PENDING_TIMEOUT_MS = 12_000;
 
@@ -85,7 +87,26 @@ export function RouteTransitionListener() {
     return () => window.clearTimeout(timeoutId);
   }, [pendingPath, clear]);
 
-  return <RouteProgressBar visible={pendingPath !== null} />;
+  const filterPending = useFilterTransitionStore((state) => state.activeId !== null);
+
+  return (
+    <>
+      <RouteProgressBar visible={pendingPath !== null || filterPending} />
+      <div
+        className={cn(
+          "pointer-events-none fixed inset-x-0 top-2 z-[calc(var(--mds-z-sticky)+7)] flex justify-center transition-opacity duration-[var(--mds-motion-fast)]",
+          filterPending ? "opacity-100" : "opacity-0"
+        )}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <span className="rounded-full border border-border bg-popover px-3 py-1 text-xs font-medium text-popover-foreground shadow-[var(--mds-elevation-1)]">
+          {filterPending ? <LocalizedText text="Updating results..." /> : ""}
+        </span>
+      </div>
+    </>
+  );
 }
 
 function RouteProgressBar({ visible }: { visible: boolean }) {
@@ -105,9 +126,14 @@ function RouteProgressBar({ visible }: { visible: boolean }) {
 
 export function RouteTransitionMain({ children }: { children: React.ReactNode }) {
   const pendingPath = useRouteTransitionStore((state) => state.pendingPath);
+  const filterPending = useFilterTransitionStore((state) => state.activeId !== null);
 
   return (
-    <div aria-busy={pendingPath !== null}>
+    <div
+      aria-busy={pendingPath !== null || filterPending}
+      inert={filterPending ? true : undefined}
+      className={cn(filterPending && "cursor-wait")}
+    >
       {pendingPath ? <RouteLoadingFallback path={pendingPath} /> : children}
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useCallback, useTransition } from "react";
 import Link from "next/link";
 import { useAppRouter as useRouter } from "@/hooks/use-app-router";
 import { toast } from "sonner";
@@ -42,6 +42,7 @@ import {
 } from "@/modules/reports/core/report-filters.schema";
 import type { ReportContext } from "@/modules/reports/core/report-context";
 import type { CashierSalesMiniReport } from "@/modules/reports/services/sales-entity-report.service";
+import { useFilterTransition } from "@/hooks/use-filter-transition";
 
 interface CashierOption {
   id: string;
@@ -68,12 +69,13 @@ export function CashierSalesMiniView({
   canExcel,
 }: CashierSalesMiniViewProps) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
-
-  const apply = (next: Partial<ReportFilters>) => {
-    const qs = reportFiltersToSearchParams({ ...filters, ...next, page: 1 });
-    router.push(qs ? `/reports/sales/cashier?${qs}` : "/reports/sales/cashier");
-  };
+  const [exportPending, startExport] = useTransition();
+  const navigate = useCallback((nextFilters: ReportFilters) => {
+    const qs = reportFiltersToSearchParams({ ...nextFilters, page: 1 });
+    router.push(qs ? `/reports/sales/cashier?${qs}` : "/reports/sales/cashier", { scroll: false });
+  }, [router]);
+  const { filters: optimisticFilters, applyFilters: apply } =
+    useFilterTransition({ value: filters, onApply: navigate });
 
   const productColumns: ColumnDef<CashierSalesMiniReport["topProducts"][number]>[] = [
     {
@@ -110,9 +112,9 @@ export function CashierSalesMiniView({
             canPrint={false}
             canExcel={canExcel}
             canPdf={false}
-            pending={pending}
+            pending={exportPending}
             onExportExcel={() => {
-              startTransition(async () => {
+              startExport(async () => {
                 try {
                   const result = await exportCashierSalesMiniExcel(
                     Object.fromEntries(
@@ -140,7 +142,7 @@ export function CashierSalesMiniView({
                 key={days}
                 type="button"
                 size="sm"
-                variant={filters.days === days && !filters.from ? "default" : "outline"}
+                variant={optimisticFilters.days === days && !optimisticFilters.from ? "default" : "outline"}
                 onClick={() => apply({ days, from: undefined, to: undefined })}
               >
                 {days} يوم
@@ -148,13 +150,13 @@ export function CashierSalesMiniView({
             ))}
           </div>
           <DateRangeFilter
-            value={{ from: filters.from ?? "", to: filters.to ?? "" }}
+            value={{ from: optimisticFilters.from ?? "", to: optimisticFilters.to ?? "" }}
             onChange={(range) => apply({ from: range.from || undefined, to: range.to || undefined, days: undefined })}
           />
           <div className="min-w-[14rem] space-y-1">
             <Label>الموظف</Label>
             <Select
-              value={filters.cashierId ?? "__unset"}
+              value={optimisticFilters.cashierId ?? "__unset"}
               onValueChange={(v) =>
                 apply({ cashierId: !v || v === "__unset" ? undefined : v })
               }
@@ -184,7 +186,7 @@ export function CashierSalesMiniView({
             <div className="min-w-[12rem] space-y-1">
               <Label>الفرع</Label>
               <Select
-                value={filters.storeId ?? "all"}
+                value={optimisticFilters.storeId ?? "all"}
                 onValueChange={(v) =>
                   apply({ storeId: !v || v === "all" ? undefined : v })
                 }

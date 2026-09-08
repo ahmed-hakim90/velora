@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useCallback, useTransition } from "react";
 import { useAppRouter as useRouter } from "@/hooks/use-app-router";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -44,6 +44,7 @@ import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { DateRangeFilter } from "@/components/Velora/date-range-filter";
+import { useFilterTransition } from "@/hooks/use-filter-transition";
 
 interface ProductOption {
   id: string;
@@ -103,7 +104,7 @@ export function ProductStockCardView({
 }: ProductStockCardViewProps) {
   const router = useRouter();
   const { t, language } = useTranslation();
-  const [pending, startTransition] = useTransition();
+  const [exportPending, startExport] = useTransition();
   const printQs = reportFiltersToSearchParams(filters);
   const printHref = `/print/reports/product-card${printQs ? `?${printQs}` : ""}`;
   const salesProductQs = report
@@ -119,10 +120,12 @@ export function ProductStockCardView({
       : `/reports/sales/product?productId=${report.product.id}`
     : null;
 
-  const apply = (next: Partial<ReportFilters>) => {
-    const qs = reportFiltersToSearchParams({ ...filters, ...next, page: 1 });
-    router.push(qs ? `/reports/product-card?${qs}` : "/reports/product-card");
-  };
+  const navigate = useCallback((nextFilters: ReportFilters) => {
+    const qs = reportFiltersToSearchParams({ ...nextFilters, page: 1 });
+    router.push(qs ? `/reports/product-card?${qs}` : "/reports/product-card", { scroll: false });
+  }, [router]);
+  const { filters: optimisticFilters, applyFilters: apply } =
+    useFilterTransition({ value: filters, onApply: navigate });
 
   const columns: ColumnDef<ProductStockCardLine>[] = [
     {
@@ -238,9 +241,9 @@ export function ProductStockCardView({
               canPrint={canPrint}
               canExcel={canExcel}
               canPdf={canPdf}
-              pending={pending}
+              pending={exportPending}
               onExportExcel={() => {
-                startTransition(async () => {
+                  startExport(async () => {
                   try {
                     const result = await exportProductStockCardExcel(
                       Object.fromEntries(
@@ -265,7 +268,7 @@ export function ProductStockCardView({
         <div className="grid w-full grid-cols-2 gap-[var(--mds-space-3)] sm:gap-[var(--mds-space-4)] lg:grid-cols-[auto_auto_minmax(13rem,1fr)_auto] lg:items-end">
           <DateRangeFilter
             className="col-span-2 lg:col-span-2"
-            value={{ from: filters.from ?? "", to: filters.to ?? "" }}
+            value={{ from: optimisticFilters.from ?? "", to: optimisticFilters.to ?? "" }}
             onChange={(range) =>
               apply({
                 from: range.from || undefined,
@@ -285,14 +288,13 @@ export function ProductStockCardView({
                 description: [...new Set([product.sku, product.barcode].filter(Boolean))].join(" · "),
                 keywords: [product.sku, product.barcode],
               }))}
-              value={filters.productId}
+              value={optimisticFilters.productId}
               onValueChange={(productId) => apply({ productId })}
               placeholder={t("Select a product…")}
               searchPlaceholder={t("Search by product name, SKU, or barcode…")}
               emptyMessage={t(products.length === 0 ? "No tracked products" : "No matching product")}
               clearLabel={t("Clear search")}
               openLabel={t("Search products")}
-              disabled={pending}
             />
           </div>
 
@@ -300,7 +302,7 @@ export function ProductStockCardView({
             <div className="space-y-[var(--mds-space-1)]">
               <Label>{t("Store")}</Label>
               <Select
-                value={filters.storeId ?? "all"}
+                value={optimisticFilters.storeId ?? "all"}
                 onValueChange={(v) =>
                   apply({
                     storeId: !v || v === "all" ? undefined : v,
@@ -334,7 +336,7 @@ export function ProductStockCardView({
           <div className="space-y-[var(--mds-space-1)]">
             <Label>{t("Warehouse")}</Label>
             <Select
-              value={filters.warehouseId ?? "all"}
+              value={optimisticFilters.warehouseId ?? "all"}
               onValueChange={(v) =>
                 apply({ warehouseId: !v || v === "all" ? undefined : v })
               }
@@ -363,7 +365,7 @@ export function ProductStockCardView({
         </div>
       }
     >
-      {!filters.productId || !report ? (
+      {!optimisticFilters.productId || !report ? (
         <EmptyStateBlock
           title={t("Select a product to view its card")}
           description={t("Choose a product and period to see opening balance, inbound, outbound, adjustments, and available stock.")}
